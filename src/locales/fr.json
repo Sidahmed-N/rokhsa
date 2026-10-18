@@ -33,7 +33,10 @@
     "checkDb": "Base de données locale SQLite",
     "checkBackup": "Sauvegarde automatique et sur clé USB",
     "statusDone": "Fait",
-    "statusPending": "À venir"
+    "statusPending": "À venir",
+    "runtimeDesktop": "Application de bureau",
+    "runtimeBrowser": "Navigateur (développement) — la partie Rust n'est pas disponible",
+    "version": "version"
   },
   "printProof": {
     "title": "Test d'impression",

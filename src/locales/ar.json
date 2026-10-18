@@ -33,7 +33,10 @@
     "checkDb": "قاعدة بيانات محلية SQLite",
     "checkBackup": "نسخ احتياطي تلقائي وعلى مفتاح USB",
     "statusDone": "تم",
-    "statusPending": "قادم"
+    "statusPending": "قادم",
+    "runtimeDesktop": "تطبيق سطح المكتب",
+    "runtimeBrowser": "متصفح (تطوير) — الجزء البرمجي بلغة Rust غير متوفر",
+    "version": "الإصدار"
   },
   "printProof": {
     "title": "تجربة الطباعة",

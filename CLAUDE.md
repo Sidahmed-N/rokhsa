@@ -242,9 +242,34 @@ npm run check        # all three — run before every commit
 **Verify Arabic in the browser, not by reading the code.** `/print-proof` renders a receipt;
 switch the language and look at it. Bidi bugs are invisible in source and invisible in French.
 
-### Not yet installed
-The Tauri desktop shell needs the **Rust toolchain** and the **MSVC C++ build tools**, neither
-of which is on this machine yet. The frontend runs standalone in a browser until then.
+```bash
+npm run desktop        # tauri dev - builds Rust and launches the app window
+npm run desktop:build  # production build + NSIS installer
+```
+
+### Toolchain
+Rust 1.99.1 and Visual Studio Build Tools 2022 (MSVC 14.44) are installed.
+Cargo lives at `%USERPROFILE%\.cargo\bin`.
+
+### Windows MAX_PATH
+`src-tauri/.cargo/config.toml` redirects cargo's `target-dir` to a short path. It is
+**machine-local and gitignored**.
+
+Without it the build fails with:
+
+```
+LINK : fatal error LNK1104: cannot open file ...build_script_build-*.exe
+```
+
+That reads like a missing dependency but is the linker unable to **create** its own output:
+the project currently sits under a deep path and cargo's build tree exceeds the 260-character
+Windows limit. Moving the project somewhere short (e.g. `C:\dev\tariqi`) fixes it properly and
+makes that config file deletable.
+
+### A debug build loads from the dev server
+`devUrl` points at `http://localhost:5173`, so a debug binary launched **without** Vite running
+shows a blank "can't reach this page" window. That is expected, not a bug. Release builds embed
+the frontend and need no server.
 
 <!-- claude-reflect: learned rules (saved from the band; edit freely) -->
 ## Learned rules

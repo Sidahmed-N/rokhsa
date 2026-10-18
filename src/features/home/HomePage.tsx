@@ -1,5 +1,7 @@
 import { useTranslation } from "react-i18next";
 
+import RuntimeBadge from "@/features/home/RuntimeBadge";
+
 type FoundationItem = {
   labelKey: string;
   done: boolean;
@@ -64,6 +66,8 @@ export default function HomePage() {
           ))}
         </ul>
       </section>
+
+      <RuntimeBadge />
     </div>
   );
 }
