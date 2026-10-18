@@ -63,6 +63,12 @@ pub fn run() {
             commands::training::create_payment,
             commands::training::reverse_payment,
             commands::training::get_school,
+            commands::reports::get_receivables,
+            commands::reports::get_cash_flow,
+            commands::reports::list_expense_categories,
+            commands::reports::list_expenses,
+            commands::reports::create_expense,
+            commands::reports::delete_expense,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Tariqi");

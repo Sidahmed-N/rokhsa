@@ -12,8 +12,10 @@ use crate::error::AppError;
 
 pub mod candidates;
 pub mod enrollments;
+pub mod expenses;
 pub mod lessons;
 pub mod payments;
+pub mod reports;
 
 /// Open (creating if needed) the school's database and bring it up to date.
 ///

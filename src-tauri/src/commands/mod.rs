@@ -4,6 +4,7 @@
 //! serialize. No business rules live here. See CLAUDE.md.
 
 pub mod candidates;
+pub mod reports;
 pub mod training;
 
 use sqlx::SqlitePool;

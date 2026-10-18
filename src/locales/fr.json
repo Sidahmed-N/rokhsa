@@ -8,7 +8,58 @@
     "candidates": "Candidats",
     "payments": "Versements",
     "receivables": "Créances",
+    "cashFlow": "Caisse",
     "printProof": "Test d'impression"
+  },
+  "receivables": {
+    "title": "Créances — qui vous doit de l'argent",
+    "totalOwed": "Total dû à l'école",
+    "owingCount": "Inscriptions concernées",
+    "onlyStale": "Uniquement sans versement depuis {{days}} jours",
+    "noStale": "Aucun retard de paiement.",
+    "nobodyOwes": "Personne ne vous doit d'argent.",
+    "lastPayment": "Dernier versement",
+    "never": "Jamais",
+    "daysAgo": "j"
+  },
+  "cashFlow": {
+    "title": "Caisse — argent entrant et sortant",
+    "thisMonth": "Ce mois-ci",
+    "lastMonth": "Mois dernier",
+    "thisYear": "Cette année",
+    "from": "Du",
+    "to": "Au",
+    "in": "Encaissé",
+    "out": "Dépensé",
+    "net": "Différence",
+    "payments": "versements",
+    "expenses": "dépenses",
+    "byMethod": "Encaissements par mode de paiement",
+    "byCategory": "Dépenses par catégorie",
+    "noPayments": "Aucun encaissement sur la période.",
+    "noExpenses": "Aucune dépense sur la période."
+  },
+  "expenses": {
+    "title": "Dépenses",
+    "add": "+ Ajouter une dépense",
+    "addTitle": "Nouvelle dépense",
+    "category": "Catégorie",
+    "amount": "Montant (DA)",
+    "date": "Date",
+    "description": "Description",
+    "supplier": "Fournisseur",
+    "none": "Aucune dépense sur la période.",
+    "error": {
+      "amountPositive": "Le montant doit être supérieur à zéro.",
+      "categoryRequired": "Choisissez une catégorie.",
+      "dateRequired": "Indiquez la date.",
+      "dateInvalid": "Date invalide."
+    }
+  },
+  "reports": {
+    "error": {
+      "dateInvalid": "Période invalide."
+    }
   },
   "common": {
     "language": "Langue",

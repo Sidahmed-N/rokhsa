@@ -211,6 +211,73 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await?;
     }
 
+    // A spread of debts so the receivables screen shows a realistic chase list.
+    for (index, price, paid, enrolled) in [
+        (2usize, 35_000i64, 0i64, "2026-09-20"),   // BENAÏSSA — never paid
+        (3, 38_000, 20_000, "2026-07-02"),         // MEZIANE  — part paid, long ago
+        (5, 35_000, 5_000, "2026-10-01"),          // SAÏDI    — barely started
+        (6, 36_000, 36_000, "2026-05-11"),         // TOUATI   — settled
+    ] {
+        if let Some(&candidate_id) = ids.get(index) {
+            let e = db::enrollments::create(
+                &pool,
+                candidate_id,
+                &db::enrollments::EnrollmentInput {
+                    category_code: "B".into(),
+                    agreed_price_centimes: price * DA,
+                    theory_hours_target: 30,
+                    practical_hours_target: 30,
+                    enrolled_on: enrolled.into(),
+                    ..Default::default()
+                },
+            )
+            .await?;
+
+            if paid > 0 {
+                db::payments::create(
+                    &pool,
+                    e.id,
+                    &db::payments::PaymentInput {
+                        amount_centimes: paid * DA,
+                        paid_on: enrolled.into(),
+                        method_code: "cash".into(),
+                        ..Default::default()
+                    },
+                )
+                .await?;
+            }
+        }
+    }
+
+    // Expenses, so "money out" is not an empty column.
+    for (amount, date, category, description) in [
+        (4_500i64, "2026-10-03", "fuel", "Plein Clio + Symbol"),
+        (12_000, "2026-10-01", "rent", "Loyer octobre"),
+        (3_200, "2026-10-09", "maintenance", "Vidange Symbol"),
+        (2_800, "2026-10-15", "fuel", "Carburant semaine"),
+        (18_000, "2026-09-28", "insurance", "Assurance flotte"),
+        (6_000, "2026-10-05", "salaries", "Acompte moniteur"),
+        (1_400, "2026-10-11", "supplies", "Fournitures bureau"),
+    ] {
+        db::expenses::create(
+            &pool,
+            &db::expenses::ExpenseInput {
+                category_code: category.into(),
+                amount_centimes: amount * DA,
+                spent_on: date.into(),
+                description: description.into(),
+                ..Default::default()
+            },
+        )
+        .await?;
+    }
+
+    let r = db::reports::receivables(&pool).await?;
+    println!(
+        "  receivables: {} enrolment(s) owing {} centimes",
+        r.enrollments_owing, r.total_owed_centimes
+    );
+
     println!("done: {} candidate(s)", db::candidates::count(&pool, "").await?);
     Ok(())
 }

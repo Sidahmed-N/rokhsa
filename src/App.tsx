@@ -7,6 +7,8 @@ import CandidatesPage from "@/features/candidates/CandidatesPage";
 import HomePage from "@/features/home/HomePage";
 import PrintProofPage from "@/features/print/PrintProofPage";
 import ReceiptPage from "@/features/print/ReceiptPage";
+import CashFlowPage from "@/features/reports/CashFlowPage";
+import ReceivablesPage from "@/features/reports/ReceivablesPage";
 
 /**
  * Application shell.
@@ -21,6 +23,8 @@ export default function App() {
   const navItems = [
     { to: "/", labelKey: "nav.home" },
     { to: "/candidates", labelKey: "nav.candidates" },
+    { to: "/receivables", labelKey: "nav.receivables" },
+    { to: "/cash-flow", labelKey: "nav.cashFlow" },
     { to: "/print-proof", labelKey: "nav.printProof" },
   ] as const;
 
@@ -64,6 +68,8 @@ export default function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/candidates" element={<CandidatesPage />} />
           <Route path="/candidates/:id" element={<CandidateDetailPage />} />
+          <Route path="/receivables" element={<ReceivablesPage />} />
+          <Route path="/cash-flow" element={<CashFlowPage />} />
           <Route path="/receipt/:paymentId" element={<ReceiptPage />} />
           <Route path="/print-proof" element={<PrintProofPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />

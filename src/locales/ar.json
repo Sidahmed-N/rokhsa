@@ -8,7 +8,58 @@
     "candidates": "المترشحون",
     "payments": "الدفعات",
     "receivables": "المبالغ المستحقة",
+    "cashFlow": "الصندوق",
     "printProof": "تجربة الطباعة"
+  },
+  "receivables": {
+    "title": "المبالغ المستحقة — من عليه دين لك",
+    "totalOwed": "مجموع المستحق للمدرسة",
+    "owingCount": "عدد التسجيلات المعنية",
+    "onlyStale": "فقط بدون دفع منذ {{days}} يوما",
+    "noStale": "لا توجد تأخرات في الدفع.",
+    "nobodyOwes": "لا أحد مدين لك بشيء.",
+    "lastPayment": "آخر دفعة",
+    "never": "أبدا",
+    "daysAgo": "يوم"
+  },
+  "cashFlow": {
+    "title": "الصندوق — المال الداخل والخارج",
+    "thisMonth": "هذا الشهر",
+    "lastMonth": "الشهر الماضي",
+    "thisYear": "هذه السنة",
+    "from": "من",
+    "to": "إلى",
+    "in": "المحصّل",
+    "out": "المصروف",
+    "net": "الفرق",
+    "payments": "دفعة",
+    "expenses": "مصروف",
+    "byMethod": "المحصّل حسب طريقة الدفع",
+    "byCategory": "المصاريف حسب الصنف",
+    "noPayments": "لا توجد تحصيلات في هذه الفترة.",
+    "noExpenses": "لا توجد مصاريف في هذه الفترة."
+  },
+  "expenses": {
+    "title": "المصاريف",
+    "add": "+ إضافة مصروف",
+    "addTitle": "مصروف جديد",
+    "category": "الصنف",
+    "amount": "المبلغ (دج)",
+    "date": "التاريخ",
+    "description": "الوصف",
+    "supplier": "المورّد",
+    "none": "لا توجد مصاريف في هذه الفترة.",
+    "error": {
+      "amountPositive": "المبلغ يجب أن يكون أكبر من الصفر.",
+      "categoryRequired": "اختر صنفا.",
+      "dateRequired": "أدخل التاريخ.",
+      "dateInvalid": "تاريخ غير صالح."
+    }
+  },
+  "reports": {
+    "error": {
+      "dateInvalid": "فترة غير صالحة."
+    }
   },
   "common": {
     "language": "اللغة",
