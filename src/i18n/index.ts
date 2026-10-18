@@ -65,8 +65,24 @@ export function currentLanguage(): Language {
   return isLanguage(i18next.resolvedLanguage) ? i18next.resolvedLanguage : DEFAULT_LANGUAGE;
 }
 
+/**
+ * `?lang=ar` forces a language for one load.
+ *
+ * Checking a screen in Arabic is the single most common thing that gets
+ * skipped, and skipping it is how RTL bugs ship. This makes it one URL away
+ * for anyone, including automated checks, without clearing stored settings.
+ */
+function readLanguageFromUrl(): Language | null {
+  try {
+    const value = new URLSearchParams(window.location.search).get("lang");
+    return isLanguage(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function initI18n(): Promise<void> {
-  const initial = readStoredLanguage() ?? DEFAULT_LANGUAGE;
+  const initial = readLanguageFromUrl() ?? readStoredLanguage() ?? DEFAULT_LANGUAGE;
 
   await i18next.use(initReactI18next).init({
     resources: {

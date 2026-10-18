@@ -20,6 +20,22 @@ tauri = { version = "2", features = [] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
+# SQLite. WAL plus synchronous=FULL on money writes: these machines lose power
+# mid-operation and a lost receipt is worse than a slow one.
+sqlx = { version = "0.8", default-features = false, features = [
+    "runtime-tokio",
+    "sqlite",
+    "migrate",
+    "macros",
+    "chrono",
+] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+chrono = { version = "0.4", features = ["serde"] }
+thiserror = "2"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+
 [profile.release]
 # The installer travels by USB stick and slow links to Algerian schools, so
 # size genuinely matters commercially. See docs/03-STACK.md, Decision 1.

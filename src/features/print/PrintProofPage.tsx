@@ -27,7 +27,7 @@ const DEMO_RECEIPT: ReceiptData = {
   paidAt: new Date(2026, 9, 18),
   candidateNameFr: "BENALI Yacine",
   candidateNameAr: "بن علي ياسين",
-  nin: "109 2004 16 0054821",
+  nin: "109 2004 1600 5482 130",
   categoryCode: "B",
   amount: 1_200_000, // 12 000,00 DA
   methodKey: "cash",

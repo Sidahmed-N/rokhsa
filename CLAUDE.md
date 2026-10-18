@@ -70,6 +70,15 @@ These are not style preferences. Breaking them causes data loss, legal problems,
   stored as `109 2004 16 0054821` prints as `0054821 16 2004 109`. It looks perfect in French
   and silently wrong in Arabic. This was a real bug in the first receipt, caught only by
   measuring character positions in the browser — not by reading the code.
+- **Never put a logical margin/padding on the same element that carries `dir`.**
+  `ms-*` is `margin-inline-start`, which resolves against *that element's own* direction, so
+  `<span dir="rtl" className="ms-2">` puts the gap on the far side and the text ends up
+  touching its neighbour. Put the spacing on an outer element that inherits the surrounding
+  direction, and the `dir` on an inner one. `check:rtl` cannot catch this — only looking at
+  the screen does.
+- **Identity numbers are stored as typed AND as digits.** `nin` holds what the school wrote
+  (so it prints the way their paperwork reads); `nin_digits` is the normalised form used for
+  uniqueness and search. Never display the normalised form.
 
 ### Dates and time
 - Store all timestamps as **UTC ISO-8601 strings**. Algeria is UTC+01:00 with **no DST**,
@@ -239,8 +248,14 @@ npm run check:rtl    # fails on physical CSS props and un-isolated numbers
 npm run check        # all three — run before every commit
 ```
 
-**Verify Arabic in the browser, not by reading the code.** `/print-proof` renders a receipt;
-switch the language and look at it. Bidi bugs are invisible in source and invisible in French.
+```bash
+cd src-tauri && cargo test --lib   # domain + db tests
+cd src-tauri && cargo run --bin seed  # load demo candidates for a demo or a visual check
+```
+
+**Verify Arabic by looking at it, not by reading the code.** Append `?lang=ar` to any URL to
+force Arabic for one load. Bidi and RTL bugs are invisible in source and invisible in French —
+every one found so far was found on screen, not in review.
 
 ```bash
 npm run desktop        # tauri dev - builds Rust and launches the app window

@@ -21,7 +21,7 @@ export default function HomePage() {
     { labelKey: "home.checkI18n", done: true },
     { labelKey: "home.checkMoney", done: true },
     { labelKey: "home.checkPrint", done: true },
-    { labelKey: "home.checkDb", done: false },
+    { labelKey: "home.checkDb", done: true },
     { labelKey: "home.checkBackup", done: false },
   ];
 

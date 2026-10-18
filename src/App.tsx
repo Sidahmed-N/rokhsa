@@ -2,6 +2,7 @@ import { NavLink, Navigate, Route, Routes } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import CandidatesPage from "@/features/candidates/CandidatesPage";
 import HomePage from "@/features/home/HomePage";
 import PrintProofPage from "@/features/print/PrintProofPage";
 
@@ -17,6 +18,7 @@ export default function App() {
 
   const navItems = [
     { to: "/", labelKey: "nav.home" },
+    { to: "/candidates", labelKey: "nav.candidates" },
     { to: "/print-proof", labelKey: "nav.printProof" },
   ] as const;
 
@@ -58,6 +60,7 @@ export default function App() {
       <main className="mx-auto max-w-6xl px-4 py-6">
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="/candidates" element={<CandidatesPage />} />
           <Route path="/print-proof" element={<PrintProofPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
