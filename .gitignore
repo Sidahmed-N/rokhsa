@@ -29,3 +29,6 @@ tools/Tariqi-Survey-*.txt
 .DS_Store
 Thumbs.db
 *.swp
+
+# Vendor installer, fetched on demand - not source
+tools/vs_BuildTools.exe

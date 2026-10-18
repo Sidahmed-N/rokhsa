@@ -1,0 +1,30 @@
+[package]
+name = "tariqi"
+version = "0.1.0"
+description = "Management software for Algerian driving schools"
+authors = ["Tariqi"]
+edition = "2021"
+rust-version = "1.77.2"
+
+[lib]
+# Tauri 2 keeps the app in a library so the same code can target desktop and
+# mobile; main.rs is a thin binary wrapper around it.
+name = "tariqi_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+# The installer travels by USB stick and slow links to Algerian schools, so
+# size genuinely matters commercially. See docs/03-STACK.md, Decision 1.
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
