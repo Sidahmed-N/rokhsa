@@ -1,0 +1,81 @@
+{
+  "app": {
+    "name": "Tariqi",
+    "tagline": "Gestion d'auto-école"
+  },
+  "nav": {
+    "home": "Accueil",
+    "candidates": "Candidats",
+    "payments": "Versements",
+    "receivables": "Créances",
+    "printProof": "Test d'impression"
+  },
+  "common": {
+    "language": "Langue",
+    "french": "Français",
+    "arabic": "العربية",
+    "print": "Imprimer",
+    "back": "Retour",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "search": "Rechercher",
+    "loading": "Chargement...",
+    "none": "Aucun"
+  },
+  "home": {
+    "title": "Tableau de bord",
+    "subtitle": "Candidats, heures, et argent entrant et sortant.",
+    "foundationNotice": "Version de développement — le socle technique est en place. Les écrans métier arrivent.",
+    "checklistTitle": "Socle technique",
+    "checkI18n": "Français et arabe, avec changement de direction (RTL)",
+    "checkMoney": "Montants en centimes entiers, jamais en virgule flottante",
+    "checkPrint": "Impression HTML — à vérifier en arabe",
+    "checkDb": "Base de données locale SQLite",
+    "checkBackup": "Sauvegarde automatique et sur clé USB",
+    "statusDone": "Fait",
+    "statusPending": "À venir"
+  },
+  "printProof": {
+    "title": "Test d'impression",
+    "explain": "Cet écran existe pour vérifier une seule chose : que l'arabe s'imprime correctement, avec les lettres liées et dans le bon sens. C'est le principal risque technique du projet.",
+    "instruction": "Changez la langue en arabe, puis cliquez sur Imprimer et regardez l'aperçu.",
+    "sheetLabel": "Aperçu du document"
+  },
+  "receipt": {
+    "title": "REÇU DE VERSEMENT",
+    "number": "N° du reçu",
+    "date": "Date",
+    "receivedFrom": "Reçu de",
+    "nin": "N° d'identification nationale",
+    "category": "Catégorie",
+    "amount": "Montant",
+    "inWords": "Soit, en lettres",
+    "method": "Mode de paiement",
+    "purpose": "Au titre de",
+    "purposeValue": "Formation à la conduite automobile",
+    "totalAgreed": "Montant convenu",
+    "totalPaid": "Total versé",
+    "remaining": "Reste à payer",
+    "signature": "Signature et cachet",
+    "footer": "Ce reçu est établi en un seul exemplaire et remis au candidat.",
+    "agrement": "Agrément n°",
+    "phone": "Tél"
+  },
+  "methods": {
+    "cash": "Espèces",
+    "cheque": "Chèque",
+    "transfer": "Virement bancaire",
+    "baridimob": "BaridiMob",
+    "edahabia": "Edahabia",
+    "cib": "CIB"
+  },
+  "categories": {
+    "A1": "A1 — Cyclomoteur",
+    "A": "A — Motocyclette",
+    "B": "B — Véhicule léger",
+    "C1": "C1 — Camion léger",
+    "C": "C — Poids lourd",
+    "D": "D — Transport en commun",
+    "F": "F — Véhicule aménagé"
+  }
+}

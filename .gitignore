@@ -1,0 +1,31 @@
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Rust / Tauri (added when the desktop shell lands)
+target/
+src-tauri/target/
+
+# SQLite working files
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Licence signing keys - NEVER commit these
+*.pem
+*.key
+keys/
+
+# Survey reports collected from school PCs (contain machine details)
+tools/Tariqi-Survey-*.txt
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+*.swp

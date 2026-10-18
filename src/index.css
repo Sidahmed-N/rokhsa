@@ -1,0 +1,133 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   Fonts
+   ---------------------------------------------------------------------------
+   Deliberately a SYSTEM font stack, no web fonts. The app must work with zero
+   internet, so pulling Noto Naskh Arabic from Google Fonts is not an option.
+
+   On Windows, "Segoe UI" and Tahoma both shape Arabic correctly, so Arabic
+   renders properly out of the box with no download. Bundling a proper Naskh
+   face later would improve typography on printed documents, but is not needed
+   for correctness.
+   TODO before release: evaluate bundling IBM Plex Sans Arabic as a local
+   @font-face so output is identical across machines.
+--------------------------------------------------------------------------- */
+
+@theme {
+  --font-sans: "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-arabic: "Segoe UI", Tahoma, "Traditional Arabic", "Arabic Typesetting", sans-serif;
+
+  --color-ink: oklch(0.21 0.01 260);
+  --color-muted: oklch(0.52 0.01 260);
+  --color-line: oklch(0.89 0.005 260);
+  --color-brand: oklch(0.48 0.14 250);
+  --color-brand-soft: oklch(0.96 0.02 250);
+  --color-ok: oklch(0.55 0.13 150);
+  --color-warn: oklch(0.65 0.15 70);
+  --color-owed: oklch(0.55 0.19 25);
+}
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  font-family: var(--font-sans);
+}
+
+/* Arabic gets its own face and a touch more line-height: Arabic script sits
+   taller than Latin and looks cramped at Latin leading. */
+html[lang="ar"] {
+  font-family: var(--font-arabic);
+  line-height: 1.75;
+}
+
+body {
+  margin: 0;
+  background: oklch(0.98 0.003 260);
+  color: var(--color-ink);
+}
+
+/* Bidirectional isolation for numbers and Latin text.
+
+   In Arabic (RTL) text the bidi algorithm reorders space-separated runs, so a
+   national ID stored as "109 2004 16 0054821" prints as "0054821 16 2004 109".
+   Applied by the <Num> / <Money> components in src/components/Num.tsx — use
+   those rather than this class directly, so no call site can forget it.
+
+   Note this applies in BOTH directions, not only under [lang="ar"]: isolation
+   is harmless in LTR, and making it unconditional means a value cannot be
+   correct in French and silently wrong in Arabic.
+
+   Numerals stay Western (1234) rather than Eastern Arabic (١٢٣٤) — Algerian
+   paperwork uses Western digits for money and identifiers even in Arabic
+   documents. If a school ever wants Eastern digits, that becomes a setting. */
+.num {
+  direction: ltr;
+  unicode-bidi: isolate;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* ---------------------------------------------------------------------------
+   Print
+   ---------------------------------------------------------------------------
+   Print documents are plain HTML rendered by the WebView, which already has a
+   correct bidirectional layout and Arabic shaping engine. This is the whole
+   reason we are not generating PDFs in Rust.
+--------------------------------------------------------------------------- */
+
+.screen-only {
+  display: block;
+}
+
+.print-sheet {
+  background: white;
+}
+
+@media print {
+  /* A5 suits a payment receipt; a statement switches this to A4 via a class
+     on the sheet, see .sheet-a4 below. */
+  @page {
+    size: A5;
+    margin: 10mm;
+  }
+
+  @page a4 {
+    size: A4;
+    margin: 14mm;
+  }
+
+  html,
+  body {
+    background: white;
+  }
+
+  .screen-only {
+    display: none !important;
+  }
+
+  .print-sheet {
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: auto !important;
+    max-width: none !important;
+  }
+
+  .sheet-a4 {
+    page: a4;
+  }
+
+  /* Never break a money row or a signature block across pages. */
+  tr,
+  .no-break {
+    break-inside: avoid;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+}
