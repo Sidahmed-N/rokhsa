@@ -79,6 +79,9 @@ These are not style preferences. Breaking them causes data loss, legal problems,
 - **Identity numbers are stored as typed AND as digits.** `nin` holds what the school wrote
   (so it prints the way their paperwork reads); `nin_digits` is the normalised form used for
   uniqueness and search. Never display the normalised form.
+- **A utility class must not set `display` unless that is its whole job.** `.screen-only`
+  exists to hide something when printing; an early version also set `display: block`, which
+  silently overrode `flex` on every element carrying both and collapsed those layouts.
 
 ### Dates and time
 - Store all timestamps as **UTC ISO-8601 strings**. Algeria is UTC+01:00 with **no DST**,

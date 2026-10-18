@@ -109,6 +109,91 @@
       "phoneInvalid": "Numéro de téléphone invalide."
     }
   },
+  "school": {
+    "unnamed": "Auto-école (nom à renseigner)"
+  },
+  "enrollments": {
+    "new": "+ Nouvelle inscription",
+    "newTitle": "Nouvelle inscription",
+    "none": "Ce candidat n'est inscrit à aucune catégorie.",
+    "category": "Catégorie",
+    "agreedPrice": "Prix convenu (DA)",
+    "priceHint": "Ce prix est figé pour ce candidat. Modifier le tarif plus tard ne le changera pas.",
+    "theoryTarget": "Heures de code",
+    "practicalTarget": "Heures de conduite",
+    "extraHourPrice": "Prix de l'heure supplémentaire (DA)",
+    "extraHourHint": "Laissez à 0 si vous ne facturez pas les heures en plus.",
+    "enrolledOn": "Inscrit le",
+    "totalDue": "Total dû",
+    "paid": "Versé",
+    "balance": "Reste à payer",
+    "discount": "Remise :",
+    "includesExtraHours": "dont heures supplémentaires :",
+    "status_forming": "En formation",
+    "status_ready": "Prêt pour l'examen",
+    "status_presented": "Présenté",
+    "status_passed": "Admis",
+    "status_failed": "Ajourné",
+    "status_withdrawn": "Abandon",
+    "error": {
+      "categoryRequired": "Choisissez une catégorie.",
+      "categoryUnknown": "Cette catégorie n'existe pas.",
+      "priceNegative": "Le prix ne peut pas être négatif.",
+      "discountNegative": "La remise ne peut pas être négative.",
+      "discountTooLarge": "La remise dépasse le prix convenu.",
+      "statusInvalid": "Statut invalide.",
+      "alreadyEnrolled": "Ce candidat est déjà inscrit à cette catégorie."
+    }
+  },
+  "lessons": {
+    "add": "+ Ajouter des heures",
+    "addTitle": "Ajouter des heures",
+    "kind": "Type",
+    "kind_theory": "Code",
+    "kind_maneuvers": "Créneau",
+    "kind_road": "Circulation",
+    "practical": "Conduite (créneau + circulation)",
+    "date": "Date",
+    "minutes": "Durée (minutes)",
+    "minutesHint": "60 = une heure. Les demi-heures sont comptées exactement.",
+    "notes": "Remarque",
+    "hourShort": "h",
+    "minuteShort": "min",
+    "error": {
+      "kindInvalid": "Type de séance invalide.",
+      "minutesPositive": "La durée doit être supérieure à zéro.",
+      "minutesTooLong": "Durée trop longue pour une seule séance.",
+      "dateRequired": "Indiquez la date.",
+      "dateInvalid": "Date invalide."
+    }
+  },
+  "payments": {
+    "title": "Versements",
+    "take": "Encaisser",
+    "takeTitle": "Encaisser un versement",
+    "saveAndPrint": "Enregistrer et imprimer",
+    "amount": "Montant (DA)",
+    "amountHint": "En dinars. Exemple : 12000",
+    "date": "Date",
+    "method": "Mode de paiement",
+    "reference": "Référence",
+    "notes": "Remarque",
+    "currentBalance": "Reste à payer actuellement",
+    "receiptNo": "N° reçu",
+    "none": "Aucun versement enregistré.",
+    "reversal": "annulation",
+    "reverse": "Annuler",
+    "reversedByUser": "Annulé depuis l'application",
+    "appendOnlyNote": "Un versement ne peut être ni modifié ni supprimé : une erreur est corrigée par une annulation, qui garde les deux lignes.",
+    "error": {
+      "amountPositive": "Le montant doit être supérieur à zéro.",
+      "dateRequired": "Indiquez la date du versement.",
+      "dateInvalid": "Date invalide.",
+      "methodRequired": "Choisissez un mode de paiement.",
+      "cannotReverseReversal": "Une annulation ne peut pas être annulée.",
+      "alreadyReversed": "Ce versement a déjà été annulé."
+    }
+  },
   "printProof": {
     "title": "Test d'impression",
     "explain": "Cet écran existe pour vérifier une seule chose : que l'arabe s'imprime correctement, avec les lettres liées et dans le bon sens. C'est le principal risque technique du projet.",

@@ -11,6 +11,9 @@ use sqlx::SqlitePool;
 use crate::error::AppError;
 
 pub mod candidates;
+pub mod enrollments;
+pub mod lessons;
+pub mod payments;
 
 /// Open (creating if needed) the school's database and bring it up to date.
 ///

@@ -109,6 +109,91 @@
       "phoneInvalid": "رقم الهاتف غير صالح."
     }
   },
+  "school": {
+    "unnamed": "مدرسة تعليم السياقة (الاسم غير محدد)"
+  },
+  "enrollments": {
+    "new": "+ تسجيل جديد",
+    "newTitle": "تسجيل جديد",
+    "none": "هذا المترشح غير مسجل في أي صنف.",
+    "category": "الصنف",
+    "agreedPrice": "السعر المتفق عليه (دج)",
+    "priceHint": "هذا السعر مثبّت لهذا المترشح. تغيير التسعيرة لاحقا لن يغيّره.",
+    "theoryTarget": "ساعات القانون",
+    "practicalTarget": "ساعات السياقة",
+    "extraHourPrice": "سعر الساعة الإضافية (دج)",
+    "extraHourHint": "اتركه 0 إذا كنت لا تحاسب على الساعات الإضافية.",
+    "enrolledOn": "تاريخ التسجيل",
+    "totalDue": "المجموع المستحق",
+    "paid": "المدفوع",
+    "balance": "الباقي",
+    "discount": "تخفيض:",
+    "includesExtraHours": "منها ساعات إضافية:",
+    "status_forming": "في التكوين",
+    "status_ready": "جاهز للامتحان",
+    "status_presented": "تم تقديمه",
+    "status_passed": "ناجح",
+    "status_failed": "راسب",
+    "status_withdrawn": "انسحب",
+    "error": {
+      "categoryRequired": "اختر صنفا.",
+      "categoryUnknown": "هذا الصنف غير موجود.",
+      "priceNegative": "السعر لا يمكن أن يكون سالبا.",
+      "discountNegative": "التخفيض لا يمكن أن يكون سالبا.",
+      "discountTooLarge": "التخفيض يتجاوز السعر المتفق عليه.",
+      "statusInvalid": "الحالة غير صالحة.",
+      "alreadyEnrolled": "هذا المترشح مسجل بالفعل في هذا الصنف."
+    }
+  },
+  "lessons": {
+    "add": "+ إضافة ساعات",
+    "addTitle": "إضافة ساعات",
+    "kind": "النوع",
+    "kind_theory": "قانون المرور",
+    "kind_maneuvers": "المناورة",
+    "kind_road": "السياقة",
+    "practical": "السياقة (المناورة + الطريق)",
+    "date": "التاريخ",
+    "minutes": "المدة (بالدقائق)",
+    "minutesHint": "60 = ساعة واحدة. أنصاف الساعات تُحسب بدقة.",
+    "notes": "ملاحظة",
+    "hourShort": "سا",
+    "minuteShort": "د",
+    "error": {
+      "kindInvalid": "نوع الحصة غير صالح.",
+      "minutesPositive": "المدة يجب أن تكون أكبر من الصفر.",
+      "minutesTooLong": "المدة طويلة جدا لحصة واحدة.",
+      "dateRequired": "أدخل التاريخ.",
+      "dateInvalid": "تاريخ غير صالح."
+    }
+  },
+  "payments": {
+    "title": "الدفعات",
+    "take": "تحصيل دفعة",
+    "takeTitle": "تحصيل دفعة",
+    "saveAndPrint": "حفظ وطباعة",
+    "amount": "المبلغ (دج)",
+    "amountHint": "بالدينار. مثال: 12000",
+    "date": "التاريخ",
+    "method": "طريقة الدفع",
+    "reference": "المرجع",
+    "notes": "ملاحظة",
+    "currentBalance": "الباقي حاليا",
+    "receiptNo": "رقم الوصل",
+    "none": "لا توجد دفعات مسجلة.",
+    "reversal": "إلغاء",
+    "reverse": "إلغاء",
+    "reversedByUser": "أُلغيت من التطبيق",
+    "appendOnlyNote": "لا يمكن تعديل أو حذف دفعة: يُصحَّح الخطأ بإلغاء يحتفظ بالسطرين معا.",
+    "error": {
+      "amountPositive": "المبلغ يجب أن يكون أكبر من الصفر.",
+      "dateRequired": "أدخل تاريخ الدفع.",
+      "dateInvalid": "تاريخ غير صالح.",
+      "methodRequired": "اختر طريقة الدفع.",
+      "cannotReverseReversal": "لا يمكن إلغاء عملية إلغاء.",
+      "alreadyReversed": "هذه الدفعة أُلغيت من قبل."
+    }
+  },
   "printProof": {
     "title": "تجربة الطباعة",
     "explain": "هذه الشاشة موجودة للتحقق من أمر واحد: أن العربية تُطبع بشكل صحيح، بحروف متصلة وفي الاتجاه السليم. هذا هو الخطر التقني الأساسي في المشروع.",

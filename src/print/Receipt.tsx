@@ -16,22 +16,25 @@ export interface ReceiptSchool {
 
 export interface ReceiptData {
   receiptNumber: string;
-  paidAt: Date;
+  /** ISO date, YYYY-MM-DD. */
+  paidOn: string;
   candidateNameFr: string;
   candidateNameAr: string;
   nin: string;
   categoryCode: string;
   amount: Centimes;
   methodKey: string;
-  agreedTotal: Centimes;
+  /** All computed in Rust. The frontend never does money arithmetic. */
+  totalDue: Centimes;
   paidTotal: Centimes;
+  remaining: Centimes;
 }
 
-function formatDate(date: Date): string {
-  // Western digits, day first. Correct for Algerian paperwork in both languages.
-  const day = String(date.getDate()).padStart(2, "0");
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  return `${day}/${month}/${date.getFullYear()}`;
+/** "2026-10-18" -> "18/10/2026". Western digits, day first, both languages. */
+function formatDate(iso: string): string {
+  const [year, month, day] = iso.split("-");
+  if (!year || !month || !day) return iso;
+  return `${day}/${month}/${year}`;
 }
 
 /**
@@ -70,21 +73,37 @@ export default function Receipt({
 
   const schoolName = isArabic ? school.nameAr : school.nameFr;
   const schoolAddress = isArabic ? school.addressAr : school.addressFr;
-  const candidateName = isArabic ? data.candidateNameAr : data.candidateNameFr;
+  const candidateName =
+    (isArabic ? data.candidateNameAr : data.candidateNameFr) ||
+    data.candidateNameFr ||
+    data.candidateNameAr;
 
-  const remaining = data.agreedTotal - data.paidTotal;
+  const remaining = data.remaining;
 
   return (
     <article className="print-sheet mx-auto w-full max-w-[148mm] border border-line bg-white p-6 shadow-sm">
       {/* Letterhead */}
       <header className="border-b-2 border-ink pb-3">
         <h1 className="text-base font-bold leading-tight">{schoolName}</h1>
-        <p className="mt-0.5 text-xs text-muted">{schoolAddress}</p>
-        <p className="text-xs text-muted">
-          {t("receipt.phone")}: <Num>{school.phone}</Num>
-          {"  ·  "}
-          {t("receipt.agrement")} <Num>{school.agrementNumber}</Num>
-        </p>
+        {schoolAddress && <p className="mt-0.5 text-xs text-muted">{schoolAddress}</p>}
+        {/* Empty fields are omitted entirely rather than printed as a label
+            with nothing after it — a receipt reading "Tél:  ·  Agrément n°"
+            looks broken to the candidate holding it. */}
+        {(school.phone || school.agrementNumber) && (
+          <p className="text-xs text-muted">
+            {school.phone && (
+              <>
+                {t("receipt.phone")}: <Num>{school.phone}</Num>
+              </>
+            )}
+            {school.phone && school.agrementNumber && "  ·  "}
+            {school.agrementNumber && (
+              <>
+                {t("receipt.agrement")} <Num>{school.agrementNumber}</Num>
+              </>
+            )}
+          </p>
+        )}
       </header>
 
       {/* Title */}
@@ -99,7 +118,7 @@ export default function Receipt({
           <Num className="font-bold">{data.receiptNumber}</Num>
         </span>
         <span>
-          {t("receipt.date")}: <Num className="font-bold">{formatDate(data.paidAt)}</Num>
+          {t("receipt.date")}: <Num className="font-bold">{formatDate(data.paidOn)}</Num>
         </span>
       </div>
 
@@ -133,7 +152,7 @@ export default function Receipt({
       <section className="no-break mb-5 text-sm">
         <Field
           label={t("receipt.totalAgreed")}
-          value={<Money centimes={data.agreedTotal} />}
+          value={<Money centimes={data.totalDue} />}
         />
         <Field label={t("receipt.totalPaid")} value={<Money centimes={data.paidTotal} />} />
         <div className="flex gap-2 py-1.5">

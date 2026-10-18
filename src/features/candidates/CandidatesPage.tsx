@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { Num } from "@/components/Num";
@@ -126,7 +127,12 @@ export default function CandidatesPage() {
             {items.map((candidate) => (
               <tr key={candidate.id} className="border-b border-line last:border-b-0">
                 <td className="px-4 py-2">
-                  <span className="font-medium">{displayName(candidate, locale)}</span>
+                  <Link
+                    to={`/candidates/${candidate.id}`}
+                    className="font-medium text-brand hover:underline"
+                  >
+                    {displayName(candidate, locale)}
+                  </Link>
                   {locale === "fr" && candidate.lastNameAr && (
                     // The spacing lives on an OUTER span that inherits the row's
                     // direction. Putting ms-* on the same element that carries

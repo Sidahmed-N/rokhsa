@@ -63,6 +63,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
 
+    // School details for the receipt letterhead. There is no settings screen
+    // yet, so without this every printed receipt is headed "name not set".
+    sqlx::query(
+        "UPDATE school SET
+            name_fr = ?1, name_ar = ?2, address_fr = ?3, address_ar = ?4,
+            phone = ?5, agrement_number = ?6, commune = ?7, wilaya_code = ?8,
+            receipt_prefix = ?9
+         WHERE id = 1",
+    )
+    .bind("Auto-École El Amel")
+    .bind("مدرسة تعليم السياقة الأمل")
+    .bind("12, Rue Didouche Mourad, Alger-Centre")
+    .bind("12 شارع ديدوش مراد، الجزائر الوسطى")
+    .bind("0551 23 45 67")
+    .bind("16/2019/0482")
+    .bind("Alger-Centre")
+    .bind("16")
+    .bind("2026-")
+    .execute(&pool)
+    .await?;
+    println!("  school details set");
+
     let rows = vec![
         candidate("BENALI", "Yacine", "بن علي", "ياسين", "0551 23 45 67",
                   "109 2004 1600 5482 130", "2004-07-19", "Alger-Centre", "active"),
@@ -82,11 +104,111 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                   "", "2002-03-22", "Bordj El Kiffan", "withdrawn"),
     ];
 
+    let mut ids = Vec::new();
     for row in &rows {
         match db::candidates::create(&pool, row).await {
-            Ok(created) => println!("  + {} {}", created.last_name_fr, created.first_name_fr),
+            Ok(created) => {
+                println!("  + {} {}", created.last_name_fr, created.first_name_fr);
+                ids.push(created.id);
+            }
             Err(e) => eprintln!("  ! {} {}: {e}", row.last_name_fr, row.first_name_fr),
         }
+    }
+
+    // Enrolments, hours and payments, so the detail screen shows a realistic
+    // mid-training candidate rather than empty tables.
+    const DA: i64 = 100;
+
+    if let Some(&benali) = ids.first() {
+        let e = db::enrollments::create(
+            &pool,
+            benali,
+            &db::enrollments::EnrollmentInput {
+                category_code: "B".into(),
+                agreed_price_centimes: 35_000 * DA,
+                extra_hour_price_centimes: 1_500 * DA,
+                theory_hours_target: 30,
+                practical_hours_target: 30,
+                enrolled_on: "2026-08-04".into(),
+                ..Default::default()
+            },
+        )
+        .await?;
+
+        for (kind, date, minutes) in [
+            ("theory", "2026-08-06", 120),
+            ("theory", "2026-08-11", 120),
+            ("theory", "2026-08-18", 180),
+            ("maneuvers", "2026-09-02", 90),
+            ("maneuvers", "2026-09-09", 90),
+            ("road", "2026-09-16", 120),
+            ("road", "2026-09-23", 120),
+            ("road", "2026-10-07", 90),
+        ] {
+            db::lessons::create(
+                &pool,
+                e.id,
+                &db::lessons::LessonInput {
+                    kind: kind.into(),
+                    occurred_on: date.into(),
+                    minutes,
+                    ..Default::default()
+                },
+            )
+            .await?;
+        }
+
+        for (amount, date, method) in [
+            (12_000, "2026-08-04", "cash"),
+            (10_000, "2026-09-10", "cash"),
+            (5_000, "2026-10-12", "baridimob"),
+        ] {
+            db::payments::create(
+                &pool,
+                e.id,
+                &db::payments::PaymentInput {
+                    amount_centimes: amount * DA,
+                    paid_on: date.into(),
+                    method_code: method.into(),
+                    ..Default::default()
+                },
+            )
+            .await?;
+        }
+
+        let s = db::enrollments::summary(&pool, e.id).await?;
+        println!(
+            "  enrolment for candidate {benali}: due {} / paid {} / balance {} centimes",
+            s.total_due_centimes, s.paid_centimes, s.balance_centimes
+        );
+    }
+
+    // A second, fully-paid enrolment for contrast.
+    if let Some(&kadri) = ids.get(1) {
+        let e = db::enrollments::create(
+            &pool,
+            kadri,
+            &db::enrollments::EnrollmentInput {
+                category_code: "B".into(),
+                agreed_price_centimes: 32_000 * DA,
+                theory_hours_target: 30,
+                practical_hours_target: 30,
+                enrolled_on: "2026-06-15".into(),
+                ..Default::default()
+            },
+        )
+        .await?;
+        db::payments::create(
+            &pool,
+            e.id,
+            &db::payments::PaymentInput {
+                amount_centimes: 32_000 * DA,
+                paid_on: "2026-06-15".into(),
+                method_code: "cash".into(),
+                ..Default::default()
+            },
+        )
+        .await?;
     }
 
     println!("done: {} candidate(s)", db::candidates::count(&pool, "").await?);

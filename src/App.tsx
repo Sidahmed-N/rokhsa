@@ -2,9 +2,11 @@ import { NavLink, Navigate, Route, Routes } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import CandidateDetailPage from "@/features/candidates/CandidateDetailPage";
 import CandidatesPage from "@/features/candidates/CandidatesPage";
 import HomePage from "@/features/home/HomePage";
 import PrintProofPage from "@/features/print/PrintProofPage";
+import ReceiptPage from "@/features/print/ReceiptPage";
 
 /**
  * Application shell.
@@ -61,6 +63,8 @@ export default function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/candidates" element={<CandidatesPage />} />
+          <Route path="/candidates/:id" element={<CandidateDetailPage />} />
+          <Route path="/receipt/:paymentId" element={<ReceiptPage />} />
           <Route path="/print-proof" element={<PrintProofPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

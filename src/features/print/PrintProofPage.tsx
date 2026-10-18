@@ -24,15 +24,16 @@ const DEMO_SCHOOL: ReceiptSchool = {
 
 const DEMO_RECEIPT: ReceiptData = {
   receiptNumber: "2026-0147",
-  paidAt: new Date(2026, 9, 18),
+  paidOn: "2026-10-18",
   candidateNameFr: "BENALI Yacine",
   candidateNameAr: "بن علي ياسين",
   nin: "109 2004 1600 5482 130",
   categoryCode: "B",
   amount: 1_200_000, // 12 000,00 DA
   methodKey: "cash",
-  agreedTotal: 3_500_000, // 35 000,00 DA
+  totalDue: 3_500_000, // 35 000,00 DA
   paidTotal: 2_200_000, // 22 000,00 DA
+  remaining: 1_300_000, // 13 000,00 DA
 };
 
 export default function PrintProofPage() {

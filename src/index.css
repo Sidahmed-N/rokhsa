@@ -78,10 +78,11 @@ body {
    reason we are not generating PDFs in Rust.
 --------------------------------------------------------------------------- */
 
-.screen-only {
-  display: block;
-}
-
+/* `.screen-only` hides an element when printing and does NOTHING on screen.
+   It deliberately does not set `display`: an earlier version set
+   `display: block`, which silently overrode `flex` and `grid` on any element
+   carrying both classes and collapsed the layout. A utility whose job is to
+   hide something in print must not have an opinion about it on screen. */
 .print-sheet {
   background: white;
 }
