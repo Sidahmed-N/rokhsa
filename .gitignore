@@ -35,3 +35,6 @@ tools/vs_BuildTools.exe
 
 # Machine-local cargo target redirect (Windows MAX_PATH workaround)
 src-tauri/.cargo/
+
+# Built app, produced by npm run build + cargo build --release
+Tariqi.exe

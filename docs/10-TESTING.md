@@ -9,10 +9,14 @@ payments and a month of expenses. Everything below works on that.
 
 ## Running it
 
-Double-click the executable. Nothing else needs to be running.
+Double-click `Tariqi.exe` in the project folder. Nothing else needs to be
+running — the whole interface is inside the executable, which is 5 MB.
 
-```
-C:\Users\SuGa\.tariqi-build\release\tariqi.exe
+It is also at `C:\Users\SuGa\.tariqi-build\release\tariqi.exe`, where the build
+puts it. To rebuild after a change:
+
+```bash
+npx tauri build --no-bundle
 ```
 
 Your data lives at `%APPDATA%\dz.tariqi.desktop\` — the database and a
