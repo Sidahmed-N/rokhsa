@@ -43,6 +43,8 @@ Read in order:
 | [docs/06-FIELD-VISIT.md](docs/06-FIELD-VISIT.md) | Checklist for a school visit — open it on your phone |
 | [docs/07-REGULATORY.md](docs/07-REGULATORY.md) | Why regulatory tracking is out of scope |
 | [docs/08-PACKAGING.md](docs/08-PACKAGING.md) | One-time pricing, editions, and anti-piracy |
+| [docs/10-TESTING.md](docs/10-TESTING.md) | How to run and test the app yourself |
+| **[docs/11-PARKED.md](docs/11-PARKED.md)** | ⚠️ Known gaps, parked on purpose — audit trail, logins, licence |
 | [tools/survey-pc.ps1](tools/survey-pc.ps1) | Read-only PC survey script to run on school machines |
 
 ## What the app is, and is not
