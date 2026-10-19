@@ -3,6 +3,7 @@
 //! Deliberately thin: deserialize, authorise, call the domain or db layer,
 //! serialize. No business rules live here. See CLAUDE.md.
 
+pub mod backup;
 pub mod candidates;
 pub mod reports;
 pub mod settings;
@@ -13,6 +14,8 @@ use sqlx::SqlitePool;
 /// Shared application state, registered with Tauri at startup.
 pub struct AppState {
     pub pool: SqlitePool,
+    /// Where the database and its backups live.
+    pub data_dir: std::path::PathBuf,
 }
 
 /// Returns the application version, for About and for a diagnostics report.

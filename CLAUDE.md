@@ -130,6 +130,17 @@ Design every screen so it works for a school with **one person, one vehicle**:
 - Automatic local SQLite backup on a schedule and on app close, retained with rotation.
 - One-click **"Backup to USB"** that writes a timestamped, verified copy.
 - Restore is a guarded, explicit flow that never silently overwrites a live database.
+- **Never make a backup by copying the `.db` file.** The database runs in WAL mode, so recent
+  writes live in the `-wal` sidecar and a file copy silently loses the last day's payments.
+  Use `VACUUM INTO`, which asks SQLite for a consistent snapshot while it is in use.
+- **A copy is not a backup until it has been verified** — opened, integrity-checked, and its
+  row counts compared with the source. An unverified copy is discovered to be worthless on
+  the one day it is needed. `write_backup` deletes a copy that fails, so a file present in
+  the backups folder always means a good backup.
+- **A restore is staged, not applied immediately.** The chosen file is validated and parked,
+  and swapped in at the next startup before anything opens the database; the replaced
+  database is kept, not deleted. Swapping a file under live connections corrupts it, and the
+  stale `-wal`/`-shm` sidecars must be deleted or SQLite replays them onto the restored file.
 
 ---
 

@@ -13,6 +13,8 @@
 mod commands;
 mod error;
 
+pub mod backup;
+
 // Public so the `seed` helper binary can reuse them rather than duplicating
 // the schema and validation rules.
 pub mod db;
@@ -25,6 +27,7 @@ use commands::AppState;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             // One database per installation, in the OS's per-user data
             // directory. Keeping it out of Program Files is what lets the
@@ -32,12 +35,46 @@ pub fn run() {
             let data_dir = app.path().app_data_dir()?;
             let db_path = data_dir.join("tariqi.db");
 
+            // A staged restore is swapped in HERE, before anything opens the
+            // database. Replacing the file under live connections corrupts it.
+            if let Some(path) = backup::apply_pending_restore(&data_dir, &db_path)? {
+                println!("[tariqi] restored database into {path}");
+            }
+
             let pool = tauri::async_runtime::block_on(db::connect(&db_path))
                 .map_err(|e| format!("could not open the database at {db_path:?}: {e}"))?;
 
+            // A backup on startup when the last one is stale. Together with the
+            // one on close this covers a school that opens the app in the
+            // morning and shuts it at night — no timer to keep alive.
+            if backup::is_auto_backup_due(&data_dir, chrono::Utc::now()) {
+                match tauri::async_runtime::block_on(backup::auto_backup(&pool, &data_dir)) {
+                    Ok(info) => println!("[tariqi] automatic backup: {}", info.file_name),
+                    // A failed backup must never stop the school working.
+                    Err(e) => eprintln!("[tariqi] automatic backup failed: {e}"),
+                }
+            }
+
             println!("[tariqi] database ready at {}", db_path.display());
-            app.manage(AppState { pool });
+            app.manage(AppState { pool, data_dir });
             Ok(())
+        })
+        .on_window_event(|window, event| {
+            if matches!(event, tauri::WindowEvent::CloseRequested { .. }) {
+                // Back up on the way out, so the most recent copy is never
+                // more than one working day old.
+                let handle = window.app_handle();
+                if let Some(state) = handle.try_state::<AppState>() {
+                    let result = tauri::async_runtime::block_on(backup::auto_backup(
+                        &state.pool,
+                        &state.data_dir,
+                    ));
+                    match result {
+                        Ok(info) => println!("[tariqi] backup on close: {}", info.file_name),
+                        Err(e) => eprintln!("[tariqi] backup on close failed: {e}"),
+                    }
+                }
+            }
         })
         .invoke_handler(tauri::generate_handler![
             commands::app_version,
@@ -73,6 +110,12 @@ pub fn run() {
             commands::reports::list_expenses,
             commands::reports::create_expense,
             commands::reports::delete_expense,
+            commands::backup::backup_status,
+            commands::backup::backup_now,
+            commands::backup::backup_to,
+            commands::backup::inspect_backup,
+            commands::backup::stage_restore,
+            commands::backup::cancel_restore,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Tariqi");

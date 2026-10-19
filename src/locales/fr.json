@@ -12,6 +12,35 @@
     "settings": "Réglages",
     "printProof": "Test d'impression"
   },
+  "backup": {
+    "section": "Sauvegarde",
+    "explain": "Une sauvegarde est faite automatiquement au démarrage et à la fermeture. Gardez-en aussi une sur clé USB : si l'ordinateur tombe en panne, c'est la seule copie qui reste.",
+    "now": "Sauvegarder maintenant",
+    "toUsb": "Sauvegarder sur clé USB",
+    "restore": "Restaurer une sauvegarde",
+    "folder": "Dossier des sauvegardes",
+    "when": "Date",
+    "candidates": "Candidats",
+    "payments": "Versements",
+    "size": "Taille",
+    "none": "Aucune sauvegarde pour l'instant.",
+    "madeHere": "Sauvegarde créée : {{name}}",
+    "madeAt": "Sauvegarde écrite dans {{path}}",
+    "confirmTitle": "Restaurer cette sauvegarde ?",
+    "confirmBody": "Cette sauvegarde contient :",
+    "confirmButton": "Préparer la restauration",
+    "confirmNote": "Rien n'est remplacé maintenant. La restauration s'applique au prochain démarrage, et la base actuelle est conservée.",
+    "restoreStaged": "Restauration préparée. Fermez et rouvrez l'application pour l'appliquer.",
+    "restoreCancelled": "Restauration annulée.",
+    "pendingTitle": "Une restauration est en attente",
+    "pendingBody": "Elle sera appliquée au prochain démarrage. Le travail effectué d'ici là sera remplacé.",
+    "cancelRestore": "Annuler la restauration",
+    "error": {
+      "corrupt": "Ce fichier est endommagé et ne peut pas être utilisé.",
+      "notTariqi": "Ce fichier n'est pas une sauvegarde Tariqi.",
+      "verificationFailed": "La sauvegarde n'a pas pu être vérifiée. Elle a été supprimée."
+    }
+  },
   "settings": {
     "title": "Réglages",
     "saved": "Enregistré.",

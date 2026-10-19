@@ -32,6 +32,7 @@ sqlx = { version = "0.8", default-features = false, features = [
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 chrono = { version = "0.4", features = ["serde"] }
 thiserror = "2"
+tauri-plugin-dialog = "2.7.3"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }

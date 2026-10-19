@@ -3,5 +3,9 @@
   "identifier": "default",
   "description": "Permissions granted to the main window. Kept deliberately minimal; add only what a feature actually needs.",
   "windows": ["main"],
-  "permissions": ["core:default"]
+  "permissions": [
+    "core:default",
+    "dialog:allow-save",
+    "dialog:allow-open"
+  ]
 }

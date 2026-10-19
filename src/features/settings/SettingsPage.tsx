@@ -15,6 +15,7 @@ import {
   type SchoolSettings,
 } from "@/lib/settings";
 import { isDesktop } from "@/lib/tauri";
+import BackupSection from "@/features/settings/BackupSection";
 
 /** One editable row of the price list. */
 function CategoryRow({
@@ -316,6 +317,8 @@ export default function SettingsPage() {
           </button>
         </>
       )}
+
+      <BackupSection />
 
       <section className="rounded-lg border border-line bg-white">
         <h2 className="border-b border-line px-4 py-3 text-xs uppercase tracking-wide text-muted">
