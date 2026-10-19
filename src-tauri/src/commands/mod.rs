@@ -5,6 +5,7 @@
 
 pub mod candidates;
 pub mod reports;
+pub mod settings;
 pub mod training;
 
 use sqlx::SqlitePool;

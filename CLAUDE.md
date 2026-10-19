@@ -284,6 +284,14 @@ the project currently sits under a deep path and cargo's build tree exceeds the 
 Windows limit. Moving the project somewhere short (e.g. `C:\dev\tariqi`) fixes it properly and
 makes that config file deletable.
 
+### "Invalid hook call" / blank window after adding imports
+Vite's dependency cache can end up serving two different optimize hashes (e.g.
+`react-i18next.js?v=bd3a91d7` alongside `react-dom_client.js?v=1efda266`), which loads two
+copies of React and blanks the whole app. It is NOT a code bug — check `npm ls react` first,
+and if it is deduped, stop the dev server, delete `node_modules/.vite`, and restart.
+Note the browser console keeps the old messages after the fix, so verify with the rendered
+page (`get_page_text`), not the console.
+
 ### A debug build loads from the dev server
 `devUrl` points at `http://localhost:5173`, so a debug binary launched **without** Vite running
 shows a blank "can't reach this page" window. That is expected, not a bug. Release builds embed

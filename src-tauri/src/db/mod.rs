@@ -16,6 +16,7 @@ pub mod expenses;
 pub mod lessons;
 pub mod payments;
 pub mod reports;
+pub mod school;
 
 /// Open (creating if needed) the school's database and bring it up to date.
 ///

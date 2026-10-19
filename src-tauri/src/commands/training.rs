@@ -144,26 +144,5 @@ pub async fn reverse_payment(
     Ok(payments::reverse(&state.pool, id, &reason).await?)
 }
 
-/* ------------------------------- school ------------------------------- */
-
-#[derive(Serialize, sqlx::FromRow)]
-#[serde(rename_all = "camelCase")]
-pub struct School {
-    pub name_fr: String,
-    pub name_ar: String,
-    pub address_fr: String,
-    pub address_ar: String,
-    pub phone: String,
-    pub agrement_number: String,
-}
-
-/// School details for the receipt letterhead.
-#[tauri::command]
-pub async fn get_school(state: State<'_, AppState>) -> CommandResult<School> {
-    Ok(sqlx::query_as::<_, School>(
-        "SELECT name_fr, name_ar, address_fr, address_ar, phone, agrement_number
-         FROM school WHERE id = 1",
-    )
-    .fetch_one(&state.pool)
-    .await?)
-}
+// School details live in commands/settings.rs — the receipt letterhead and the
+// settings screen read the same row, so there is only one shape for it.
