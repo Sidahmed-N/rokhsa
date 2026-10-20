@@ -4,5 +4,6 @@
 //! highest-risk logic in the product cheap to test exhaustively. See CLAUDE.md.
 
 pub mod candidate;
+pub mod dates;
 pub mod money;
 pub mod text;

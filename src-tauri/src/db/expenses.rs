@@ -61,8 +61,15 @@ fn validate(input: &ExpenseInput) -> Result<(), AppError> {
     if date.is_empty() {
         return Err(AppError::field("expenses.error.dateRequired", "spentOn"));
     }
-    if chrono::NaiveDate::parse_from_str(date, "%Y-%m-%d").is_err() {
-        return Err(AppError::field("expenses.error.dateInvalid", "spentOn"));
+    use crate::domain::dates::{parse_recorded, DateProblem};
+    if let Err(problem) = parse_recorded(date) {
+        return Err(match problem {
+            DateProblem::InFuture => AppError::field("expenses.error.dateFuture", "spentOn"),
+            DateProblem::TooOld => AppError::field("expenses.error.dateTooOld", "spentOn"),
+            DateProblem::Unparseable => {
+                AppError::field("expenses.error.dateInvalid", "spentOn")
+            }
+        });
     }
     Ok(())
 }

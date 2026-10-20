@@ -121,7 +121,9 @@
       "amountPositive": "Le montant doit être supérieur à zéro.",
       "categoryRequired": "Choisissez une catégorie.",
       "dateRequired": "Indiquez la date.",
-      "dateInvalid": "Date invalide."
+      "dateInvalid": "Date invalide. Utilisez le format AAAA-MM-JJ.",
+      "dateFuture": "Cette dépense est datée dans le futur. Vérifiez la date.",
+      "dateTooOld": "Cette date est trop ancienne. Vérifiez l'année."
     }
   },
   "reports": {
@@ -141,7 +143,14 @@
     "delete": "Supprimer",
     "search": "Rechercher",
     "loading": "Chargement...",
-    "none": "Aucun"
+    "none": "Aucun",
+    "previous": "Précédent",
+    "next": "Suivant"
+  },
+  "clock": {
+    "title": "L'horloge de cet ordinateur est fausse.",
+    "body": "Des enregistrements portent une date postérieure à aujourd'hui. Corrigez la date et l'heure de Windows avant de saisir des versements, sinon les reçus porteront une mauvaise date.",
+    "days": "j d'écart"
   },
   "error": {
     "notFound": "Introuvable.",
@@ -166,7 +175,7 @@
     "editTitle": "Modifier le candidat",
     "searchPlaceholder": "Rechercher par nom, téléphone ou NIN — en français ou en arabe",
     "count": "{{n}} candidat(s)",
-    "showing": "{{shown}} affiché(s) sur {{total}}",
+    "showingRange": "{{from}}–{{to}} sur {{total}}",
     "empty": "Aucun candidat pour l'instant. Cliquez sur « Nouveau candidat » pour commencer.",
     "noMatches": "Aucun résultat pour cette recherche.",
     "needsDesktop": "Cet écran nécessite l'application de bureau.",
@@ -212,6 +221,7 @@
     "status_completed": "Terminé",
     "status_withdrawn": "Abandon",
     "error": {
+      "hasPayments": "Impossible de supprimer : des versements ont été encaissés pour ce candidat. Passez son inscription en « Abandon » pour le retirer des créances tout en gardant l'historique.",
       "nameRequired": "Indiquez au moins un nom, en latin ou en arabe.",
       "ninLength": "Le NIN doit comporter 18 chiffres.",
       "ninDuplicate": "Ce NIN est déjà enregistré pour un autre candidat.",
@@ -250,6 +260,7 @@
     "status_failed": "Ajourné",
     "status_withdrawn": "Abandon",
     "error": {
+      "hasPayments": "Impossible de supprimer : des versements ont été encaissés. Passez l'inscription en « Abandon » pour la retirer des créances tout en gardant l'historique.",
       "categoryRequired": "Choisissez une catégorie.",
       "categoryUnknown": "Cette catégorie n'existe pas.",
       "priceNegative": "Le prix ne peut pas être négatif.",
@@ -278,7 +289,9 @@
       "minutesPositive": "La durée doit être supérieure à zéro.",
       "minutesTooLong": "Durée trop longue pour une seule séance.",
       "dateRequired": "Indiquez la date.",
-      "dateInvalid": "Date invalide."
+      "dateInvalid": "Date invalide. Utilisez le format AAAA-MM-JJ.",
+      "dateFuture": "Cette séance est datée dans le futur. Vérifiez la date.",
+      "dateTooOld": "Cette date est trop ancienne. Vérifiez l'année."
     }
   },
   "payments": {
@@ -302,7 +315,9 @@
     "error": {
       "amountPositive": "Le montant doit être supérieur à zéro.",
       "dateRequired": "Indiquez la date du versement.",
-      "dateInvalid": "Date invalide.",
+      "dateInvalid": "Date invalide. Utilisez le format AAAA-MM-JJ.",
+      "dateFuture": "Cette date est dans le futur. Vérifiez l'année.",
+      "dateTooOld": "Cette date est trop ancienne. Vérifiez l'année.",
       "methodRequired": "Choisissez un mode de paiement.",
       "cannotReverseReversal": "Une annulation ne peut pas être annulée.",
       "alreadyReversed": "Ce versement a déjà été annulé."

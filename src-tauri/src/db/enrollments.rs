@@ -257,19 +257,50 @@ pub async fn update(
     get(pool, id).await
 }
 
+/// Soft delete an enrolment.
+///
+/// Refused once a payment exists against it, for the same reason as a
+/// candidate: a receipt has been handed over, and deleting it would silently
+/// drop the balance out of the receivables total. Mark it `withdrawn` instead —
+/// that takes it off the chase list and keeps the money visible.
+///
+/// Cascades to its lessons so no hours are left attached to nothing.
 pub async fn soft_delete(pool: &SqlitePool, id: i64) -> Result<(), AppError> {
+    // Confirm it exists and is live before anything else.
+    get(pool, id).await?;
+
+    let payments: (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM payments WHERE enrollment_id = ?1")
+            .bind(id)
+            .fetch_one(pool)
+            .await?;
+
+    if payments.0 > 0 {
+        return Err(AppError::validation("enrollments.error.hasPayments"));
+    }
+
     let now = Utc::now().to_rfc3339();
-    let result = sqlx::query(
+    let mut tx = pool.begin().await?;
+
+    sqlx::query(
+        "UPDATE lessons SET deleted_at = ?1, updated_at = ?1
+         WHERE enrollment_id = ?2 AND deleted_at IS NULL",
+    )
+    .bind(&now)
+    .bind(id)
+    .execute(&mut *tx)
+    .await?;
+
+    sqlx::query(
         "UPDATE enrollments SET deleted_at = ?1, updated_at = ?1
          WHERE id = ?2 AND deleted_at IS NULL",
     )
     .bind(&now)
     .bind(id)
-    .execute(pool)
+    .execute(&mut *tx)
     .await?;
-    if result.rows_affected() == 0 {
-        return Err(AppError::NotFound);
-    }
+
+    tx.commit().await?;
     Ok(())
 }
 
@@ -568,6 +599,180 @@ mod tests {
         let s = summary(&pool, e.id).await.unwrap();
         assert_eq!(s.charges.extra_hours, 1_500 * DA, "charged per started hour");
         assert_eq!(s.balance_centimes, 36_500 * DA);
+    }
+
+    #[tokio::test]
+    async fn a_payment_cannot_be_dated_in_the_future() {
+        // A mistyped year would park the payment outside every period the
+        // owner ever looks at: counted, but invisible.
+        let pool = test_pool().await;
+        let candidate = setup(&pool).await;
+        let e = create(&pool, candidate, &enrol(35_000)).await.unwrap();
+
+        let far_future = (chrono::Utc::now().date_naive() + chrono::Duration::days(400))
+            .format("%Y-%m-%d")
+            .to_string();
+
+        let attempt = payments::create(
+            &pool,
+            e.id,
+            &payments::PaymentInput {
+                amount_centimes: 1_000 * DA,
+                paid_on: far_future,
+                method_code: "cash".into(),
+                ..Default::default()
+            },
+        )
+        .await;
+
+        assert!(matches!(attempt, Err(AppError::Validation(code, _)) if code.contains("dateFuture")));
+        // And it did not consume a receipt number.
+        assert!(payments::list_for_enrollment(&pool, e.id).await.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn a_lesson_cannot_be_dated_in_the_future() {
+        let pool = test_pool().await;
+        let candidate = setup(&pool).await;
+        let e = create(&pool, candidate, &enrol(35_000)).await.unwrap();
+
+        let tomorrow_plus = (chrono::Utc::now().date_naive() + chrono::Duration::days(5))
+            .format("%Y-%m-%d")
+            .to_string();
+
+        let attempt = lessons::create(
+            &pool,
+            e.id,
+            &lessons::LessonInput {
+                kind: "road".into(),
+                occurred_on: tomorrow_plus,
+                minutes: 60,
+                ..Default::default()
+            },
+        )
+        .await;
+
+        assert!(matches!(attempt, Err(AppError::Validation(code, _)) if code.contains("dateFuture")));
+    }
+
+    #[tokio::test]
+    async fn a_payment_dated_today_is_still_accepted() {
+        // The guard must not refuse ordinary daily use.
+        let pool = test_pool().await;
+        let candidate = setup(&pool).await;
+        let e = create(&pool, candidate, &enrol(35_000)).await.unwrap();
+
+        let today = chrono::Utc::now().date_naive().format("%Y-%m-%d").to_string();
+        assert!(payments::create(
+            &pool,
+            e.id,
+            &payments::PaymentInput {
+                amount_centimes: 1_000 * DA,
+                paid_on: today,
+                method_code: "cash".into(),
+                ..Default::default()
+            },
+        )
+        .await
+        .is_ok());
+    }
+
+    #[tokio::test]
+    async fn an_enrolment_with_a_payment_cannot_be_deleted() {
+        // Otherwise the balance silently leaves the receivables total and the
+        // owner is never told. Withdrawing is the supported way out.
+        let pool = test_pool().await;
+        let candidate = setup(&pool).await;
+        let e = create(&pool, candidate, &enrol(35_000)).await.unwrap();
+        pay(&pool, e.id, 5_000).await;
+
+        let attempt = soft_delete(&pool, e.id).await;
+        assert!(matches!(attempt, Err(AppError::Validation(code, _)) if code.contains("hasPayments")));
+
+        // Still there, still owing.
+        assert_eq!(summary(&pool, e.id).await.unwrap().balance_centimes, 30_000 * DA);
+    }
+
+    #[tokio::test]
+    async fn an_enrolment_with_no_payments_can_be_deleted_and_takes_its_hours() {
+        let pool = test_pool().await;
+        let candidate = setup(&pool).await;
+        let e = create(&pool, candidate, &enrol(35_000)).await.unwrap();
+        log_hours(&pool, e.id, "road", 120).await;
+
+        soft_delete(&pool, e.id).await.unwrap();
+
+        assert!(matches!(get(&pool, e.id).await, Err(AppError::NotFound)));
+        let orphaned: (i64,) = sqlx::query_as(
+            "SELECT COUNT(*) FROM lessons WHERE enrollment_id = ?1 AND deleted_at IS NULL",
+        )
+        .bind(e.id)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(orphaned.0, 0, "hours must not outlive their enrolment");
+    }
+
+    #[tokio::test]
+    async fn a_candidate_with_a_payment_cannot_be_deleted() {
+        let pool = test_pool().await;
+        let candidate = setup(&pool).await;
+        let e = create(&pool, candidate, &enrol(35_000)).await.unwrap();
+        pay(&pool, e.id, 1_000).await;
+
+        let attempt = candidates::soft_delete(&pool, candidate).await;
+        assert!(matches!(attempt, Err(AppError::Validation(code, _)) if code.contains("hasPayments")));
+        assert!(candidates::get(&pool, candidate).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn deleting_a_candidate_cascades_to_their_enrolments_and_hours() {
+        // A deleted candidate must not leave live enrolments behind, or the
+        // candidate screen and the receivables screen disagree about the money.
+        let pool = test_pool().await;
+        let candidate = setup(&pool).await;
+        let e = create(&pool, candidate, &enrol(35_000)).await.unwrap();
+        log_hours(&pool, e.id, "theory", 60).await;
+
+        candidates::soft_delete(&pool, candidate).await.unwrap();
+
+        assert!(matches!(get(&pool, e.id).await, Err(AppError::NotFound)));
+        let live: (i64,) = sqlx::query_as(
+            "SELECT (SELECT COUNT(*) FROM enrollments WHERE candidate_id = ?1 AND deleted_at IS NULL)
+                  + (SELECT COUNT(*) FROM lessons WHERE enrollment_id = ?2 AND deleted_at IS NULL)",
+        )
+        .bind(candidate)
+        .bind(e.id)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(live.0, 0);
+    }
+
+    #[tokio::test]
+    async fn withdrawing_is_the_way_to_clear_a_debt_from_the_chase_list() {
+        let pool = test_pool().await;
+        let candidate = setup(&pool).await;
+        let e = create(&pool, candidate, &enrol(35_000)).await.unwrap();
+        pay(&pool, e.id, 5_000).await;
+
+        update(
+            &pool,
+            e.id,
+            &EnrollmentInput {
+                status: "withdrawn".into(),
+                ..enrol(35_000)
+            },
+        )
+        .await
+        .unwrap();
+
+        // Off the chase list, but the money and the receipt are still on record.
+        assert_eq!(
+            crate::db::reports::receivables(&pool).await.unwrap().enrollments_owing,
+            0
+        );
+        assert_eq!(summary(&pool, e.id).await.unwrap().paid_centimes, 5_000 * DA);
     }
 
     #[tokio::test]

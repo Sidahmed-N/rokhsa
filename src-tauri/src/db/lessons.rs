@@ -75,8 +75,16 @@ fn validate(input: &LessonInput) -> Result<(), AppError> {
     if input.occurred_on.trim().is_empty() {
         return Err(AppError::field("lessons.error.dateRequired", "occurredOn"));
     }
-    if chrono::NaiveDate::parse_from_str(input.occurred_on.trim(), "%Y-%m-%d").is_err() {
-        return Err(AppError::field("lessons.error.dateInvalid", "occurredOn"));
+    // The hours log records what HAPPENED, so a future date is always wrong.
+    use crate::domain::dates::{parse_recorded, DateProblem};
+    if let Err(problem) = parse_recorded(&input.occurred_on) {
+        return Err(match problem {
+            DateProblem::InFuture => AppError::field("lessons.error.dateFuture", "occurredOn"),
+            DateProblem::TooOld => AppError::field("lessons.error.dateTooOld", "occurredOn"),
+            DateProblem::Unparseable => {
+                AppError::field("lessons.error.dateInvalid", "occurredOn")
+            }
+        });
     }
     Ok(())
 }

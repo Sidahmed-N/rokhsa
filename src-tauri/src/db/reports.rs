@@ -490,14 +490,23 @@ mod tests {
 
     #[tokio::test]
     async fn range_bounds_are_inclusive() {
+        // Uses a fully-past month: payments may not be dated in the future.
         let pool = test_pool().await;
         let c = candidate(&pool, "BENALI").await;
         let e = enrol(&pool, c, 35_000).await;
-        pay(&pool, e, 1_000, "2026-10-01").await;
-        pay(&pool, e, 1_000, "2026-10-31").await;
+        pay(&pool, e, 1_000, "2026-09-01").await;
+        pay(&pool, e, 1_000, "2026-09-30").await;
 
-        let f = cash_flow(&pool, "2026-10-01", "2026-10-31").await.unwrap();
+        let f = cash_flow(&pool, "2026-09-01", "2026-09-30").await.unwrap();
         assert_eq!(f.in_centimes, 2_000 * DA);
+    }
+
+    #[tokio::test]
+    async fn a_cash_flow_range_may_end_in_the_future() {
+        // "This year" legitimately runs to 31 December. Only RECORDED dates are
+        // restricted, not the window you look through.
+        let pool = test_pool().await;
+        assert!(cash_flow(&pool, "2026-01-01", "2026-12-31").await.is_ok());
     }
 
     #[tokio::test]

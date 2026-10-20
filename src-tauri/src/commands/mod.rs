@@ -32,3 +32,11 @@ pub async fn database_health(
 ) -> crate::error::CommandResult<String> {
     Ok(crate::db::integrity_check(&state.pool).await?)
 }
+
+/// Whether the system clock can be trusted. Shown as a banner when it cannot.
+#[tauri::command]
+pub async fn clock_status(
+    state: tauri::State<'_, AppState>,
+) -> crate::error::CommandResult<crate::db::health::ClockStatus> {
+    Ok(crate::db::health::clock_status(&state.pool).await?)
+}

@@ -326,15 +326,62 @@ pub async fn update(
 }
 
 /// Soft delete. A candidate has financial and legal weight, so the row stays.
+///
+/// Refused once any payment has been taken: payments are append-only and a
+/// receipt has been handed over, so the person they belong to cannot be made
+/// to disappear. Without this, deleting a candidate who owes 30 000 DA quietly
+/// removes it from the receivables total and the owner is never told. The
+/// alternative the UI points at is marking the enrolment `withdrawn`, which
+/// takes them off the chase list while keeping the history.
+///
+/// When it is allowed, it CASCADES to enrolments and lessons in one
+/// transaction — otherwise a deleted candidate leaves live enrolments behind
+/// and the two screens disagree about whether that money is owed.
 pub async fn soft_delete(pool: &SqlitePool, id: i64) -> Result<(), AppError> {
     let before = get(pool, id).await?;
+
+    let payments: (i64,) = sqlx::query_as(
+        "SELECT COUNT(*) FROM payments p
+         JOIN enrollments e ON e.id = p.enrollment_id
+         WHERE e.candidate_id = ?1",
+    )
+    .bind(id)
+    .fetch_one(pool)
+    .await?;
+
+    if payments.0 > 0 {
+        return Err(AppError::validation("candidates.error.hasPayments"));
+    }
+
     let now = Utc::now().to_rfc3339();
+    let mut tx = pool.begin().await?;
+
+    sqlx::query(
+        "UPDATE lessons SET deleted_at = ?1, updated_at = ?1
+         WHERE deleted_at IS NULL
+           AND enrollment_id IN (SELECT id FROM enrollments WHERE candidate_id = ?2)",
+    )
+    .bind(&now)
+    .bind(id)
+    .execute(&mut *tx)
+    .await?;
+
+    sqlx::query(
+        "UPDATE enrollments SET deleted_at = ?1, updated_at = ?1
+         WHERE candidate_id = ?2 AND deleted_at IS NULL",
+    )
+    .bind(&now)
+    .bind(id)
+    .execute(&mut *tx)
+    .await?;
 
     sqlx::query("UPDATE candidates SET deleted_at = ?1, updated_at = ?1 WHERE id = ?2")
         .bind(&now)
         .bind(id)
-        .execute(pool)
+        .execute(&mut *tx)
         .await?;
+
+    tx.commit().await?;
 
     audit(pool, "candidate", id, "delete", Some(&before), None).await?;
     Ok(())

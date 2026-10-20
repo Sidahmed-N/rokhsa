@@ -25,6 +25,7 @@ export default function CandidatesPage() {
 
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
+  const [page, setPage] = useState(0);
   const [items, setItems] = useState<Candidate[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -41,6 +42,12 @@ export default function CandidatesPage() {
     return () => clearTimeout(timer);
   }, [query]);
 
+  // A new search starts at the first page, otherwise searching from page 4
+  // shows an empty list and looks like "no results".
+  useEffect(() => {
+    setPage(0);
+  }, [debounced]);
+
   const refresh = useCallback(async () => {
     if (!isDesktop()) {
       setError(t("candidates.needsDesktop"));
@@ -49,15 +56,17 @@ export default function CandidatesPage() {
     setLoading(true);
     setError(null);
     try {
-      const page = await listCandidates(debounced, PAGE_SIZE, 0);
-      setItems(page.items);
-      setTotal(page.total);
+      // Named `result`, not `page`: that would shadow the page state and
+      // silently pin the offset to zero.
+      const result = await listCandidates(debounced, PAGE_SIZE, page * PAGE_SIZE);
+      setItems(result.items);
+      setTotal(result.total);
     } catch (raw: unknown) {
       setError(isAppError(raw) ? t(raw.code, { defaultValue: raw.message }) : String(raw));
     } finally {
       setLoading(false);
     }
-  }, [debounced, t]);
+  }, [debounced, page, t]);
 
   useEffect(() => {
     void refresh();
@@ -179,10 +188,32 @@ export default function CandidatesPage() {
         </table>
       </div>
 
-      {total > items.length && (
-        <p className="mt-2 text-xs text-muted">
-          {t("candidates.showing", { shown: items.length, total })}
-        </p>
+      {total > PAGE_SIZE && (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            disabled={page === 0 || loading}
+            className="rounded-md border border-line px-3 py-1.5 text-sm disabled:opacity-40"
+          >
+            ← {t("common.previous")}
+          </button>
+          <button
+            type="button"
+            onClick={() => setPage((p) => p + 1)}
+            disabled={(page + 1) * PAGE_SIZE >= total || loading}
+            className="rounded-md border border-line px-3 py-1.5 text-sm disabled:opacity-40"
+          >
+            {t("common.next")} →
+          </button>
+          <span className="text-xs text-muted">
+            {t("candidates.showingRange", {
+              from: page * PAGE_SIZE + 1,
+              to: Math.min((page + 1) * PAGE_SIZE, total),
+              total,
+            })}
+          </span>
+        </div>
       )}
 
       {editing && (

@@ -107,8 +107,17 @@ fn validate(input: &PaymentInput) -> Result<(), AppError> {
     if input.paid_on.trim().is_empty() {
         return Err(AppError::field("payments.error.dateRequired", "paidOn"));
     }
-    if chrono::NaiveDate::parse_from_str(input.paid_on.trim(), "%Y-%m-%d").is_err() {
-        return Err(AppError::field("payments.error.dateInvalid", "paidOn"));
+    // A payment dated next year is a typo, and it would sit outside every
+    // cash-flow period the owner looks at — invisible, but counted.
+    use crate::domain::dates::{parse_recorded, DateProblem};
+    if let Err(problem) = parse_recorded(&input.paid_on) {
+        return Err(match problem {
+            DateProblem::InFuture => AppError::field("payments.error.dateFuture", "paidOn"),
+            DateProblem::TooOld => AppError::field("payments.error.dateTooOld", "paidOn"),
+            DateProblem::Unparseable => {
+                AppError::field("payments.error.dateInvalid", "paidOn")
+            }
+        });
     }
     if input.method_code.trim().is_empty() {
         return Err(AppError::field("payments.error.methodRequired", "methodCode"));

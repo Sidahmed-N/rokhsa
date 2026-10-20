@@ -1,6 +1,7 @@
 import { NavLink, Navigate, Route, Routes } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
+import ClockWarning from "@/components/ClockWarning";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import CandidateDetailPage from "@/features/candidates/CandidateDetailPage";
 import CandidatesPage from "@/features/candidates/CandidatesPage";
@@ -31,6 +32,8 @@ export default function App() {
 
   return (
     <div className="min-h-screen">
+      <ClockWarning />
+
       <header className="screen-only border-b border-line bg-white">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-4 py-3">
           <div className="flex flex-col">
