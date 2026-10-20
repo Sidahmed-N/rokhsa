@@ -14,6 +14,8 @@ import {
   createPayment,
   listCategories,
   listPaymentMethods,
+  nextUp,
+  scheduleLesson,
   type LicenceCategory,
   type Payment,
   type PaymentMethod,
@@ -238,6 +240,110 @@ export function AddLessonDialog({
           hint={t("lessons.minutesHint")}
         />
         <TextField label={t("lessons.notes")} value={notes} onChange={setNotes} />
+      </div>
+    </Modal>
+  );
+}
+
+/* ------------------------------ book ahead ----------------------------- */
+
+export function ScheduleSessionDialog({
+  enrollmentId,
+  onDone,
+  onClose,
+}: {
+  enrollmentId: number;
+  onDone: () => void;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  const errorText = useErrorText();
+
+  const [kind, setKind] = useState<string>("road");
+  const [scheduledOn, setScheduledOn] = useState(today());
+  const [scheduledTime, setScheduledTime] = useState("09:00");
+  const [minutes, setMinutes] = useState("60");
+  const [planNote, setPlanNote] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Pre-fill what to work on from the last session's note, so the instructor
+  // does not have to go and find it.
+  useEffect(() => {
+    nextUp(enrollmentId)
+      .then((info) => {
+        if (info.lastNote) setPlanNote(info.lastNote);
+      })
+      .catch(() => {});
+  }, [enrollmentId]);
+
+  async function save() {
+    setSaving(true);
+    setError(null);
+    try {
+      await scheduleLesson(enrollmentId, {
+        kind,
+        scheduledOn,
+        scheduledTime,
+        minutes: Number(minutes) || 0,
+        instructorStaffId: null,
+        planNote,
+      });
+      onDone();
+    } catch (e: unknown) {
+      setError(errorText(e));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Modal
+      title={t("today.bookTitle")}
+      onClose={onClose}
+      onSubmit={() => void save()}
+      submitting={saving}
+      error={error}
+      submitLabel={t("today.book")}
+    >
+      <div className="grid gap-3">
+        <SelectField label={t("lessons.kind")} value={kind} onChange={setKind}>
+          {LESSON_KINDS.map((k) => (
+            <option key={k} value={k}>
+              {t(`lessons.kind_${k}`)}
+            </option>
+          ))}
+        </SelectField>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <TextField
+            label={t("today.day")}
+            value={scheduledOn}
+            onChange={setScheduledOn}
+            type="date"
+            dir="ltr"
+          />
+          <TextField
+            label={t("today.time")}
+            value={scheduledTime}
+            onChange={setScheduledTime}
+            type="time"
+            dir="ltr"
+            hint={t("today.timeOptional")}
+          />
+        </div>
+        <TextField
+          label={t("lessons.minutes")}
+          value={minutes}
+          onChange={setMinutes}
+          type="number"
+          dir="ltr"
+        />
+        <TextField
+          label={t("today.planNote")}
+          value={planNote}
+          onChange={setPlanNote}
+          hint={t("today.planNoteHint")}
+        />
       </div>
     </Modal>
   );

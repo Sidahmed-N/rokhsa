@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
-import { Money, Num } from "@/components/Num";
+import { Duration, Money, Num } from "@/components/Num";
 import { currentLanguage } from "@/i18n";
 import {
   displayName,
@@ -12,8 +12,8 @@ import {
 } from "@/lib/candidates";
 import { isDesktop } from "@/lib/tauri";
 import {
+  completeLesson,
   deleteLesson,
-  formatDuration,
   listEnrollments,
   listLessons,
   listPayments,
@@ -25,6 +25,7 @@ import {
 import {
   AddLessonDialog,
   NewEnrollmentDialog,
+  ScheduleSessionDialog,
   TakePaymentDialog,
 } from "@/features/training/TrainingDialogs";
 
@@ -46,20 +47,16 @@ function HoursRow({
   label: string;
   progress: { doneMinutes: number; targetMinutes: number; percent: number | null };
 }) {
-  const { t } = useTranslation();
-  const h = t("lessons.hourShort");
-  const m = t("lessons.minuteShort");
-
   return (
     <div className="mb-2">
       <div className="mb-1 flex items-baseline justify-between text-xs">
         <span className="text-muted">{label}</span>
         <span>
-          <Num>{formatDuration(progress.doneMinutes, h, m)}</Num>
+          <Duration minutes={progress.doneMinutes} />
           {progress.targetMinutes > 0 && (
             <>
               {" / "}
-              <Num>{formatDuration(progress.targetMinutes, h, m)}</Num>
+              <Duration minutes={progress.targetMinutes} />
             </>
           )}
           {progress.percent !== null && (
@@ -90,6 +87,7 @@ export default function CandidateDetailPage() {
 
   const [newEnrollment, setNewEnrollment] = useState(false);
   const [addingHoursTo, setAddingHoursTo] = useState<number | null>(null);
+  const [bookingFor, setBookingFor] = useState<number | null>(null);
   const [payingFor, setPayingFor] = useState<EnrollmentSummary | null>(null);
 
   const errorText = useCallback(
@@ -262,6 +260,13 @@ export default function CandidateDetailPage() {
                     <div className="mt-3 flex gap-2">
                       <button
                         type="button"
+                        onClick={() => setBookingFor(id)}
+                        className="rounded-md border border-brand px-3 py-1.5 text-xs text-brand"
+                      >
+                        {t("today.book")}
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => setAddingHoursTo(id)}
                         className="rounded-md border border-line px-3 py-1.5 text-xs"
                       >
@@ -279,36 +284,84 @@ export default function CandidateDetailPage() {
                     {lessons.length > 0 && (
                       <table className="mt-3 w-full text-xs">
                         <tbody>
-                          {lessons.slice(0, 6).map((lesson) => (
-                            <tr key={lesson.id} className="border-t border-line">
-                              <td className="py-1.5">
-                                <Num>{lesson.occurredOn}</Num>
-                              </td>
-                              <td className="py-1.5">{t(`lessons.kind_${lesson.kind}`)}</td>
-                              <td className="py-1.5">
-                                <Num>
-                                  {formatDuration(
-                                    lesson.minutes,
-                                    t("lessons.hourShort"),
-                                    t("lessons.minuteShort"),
+                          {lessons.map((lesson) => {
+                            const upcoming = lesson.status === "planned";
+                            return (
+                              <tr
+                                key={lesson.id}
+                                className={[
+                                  "border-t border-line align-top",
+                                  upcoming ? "bg-brand-soft/40" : "",
+                                ].join(" ")}
+                              >
+                                <td className="py-1.5">
+                                  <Num>
+                                    {upcoming
+                                      ? (lesson.scheduledOn ?? lesson.occurredOn)
+                                      : lesson.occurredOn}
+                                  </Num>
+                                  {upcoming && lesson.scheduledTime && (
+                                    <span className="ms-1 text-muted">
+                                      <Num>{lesson.scheduledTime}</Num>
+                                    </span>
                                   )}
-                                </Num>
-                              </td>
-                              <td className="py-1.5 text-end">
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    void deleteLesson(lesson.id).then(refresh).catch((e: unknown) =>
-                                      setError(errorText(e)),
-                                    )
-                                  }
-                                  className="text-owed hover:underline"
-                                >
-                                  {t("common.delete")}
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
+                                </td>
+                                <td className="py-1.5">{t(`lessons.kind_${lesson.kind}`)}</td>
+                                <td className="py-1.5">
+                                  <Duration minutes={lesson.minutes} />
+                                </td>
+                                <td className="py-1.5">
+                                  <span
+                                    className={
+                                      lesson.status === "done"
+                                        ? "text-ok"
+                                        : upcoming
+                                          ? "text-brand"
+                                          : "text-warn"
+                                    }
+                                  >
+                                    {t(`today.status_${lesson.status}`)}
+                                  </span>
+                                  {/* The note used to be written and never shown. */}
+                                  {(lesson.notes || lesson.planNote) && (
+                                    <span className="ms-2 text-muted">
+                                      {lesson.notes || lesson.planNote}
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="py-1.5 text-end">
+                                  {upcoming && (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        void completeLesson(lesson.id, {
+                                          occurredOn: "",
+                                          minutes: 0,
+                                          notes: "",
+                                        })
+                                          .then(refresh)
+                                          .catch((e: unknown) => setError(errorText(e)))
+                                      }
+                                      className="me-2 text-brand hover:underline"
+                                    >
+                                      {t("today.markDone")}
+                                    </button>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      void deleteLesson(lesson.id)
+                                        .then(refresh)
+                                        .catch((e: unknown) => setError(errorText(e)))
+                                    }
+                                    className="text-owed hover:underline"
+                                  >
+                                    {t("common.delete")}
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     )}
@@ -400,6 +453,17 @@ export default function CandidateDetailPage() {
           onClose={() => setNewEnrollment(false)}
           onDone={() => {
             setNewEnrollment(false);
+            void refresh();
+          }}
+        />
+      )}
+
+      {bookingFor !== null && (
+        <ScheduleSessionDialog
+          enrollmentId={bookingFor}
+          onClose={() => setBookingFor(null)}
+          onDone={() => {
+            setBookingFor(null);
             void refresh();
           }}
         />

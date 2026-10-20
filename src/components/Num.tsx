@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 
-import { currentLanguage } from "@/i18n";
+import i18next, { currentLanguage } from "@/i18n";
 import { formatDZD, formatDinars, type Centimes } from "@/lib/money";
+import { formatDuration } from "@/lib/training";
 
 /**
  * Bidirectional isolation for numbers and Latin text.
@@ -59,6 +60,30 @@ export function Money({
   const text = whole
     ? formatDinars(centimes, { locale, withSuffix })
     : formatDZD(centimes, { locale, withSuffix });
+
+  return <Num className={className}>{text}</Num>;
+}
+
+/**
+ * A lesson length, formatted for the current language and isolated.
+ *
+ * A component for the same reason `<Money>` is one: the Arabic form is not a
+ * translated French form, and a call site that passes the labels by hand can
+ * forget the language and silently produce "1 30 سا". See formatDuration().
+ */
+export function Duration({
+  minutes,
+  className,
+}: {
+  minutes: number;
+  className?: string | undefined;
+}) {
+  const text = formatDuration(
+    minutes,
+    i18next.t("lessons.hourShort"),
+    i18next.t("lessons.minuteShort"),
+    currentLanguage(),
+  );
 
   return <Num className={className}>{text}</Num>;
 }

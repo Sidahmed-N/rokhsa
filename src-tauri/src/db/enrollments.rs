@@ -601,6 +601,194 @@ mod tests {
         assert_eq!(s.balance_centimes, 36_500 * DA);
     }
 
+    fn in_days(days: i64) -> String {
+        (chrono::Utc::now().date_naive() + chrono::Duration::days(days))
+            .format("%Y-%m-%d")
+            .to_string()
+    }
+
+    async fn book(pool: &SqlitePool, enrollment_id: i64, days: i64, minutes: i64) -> lessons::Lesson {
+        lessons::schedule(
+            pool,
+            enrollment_id,
+            &lessons::ScheduleInput {
+                kind: "road".into(),
+                scheduled_on: in_days(days),
+                scheduled_time: "09:00".into(),
+                minutes,
+                plan_note: "créneau puis circulation".into(),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap()
+    }
+
+    #[tokio::test]
+    async fn a_booked_session_is_not_hours_taught() {
+        // The single most important rule of the scheduling work: hours feed the
+        // extra-hour charge, so counting a booking would bill a candidate for a
+        // lesson they have not had.
+        let pool = test_pool().await;
+        let candidate = setup(&pool).await;
+        let e = create(&pool, candidate, &enrol(35_000)).await.unwrap();
+
+        book(&pool, e.id, 3, 120).await;
+
+        let s = summary(&pool, e.id).await.unwrap();
+        assert_eq!(s.practical.done_minutes, 0);
+        assert_eq!(s.minutes.total(), 0);
+    }
+
+    #[tokio::test]
+    async fn completing_a_session_turns_it_into_hours() {
+        let pool = test_pool().await;
+        let candidate = setup(&pool).await;
+        let e = create(&pool, candidate, &enrol(35_000)).await.unwrap();
+        let booked = book(&pool, e.id, 0, 120).await;
+
+        lessons::complete(&pool, booked.id, &lessons::CompleteInput::default())
+            .await
+            .unwrap();
+
+        assert_eq!(summary(&pool, e.id).await.unwrap().practical.done_minutes, 120);
+    }
+
+    #[tokio::test]
+    async fn completing_with_blanks_uses_what_was_planned() {
+        // One click for the common case: it ran as booked.
+        let pool = test_pool().await;
+        let candidate = setup(&pool).await;
+        let e = create(&pool, candidate, &enrol(35_000)).await.unwrap();
+        let booked = book(&pool, e.id, 0, 90).await;
+
+        let done = lessons::complete(&pool, booked.id, &lessons::CompleteInput::default())
+            .await
+            .unwrap();
+
+        assert_eq!(done.minutes, 90);
+        assert_eq!(done.occurred_on, in_days(0));
+        assert_eq!(done.status, "done");
+    }
+
+    #[tokio::test]
+    async fn a_session_that_ran_long_records_the_real_duration() {
+        let pool = test_pool().await;
+        let candidate = setup(&pool).await;
+        let e = create(&pool, candidate, &enrol(35_000)).await.unwrap();
+        let booked = book(&pool, e.id, 0, 60).await;
+
+        lessons::complete(
+            &pool,
+            booked.id,
+            &lessons::CompleteInput { minutes: 95, ..Default::default() },
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(summary(&pool, e.id).await.unwrap().practical.done_minutes, 95);
+    }
+
+    #[tokio::test]
+    async fn a_missed_session_is_kept_but_counts_as_nothing() {
+        let pool = test_pool().await;
+        let candidate = setup(&pool).await;
+        let e = create(&pool, candidate, &enrol(35_000)).await.unwrap();
+        let booked = book(&pool, e.id, 0, 60).await;
+
+        lessons::set_not_held(&pool, booked.id, "missed").await.unwrap();
+
+        assert_eq!(summary(&pool, e.id).await.unwrap().practical.done_minutes, 0);
+        // Still on record — a pattern of no-shows is worth seeing.
+        assert_eq!(lessons::list_for_enrollment(&pool, e.id).await.unwrap().len(), 1);
+    }
+
+    #[tokio::test]
+    async fn a_completed_session_cannot_be_marked_missed_afterwards() {
+        let pool = test_pool().await;
+        let candidate = setup(&pool).await;
+        let e = create(&pool, candidate, &enrol(35_000)).await.unwrap();
+        let booked = book(&pool, e.id, 0, 60).await;
+        lessons::complete(&pool, booked.id, &lessons::CompleteInput::default())
+            .await
+            .unwrap();
+
+        assert!(lessons::set_not_held(&pool, booked.id, "missed").await.is_err());
+    }
+
+    #[tokio::test]
+    async fn the_next_session_is_the_soonest_one_booked() {
+        let pool = test_pool().await;
+        let candidate = setup(&pool).await;
+        let e = create(&pool, candidate, &enrol(35_000)).await.unwrap();
+
+        book(&pool, e.id, 10, 60).await;
+        let soonest = book(&pool, e.id, 2, 60).await;
+        book(&pool, e.id, 5, 60).await;
+
+        let next = lessons::next_planned(&pool, e.id).await.unwrap().unwrap();
+        assert_eq!(next.id, soonest.id);
+    }
+
+    #[tokio::test]
+    async fn the_last_note_is_what_to_work_on_next() {
+        let pool = test_pool().await;
+        let candidate = setup(&pool).await;
+        let e = create(&pool, candidate, &enrol(35_000)).await.unwrap();
+
+        let first = book(&pool, e.id, 0, 60).await;
+        lessons::complete(
+            &pool,
+            first.id,
+            &lessons::CompleteInput {
+                notes: "démarrages en côte à revoir".into(),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(
+            lessons::last_note(&pool, e.id).await.unwrap(),
+            "démarrages en côte à revoir"
+        );
+    }
+
+    #[tokio::test]
+    async fn the_day_list_shows_who_is_in_and_what_for() {
+        let pool = test_pool().await;
+        let candidate = setup(&pool).await;
+        let e = create(&pool, candidate, &enrol(35_000)).await.unwrap();
+        book(&pool, e.id, 0, 60).await;
+        book(&pool, e.id, 1, 60).await; // tomorrow, must not appear
+
+        let today = lessons::list_for_day(&pool, &in_days(0)).await.unwrap();
+        assert_eq!(today.len(), 1);
+        assert_eq!(today[0].last_name_fr, "BENALI");
+        assert_eq!(today[0].kind, "road");
+        assert_eq!(today[0].scheduled_time.as_deref(), Some("09:00"));
+        assert_eq!(today[0].plan_note, "créneau puis circulation");
+    }
+
+    #[tokio::test]
+    async fn a_session_can_be_booked_for_next_month() {
+        let pool = test_pool().await;
+        let candidate = setup(&pool).await;
+        let e = create(&pool, candidate, &enrol(35_000)).await.unwrap();
+        assert!(lessons::schedule(
+            &pool,
+            e.id,
+            &lessons::ScheduleInput {
+                kind: "road".into(),
+                scheduled_on: in_days(30),
+                minutes: 60,
+                ..Default::default()
+            },
+        )
+        .await
+        .is_ok());
+    }
+
     #[tokio::test]
     async fn a_payment_cannot_be_dated_in_the_future() {
         // A mistyped year would park the payment outside every period the

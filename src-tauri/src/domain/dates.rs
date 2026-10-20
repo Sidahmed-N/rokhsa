@@ -18,11 +18,53 @@ pub const FUTURE_SLACK_DAYS: i64 = 1;
 /// list and quietly skew date ranges.
 pub const EARLIEST_YEAR: i32 = 2000;
 
+/// How far ahead a session may be booked. Beyond about a year it is a typo,
+/// not a plan.
+pub const MAX_PLANNING_DAYS: i64 = 400;
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum DateProblem {
     Unparseable,
     InFuture,
     TooOld,
+}
+
+/// Parse a date for something that has NOT happened yet.
+///
+/// The mirror of `parse_recorded`: a planned session is *supposed* to be in the
+/// future, so only the far future and the distant past are refused. Keeping the
+/// two rules apart matters — using the recorded rule here would make it
+/// impossible to book anything, and using this one there would let a payment be
+/// dated next year.
+pub fn parse_planned(value: &str) -> Result<NaiveDate, DateProblem> {
+    parse_planned_on(value, Utc::now().date_naive())
+}
+
+pub fn parse_planned_on(value: &str, today: NaiveDate) -> Result<NaiveDate, DateProblem> {
+    let parsed = NaiveDate::parse_from_str(value.trim(), "%Y-%m-%d")
+        .map_err(|_| DateProblem::Unparseable)?;
+
+    if parsed.year() < EARLIEST_YEAR {
+        return Err(DateProblem::TooOld);
+    }
+
+    if parsed > today + chrono::Duration::days(MAX_PLANNING_DAYS) {
+        return Err(DateProblem::InFuture);
+    }
+
+    Ok(parsed)
+}
+
+/// "HH:MM", or nothing. Optional because some schools book a time and others
+/// just say "Thursday".
+pub fn parse_optional_time(value: &str) -> Result<Option<String>, DateProblem> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return Ok(None);
+    }
+    chrono::NaiveTime::parse_from_str(trimmed, "%H:%M")
+        .map_err(|_| DateProblem::Unparseable)?;
+    Ok(Some(trimmed.to_string()))
 }
 
 /// Parse a recorded date and check it is plausible.
@@ -127,5 +169,56 @@ mod tests {
     #[test]
     fn ignores_surrounding_whitespace() {
         assert!(parse_recorded_on("  2026-10-20  ", today()).is_ok());
+    }
+
+    // ----- planned dates: the opposite rule --------------------------------
+
+    #[test]
+    fn a_session_can_be_booked_for_next_week() {
+        assert!(parse_planned_on("2026-10-27", today()).is_ok());
+    }
+
+    #[test]
+    fn a_session_can_be_booked_for_today() {
+        assert!(parse_planned_on("2026-10-20", today()).is_ok());
+    }
+
+    #[test]
+    fn a_session_can_be_recorded_for_a_past_date() {
+        // Catching up on yesterday's bookings must still work.
+        assert!(parse_planned_on("2026-10-01", today()).is_ok());
+    }
+
+    #[test]
+    fn booking_beyond_a_year_ahead_is_a_typo() {
+        assert_eq!(
+            parse_planned_on("2029-10-20", today()),
+            Err(DateProblem::InFuture)
+        );
+    }
+
+    #[test]
+    fn the_two_date_rules_do_not_contradict_each_other() {
+        // Next week: fine to plan, impossible to have happened.
+        let next_week = "2026-10-27";
+        assert!(parse_planned_on(next_week, today()).is_ok());
+        assert_eq!(
+            parse_recorded_on(next_week, today()),
+            Err(DateProblem::InFuture)
+        );
+    }
+
+    #[test]
+    fn a_time_is_optional() {
+        assert_eq!(parse_optional_time("").unwrap(), None);
+        assert_eq!(parse_optional_time("  ").unwrap(), None);
+    }
+
+    #[test]
+    fn a_time_must_be_a_real_time() {
+        assert_eq!(parse_optional_time("09:30").unwrap(), Some("09:30".into()));
+        assert_eq!(parse_optional_time("14:00").unwrap(), Some("14:00".into()));
+        assert!(parse_optional_time("25:00").is_err());
+        assert!(parse_optional_time("9h30").is_err());
     }
 }

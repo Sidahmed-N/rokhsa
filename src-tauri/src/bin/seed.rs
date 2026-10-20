@@ -176,6 +176,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .await?;
         }
 
+        // Sessions booked for today, so the Today screen has a real day on it.
+        let today = chrono::Utc::now().date_naive();
+        for (days, time, kind, plan) in [
+            (0i64, "09:00", "road", "créneau puis circulation en ville"),
+            (0, "14:00", "theory", "panneaux et priorités"),
+            (1, "10:30", "maneuvers", "démarrages en côte à revoir"),
+        ] {
+            db::lessons::schedule(
+                &pool,
+                e.id,
+                &db::lessons::ScheduleInput {
+                    kind: kind.into(),
+                    scheduled_on: (today + chrono::Duration::days(days))
+                        .format("%Y-%m-%d")
+                        .to_string(),
+                    scheduled_time: time.into(),
+                    minutes: 90,
+                    plan_note: plan.into(),
+                    ..Default::default()
+                },
+            )
+            .await?;
+        }
+
         let s = db::enrollments::summary(&pool, e.id).await?;
         println!(
             "  enrolment for candidate {benali}: due {} / paid {} / balance {} centimes",
@@ -205,6 +229,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 amount_centimes: 32_000 * DA,
                 paid_on: "2026-06-15".into(),
                 method_code: "cash".into(),
+                ..Default::default()
+            },
+        )
+        .await?;
+
+        // A second candidate in today, so the day is not one person's diary.
+        db::lessons::schedule(
+            &pool,
+            e.id,
+            &db::lessons::ScheduleInput {
+                kind: "road".into(),
+                scheduled_on: chrono::Utc::now().date_naive().format("%Y-%m-%d").to_string(),
+                scheduled_time: "11:00".into(),
+                minutes: 60,
+                plan_note: "autoroute".into(),
                 ..Default::default()
             },
         )

@@ -106,6 +106,64 @@ pub async fn delete_lesson(state: State<'_, AppState>, id: i64) -> CommandResult
     Ok(lessons::soft_delete(&state.pool, id).await?)
 }
 
+/// Book a session for a day in the future.
+#[tauri::command]
+pub async fn schedule_lesson(
+    state: State<'_, AppState>,
+    enrollment_id: i64,
+    input: lessons::ScheduleInput,
+) -> CommandResult<lessons::Lesson> {
+    Ok(lessons::schedule(&state.pool, enrollment_id, &input).await?)
+}
+
+/// Mark a booked session as having happened. Blank fields mean "as planned".
+#[tauri::command]
+pub async fn complete_lesson(
+    state: State<'_, AppState>,
+    id: i64,
+    input: lessons::CompleteInput,
+) -> CommandResult<lessons::Lesson> {
+    Ok(lessons::complete(&state.pool, id, &input).await?)
+}
+
+/// The candidate did not turn up, or it was called off.
+#[tauri::command]
+pub async fn set_lesson_not_held(
+    state: State<'_, AppState>,
+    id: i64,
+    status: String,
+) -> CommandResult<lessons::Lesson> {
+    Ok(lessons::set_not_held(&state.pool, id, &status).await?)
+}
+
+/// Everyone booked or seen on one day — the Today screen.
+#[tauri::command]
+pub async fn list_day(
+    state: State<'_, AppState>,
+    date: String,
+) -> CommandResult<Vec<lessons::DayEntry>> {
+    Ok(lessons::list_for_day(&state.pool, &date).await?)
+}
+
+/// The next booked session for an enrolment, and the note left last time.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NextUp {
+    pub next: Option<lessons::Lesson>,
+    pub last_note: String,
+}
+
+#[tauri::command]
+pub async fn next_up(
+    state: State<'_, AppState>,
+    enrollment_id: i64,
+) -> CommandResult<NextUp> {
+    Ok(NextUp {
+        next: lessons::next_planned(&state.pool, enrollment_id).await?,
+        last_note: lessons::last_note(&state.pool, enrollment_id).await?,
+    })
+}
+
 /* ------------------------------ payments ------------------------------ */
 
 #[tauri::command]

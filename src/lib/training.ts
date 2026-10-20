@@ -82,11 +82,61 @@ export interface Lesson {
   enrollmentId: number;
   instructorStaffId: number | null;
   kind: string;
+  /** planned | done | missed | cancelled. Only `done` counts as hours. */
+  status: string;
+  scheduledOn: string | null;
+  scheduledTime: string | null;
   occurredOn: string;
   minutes: number;
+  /** What to work on, written when booking. */
+  planNote: string;
+  /** How it went, written when completing. */
   notes: string;
   createdAt: string;
 }
+
+/** A row of the Today screen. */
+export interface DayEntry {
+  id: number;
+  enrollmentId: number;
+  candidateId: number;
+  lastNameFr: string;
+  firstNameFr: string;
+  lastNameAr: string;
+  firstNameAr: string;
+  phone: string;
+  categoryCode: string;
+  kind: string;
+  status: string;
+  scheduledTime: string | null;
+  minutes: number;
+  planNote: string;
+  notes: string;
+}
+
+export interface ScheduleInput {
+  kind: string;
+  scheduledOn: string;
+  scheduledTime: string;
+  minutes: number;
+  instructorStaffId: number | null;
+  planNote: string;
+}
+
+export interface CompleteInput {
+  /** Blank means the day it was planned for. */
+  occurredOn: string;
+  /** Zero means the duration it was planned for. */
+  minutes: number;
+  notes: string;
+}
+
+export interface NextUp {
+  next: Lesson | null;
+  lastNote: string;
+}
+
+export const LESSON_STATUSES = ["planned", "done", "missed", "cancelled"] as const;
 
 export interface Payment {
   id: number;
@@ -172,6 +222,35 @@ export const createLesson = (enrollmentId: number, input: LessonInput) =>
 
 export const deleteLesson = (id: number) => call<void>("delete_lesson", { id });
 
+export const scheduleLesson = (enrollmentId: number, input: ScheduleInput) =>
+  call<Lesson>("schedule_lesson", { enrollmentId, input });
+
+export const completeLesson = (id: number, input: CompleteInput) =>
+  call<Lesson>("complete_lesson", { id, input });
+
+export const setLessonNotHeld = (id: number, status: "missed" | "cancelled") =>
+  call<Lesson>("set_lesson_not_held", { id, status });
+
+export const listDay = (date: string) => call<DayEntry[]>("list_day", { date });
+
+export const nextUp = (enrollmentId: number) => call<NextUp>("next_up", { enrollmentId });
+
+/** Today as YYYY-MM-DD, in the computer's own timezone. */
+export function todayIso(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/** Shift an ISO date by whole days, for the Today screen's arrows. */
+export function shiftIso(iso: string, days: number): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  const date = new Date(y ?? 1970, (m ?? 1) - 1, d ?? 1);
+  date.setDate(date.getDate() + days);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
 export const listPayments = (enrollmentId: number) =>
   call<Payment[]>("list_payments", { enrollmentId });
 
@@ -183,11 +262,28 @@ export const createPayment = (enrollmentId: number, input: PaymentInput) =>
 export const reversePayment = (id: number, reason: string) =>
   call<Payment>("reverse_payment", { id, reason });
 
-/** Minutes to "2 h 30" / "45 min". Formatting only — no arithmetic on money. */
-export function formatDuration(minutes: number, hourLabel: string, minuteLabel: string): string {
+/**
+ * Minutes to "2 h 30" / "45 min". Formatting only — no arithmetic on money.
+ *
+ * Prefer the `<Duration>` component over calling this directly.
+ *
+ * The Arabic form is deliberately different, not a translation of the French
+ * one. "1 سا 30" puts a digit run on BOTH sides of a right-to-left word, and
+ * the bidi algorithm then renders it right-to-left as 1, 30, سا — the hour
+ * marker is stranded at the end and "1 h 30" reads as "1 30 h". Measured in
+ * the WebView, not guessed. A single numeric run ("1:30") has nothing to
+ * reorder, so it survives in either direction.
+ */
+export function formatDuration(
+  minutes: number,
+  hourLabel: string,
+  minuteLabel: string,
+  locale = "fr",
+): string {
   const h = Math.trunc(minutes / 60);
   const m = minutes % 60;
   if (h === 0) return `${m} ${minuteLabel}`;
   if (m === 0) return `${h} ${hourLabel}`;
+  if (locale === "ar") return `${h}:${String(m).padStart(2, "0")} ${hourLabel}`;
   return `${h} ${hourLabel} ${m}`;
 }

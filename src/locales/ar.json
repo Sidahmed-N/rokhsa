@@ -5,6 +5,7 @@
   },
   "nav": {
     "home": "الرئيسية",
+    "today": "اليوم",
     "candidates": "المترشحون",
     "payments": "الدفعات",
     "receivables": "المبالغ المستحقة",
@@ -273,6 +274,29 @@
       "alreadyEnrolled": "هذا المترشح مسجل بالفعل في هذا الصنف."
     }
   },
+  "today": {
+    "title": "اليوم",
+    "previousDay": "أمس",
+    "nextDay": "غدا",
+    "backToToday": "اليوم",
+    "summary": "{{planned}} حصة لم تتم بعد من أصل {{total}}.",
+    "empty": "لا شيء مبرمج في ذلك اليوم.",
+    "noTime": "بدون توقيت",
+    "markDone": "تمت",
+    "markMissed": "غائب",
+    "markCancelled": "ألغيت",
+    "status_planned": "مبرمجة",
+    "status_done": "تمت",
+    "status_missed": "غائب",
+    "status_cancelled": "ألغيت",
+    "book": "برمجة حصة",
+    "bookTitle": "برمجة حصة",
+    "day": "اليوم",
+    "time": "التوقيت",
+    "timeOptional": "اختياري — اتركه فارغا إذا كان المترشح يأتي حين يستطيع.",
+    "planNote": "ما يجب العمل عليه",
+    "planNoteHint": "مأخوذ من الحصة الأخيرة. سيراه المدرب في شاشة «اليوم»."
+  },
   "lessons": {
     "add": "+ إضافة ساعات",
     "addTitle": "إضافة ساعات",
@@ -294,7 +318,10 @@
       "dateRequired": "أدخل التاريخ.",
       "dateInvalid": "تاريخ غير صالح. استعمل الصيغة سنة-شهر-يوم.",
       "dateFuture": "تاريخ هذه الحصة في المستقبل. تحقق من التاريخ.",
-      "dateTooOld": "هذا التاريخ قديم جدا. تحقق من السنة."
+      "dateTooOld": "هذا التاريخ قديم جدا. تحقق من السنة.",
+      "notPlanned": "هذه الحصة ليست حصة مبرمجة.",
+      "alreadyDone": "هذه الحصة تمت من قبل.",
+      "statusInvalid": "الحالة غير صالحة."
     }
   },
   "payments": {

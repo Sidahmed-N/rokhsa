@@ -70,6 +70,14 @@ These are not style preferences. Breaking them causes data loss, legal problems,
   stored as `109 2004 16 0054821` prints as `0054821 16 2004 109`. It looks perfect in French
   and silently wrong in Arabic. This was a real bug in the first receipt, caught only by
   measuring character positions in the browser — not by reading the code.
+- **Never put a number on both sides of an Arabic word.** `<Num>` isolates a value from
+  its *surroundings*; it does not stop the bidi algorithm reordering runs *inside* it. A
+  duration built as `1 سا 30` renders as `1 30 سا` — the unit is stranded at the end and
+  "1 h 30" reads as "1 30 h". Leave a single numeric run instead (`1:30 سا`). This is why
+  the Arabic duration format is deliberately *not* a translation of the French one, and why
+  `<Duration>` exists. Note the same shape is fine in ordinary RTL prose
+  (`{{planned}} … {{total}}` reads correctly), so the rule is about forced-LTR spans, not
+  about Arabic sentences — measured in the WebView, both ways.
 - **Never put a logical margin/padding on the same element that carries `dir`.**
   `ms-*` is `margin-inline-start`, which resolves against *that element's own* direction, so
   `<span dir="rtl" className="ms-2">` puts the gap on the far side and the text ends up

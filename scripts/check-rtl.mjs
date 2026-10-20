@@ -101,12 +101,21 @@ function stringLiteralsIn(line) {
  * correctly in French — a bug nobody sees until a school prints a receipt with
  * a reversed national ID on it. This happened in the first draft of the
  * receipt, hence the guard.
+ *
+ * formatDuration is here for a related but distinct reason: its Arabic form is
+ * not a translation of the French one (see the function), so a call site that
+ * passes the labels by hand and forgets the language renders "1 30 سا".
  */
 const JSX_RULES = [
   {
     name: "money formatted directly into JSX",
     suggestion: "use <Money centimes={...} /> from @/components/Num",
     pattern: /\{\s*format(?:DZD|Dinars)\s*\(/g,
+  },
+  {
+    name: "duration formatted directly into JSX",
+    suggestion: "use <Duration minutes={...} /> from @/components/Num",
+    pattern: /\{\s*formatDuration\s*\(/g,
   },
 ];
 
