@@ -15,14 +15,10 @@ import {
   type DayEntry,
 } from "@/lib/training";
 
-function name(row: DayEntry, locale: "fr" | "ar"): string {
-  const arabic = `${row.lastNameAr} ${row.firstNameAr}`.trim();
-  const latin = `${row.lastNameFr} ${row.firstNameFr}`.trim();
-  return locale === "ar" ? arabic || latin : latin || arabic;
-}
+import { candidateName } from "./shared";
 
 /**
- * The day.
+ * One day, as a to-do list.
  *
  * Answers the question the school actually opens the app with: who is coming
  * in, and what are they doing. Until this existed the app only accounted for
@@ -33,11 +29,16 @@ function name(row: DayEntry, locale: "fr" | "ar"): string {
  * Marking a session done here is what records the hours, so logging stops
  * being a separate chore someone has to remember.
  */
-export default function TodayPage() {
+export default function DayView({
+  date,
+  setDate,
+}: {
+  date: string;
+  setDate: (iso: string) => void;
+}) {
   const { t } = useTranslation();
   const locale = currentLanguage();
 
-  const [date, setDate] = useState(todayIso());
   const [rows, setRows] = useState<DayEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -84,13 +85,12 @@ export default function TodayPage() {
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <h1 className="text-xl font-semibold">{t("today.title")}</h1>
         <button
           type="button"
-          onClick={() => setDate((d) => shiftIso(d, -1))}
+          onClick={() => setDate(shiftIso(date, -1))}
           className="rounded-md border border-line px-3 py-1.5 text-sm"
         >
-          ← {t("today.previousDay")}
+          ← {t("calendar.previousDay")}
         </button>
         <input
           type="date"
@@ -101,10 +101,10 @@ export default function TodayPage() {
         />
         <button
           type="button"
-          onClick={() => setDate((d) => shiftIso(d, 1))}
+          onClick={() => setDate(shiftIso(date, 1))}
           className="rounded-md border border-line px-3 py-1.5 text-sm"
         >
-          {t("today.nextDay")} →
+          {t("calendar.nextDay")} →
         </button>
         {!isToday && (
           <button
@@ -112,7 +112,7 @@ export default function TodayPage() {
             onClick={() => setDate(todayIso())}
             className="rounded-md bg-brand px-3 py-1.5 text-sm font-medium text-white"
           >
-            {t("today.backToToday")}
+            {t("calendar.backToToday")}
           </button>
         )}
       </div>
@@ -126,12 +126,12 @@ export default function TodayPage() {
       <p className="mb-3 text-sm text-muted">
         {loading
           ? t("common.loading")
-          : t("today.summary", { planned: planned.length, total: rows.length })}
+          : t("calendar.summary", { planned: planned.length, total: rows.length })}
       </p>
 
       {!loading && rows.length === 0 && (
         <p className="rounded-lg border border-line bg-white px-4 py-8 text-center text-sm text-muted">
-          {t("today.empty")}
+          {t("calendar.empty")}
         </p>
       )}
 
@@ -153,7 +153,7 @@ export default function TodayPage() {
                   {row.scheduledTime ? (
                     <Num>{row.scheduledTime}</Num>
                   ) : (
-                    <span className="text-muted">{t("today.noTime")}</span>
+                    <span className="text-muted">{t("calendar.noTime")}</span>
                   )}
                 </span>
 
@@ -161,7 +161,7 @@ export default function TodayPage() {
                   to={`/candidates/${row.candidateId}`}
                   className="text-base font-medium text-brand hover:underline"
                 >
-                  {name(row, locale)}
+                  {candidateName(row, locale)}
                 </Link>
 
                 <span className="rounded-full bg-brand-soft px-2 py-0.5 text-xs text-brand">
@@ -184,7 +184,7 @@ export default function TodayPage() {
                     done ? "text-ok" : notHeld ? "text-warn" : "text-muted",
                   ].join(" ")}
                 >
-                  {t(`today.status_${row.status}`)}
+                  {t(`calendar.status_${row.status}`)}
                 </span>
               </div>
 
@@ -209,21 +209,21 @@ export default function TodayPage() {
                     }
                     className="rounded-md bg-brand px-3 py-1.5 text-xs font-medium text-white"
                   >
-                    {t("today.markDone")}
+                    {t("calendar.markDone")}
                   </button>
                   <button
                     type="button"
                     onClick={() => void run(() => setLessonNotHeld(row.id, "missed"))}
                     className="rounded-md border border-line px-3 py-1.5 text-xs"
                   >
-                    {t("today.markMissed")}
+                    {t("calendar.markMissed")}
                   </button>
                   <button
                     type="button"
                     onClick={() => void run(() => setLessonNotHeld(row.id, "cancelled"))}
                     className="rounded-md border border-line px-3 py-1.5 text-xs"
                   >
-                    {t("today.markCancelled")}
+                    {t("calendar.markCancelled")}
                   </button>
                 </div>
               )}

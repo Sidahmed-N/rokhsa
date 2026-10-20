@@ -79,6 +79,8 @@ pub struct CompleteInput {
 #[serde(rename_all = "camelCase")]
 pub struct DayEntry {
     pub id: i64,
+    /// The day this sits on: the booked day, or the day it happened.
+    pub day: String,
     pub enrollment_id: i64,
     pub candidate_id: i64,
     pub last_name_fr: String,
@@ -201,28 +203,62 @@ pub async fn minutes_by_kind(
     Ok(out)
 }
 
-/// Everything booked or recorded for one day, soonest first.
-pub async fn list_for_day(pool: &SqlitePool, date: &str) -> Result<Vec<DayEntry>, AppError> {
-    let rows = sqlx::query_as::<_, DayEntry>(
-        "SELECT l.id, l.enrollment_id, e.candidate_id,
+/// The columns every schedule row needs, with the day it falls on.
+const DAY_COLUMNS: &str = "l.id, COALESCE(l.scheduled_on, l.occurred_on) AS day,
+                l.enrollment_id, e.candidate_id,
                 c.last_name_fr, c.first_name_fr, c.last_name_ar, c.first_name_ar, c.phone,
                 e.category_code, l.kind, l.status, l.scheduled_time, l.minutes,
-                l.plan_note, l.notes
-         FROM lessons l
+                l.plan_note, l.notes";
+
+const DAY_JOINS: &str = "FROM lessons l
          JOIN enrollments e ON e.id = l.enrollment_id
          JOIN candidates  c ON c.id = e.candidate_id
          WHERE l.deleted_at IS NULL
            AND e.deleted_at IS NULL
-           AND c.deleted_at IS NULL
+           AND c.deleted_at IS NULL";
+
+/// Everything booked or recorded for one day, soonest first.
+///
+/// Planned sessions sort above settled ones, because the day screen is a
+/// to-do list: what still needs doing belongs at the top.
+pub async fn list_for_day(pool: &SqlitePool, date: &str) -> Result<Vec<DayEntry>, AppError> {
+    let sql = format!(
+        "SELECT {DAY_COLUMNS} {DAY_JOINS}
            AND COALESCE(l.scheduled_on, l.occurred_on) = ?1
          ORDER BY
             CASE WHEN l.status = 'planned' THEN 0 ELSE 1 END,
             COALESCE(l.scheduled_time, '99:99') ASC,
-            l.id ASC",
-    )
-    .bind(date)
-    .fetch_all(pool)
-    .await?;
+            l.id ASC"
+    );
+    let rows = sqlx::query_as::<_, DayEntry>(&sql)
+        .bind(date)
+        .fetch_all(pool)
+        .await?;
+    Ok(rows)
+}
+
+/// Everything from `from` to `to` inclusive, for the week view.
+///
+/// Ordered by day then time, never by status: a week is read as a diary, so
+/// moving settled sessions to the bottom of each day would scramble it.
+pub async fn list_for_range(
+    pool: &SqlitePool,
+    from: &str,
+    to: &str,
+) -> Result<Vec<DayEntry>, AppError> {
+    let sql = format!(
+        "SELECT {DAY_COLUMNS} {DAY_JOINS}
+           AND COALESCE(l.scheduled_on, l.occurred_on) BETWEEN ?1 AND ?2
+         ORDER BY
+            day ASC,
+            COALESCE(l.scheduled_time, '99:99') ASC,
+            l.id ASC"
+    );
+    let rows = sqlx::query_as::<_, DayEntry>(&sql)
+        .bind(from)
+        .bind(to)
+        .fetch_all(pool)
+        .await?;
     Ok(rows)
 }
 
@@ -597,6 +633,62 @@ mod tests {
         assert_eq!(day[0].plan_note, "créneau puis circulation");
         assert_eq!(day[0].scheduled_time.as_deref(), Some("09:00"));
         assert_eq!(day[0].status, "planned");
+    }
+
+    /// The week view asks for a span. Its bounds are inclusive, so a session
+    /// booked on the Sunday that closes the week must not fall out of it.
+    #[tokio::test]
+    async fn the_range_includes_both_end_days() {
+        let pool = test_pool().await;
+        let enrollment = setup(&pool).await;
+
+        for day in ["2026-10-19", "2026-10-22", "2026-10-25"] {
+            schedule(
+                &pool,
+                enrollment,
+                &ScheduleInput {
+                    scheduled_on: day.into(),
+                    ..booking(90)
+                },
+            )
+            .await
+            .unwrap();
+        }
+
+        let week = list_for_range(&pool, "2026-10-19", "2026-10-25")
+            .await
+            .unwrap();
+
+        assert_eq!(week.len(), 3);
+        assert_eq!(week[0].day, "2026-10-19");
+        assert_eq!(week[2].day, "2026-10-25");
+    }
+
+    /// A day outside the span must not leak in.
+    #[tokio::test]
+    async fn the_range_excludes_days_outside_it() {
+        let pool = test_pool().await;
+        let enrollment = setup(&pool).await;
+
+        for day in ["2026-10-18", "2026-10-20", "2026-10-26"] {
+            schedule(
+                &pool,
+                enrollment,
+                &ScheduleInput {
+                    scheduled_on: day.into(),
+                    ..booking(90)
+                },
+            )
+            .await
+            .unwrap();
+        }
+
+        let week = list_for_range(&pool, "2026-10-19", "2026-10-25")
+            .await
+            .unwrap();
+
+        assert_eq!(week.len(), 1);
+        assert_eq!(week[0].day, "2026-10-20");
     }
 
     /// A walk-in recorded after the fact counts immediately — there is no

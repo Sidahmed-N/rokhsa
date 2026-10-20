@@ -98,6 +98,8 @@ export interface Lesson {
 /** A row of the Today screen. */
 export interface DayEntry {
   id: number;
+  /** The day this sits on, YYYY-MM-DD. Used to group the week view. */
+  day: string;
   enrollmentId: number;
   candidateId: number;
   lastNameFr: string;
@@ -233,6 +235,9 @@ export const setLessonNotHeld = (id: number, status: "missed" | "cancelled") =>
 
 export const listDay = (date: string) => call<DayEntry[]>("list_day", { date });
 
+export const listRange = (from: string, to: string) =>
+  call<DayEntry[]>("list_range", { from, to });
+
 export const nextUp = (enrollmentId: number) => call<NextUp>("next_up", { enrollmentId });
 
 /** Today as YYYY-MM-DD, in the computer's own timezone. */
@@ -249,6 +254,27 @@ export function shiftIso(iso: string, days: number): string {
   date.setDate(date.getDate() + days);
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+/**
+ * The Saturday that opens the week `iso` falls in.
+ *
+ * Algerian auto-écoles work Saturday to Thursday and rest on Friday, so a week
+ * that starts on Saturday puts the quiet day at the end where it belongs. A
+ * Monday-first week would split the working week across two screens.
+ */
+export function startOfWeekIso(iso: string): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  const date = new Date(y ?? 1970, (m ?? 1) - 1, d ?? 1);
+  // getDay(): 0 = Sunday … 6 = Saturday. Days since the most recent Saturday.
+  const since = (date.getDay() + 1) % 7;
+  return shiftIso(iso, -since);
+}
+
+/** The seven ISO days of the week containing `iso`, Saturday first. */
+export function weekDays(iso: string): string[] {
+  const start = startOfWeekIso(iso);
+  return Array.from({ length: 7 }, (_, i) => shiftIso(start, i));
 }
 
 export const listPayments = (enrollmentId: number) =>

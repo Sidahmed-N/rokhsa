@@ -145,6 +145,16 @@ pub async fn list_day(
     Ok(lessons::list_for_day(&state.pool, &date).await?)
 }
 
+/// A span of days — the week view of the schedule.
+#[tauri::command]
+pub async fn list_range(
+    state: State<'_, AppState>,
+    from: String,
+    to: String,
+) -> CommandResult<Vec<lessons::DayEntry>> {
+    Ok(lessons::list_for_range(&state.pool, &from, &to).await?)
+}
+
 /// The next booked session for an enrolment, and the note left last time.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]

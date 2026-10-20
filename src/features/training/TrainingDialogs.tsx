@@ -299,12 +299,12 @@ export function ScheduleSessionDialog({
 
   return (
     <Modal
-      title={t("today.bookTitle")}
+      title={t("calendar.bookTitle")}
       onClose={onClose}
       onSubmit={() => void save()}
       submitting={saving}
       error={error}
-      submitLabel={t("today.book")}
+      submitLabel={t("calendar.book")}
     >
       <div className="grid gap-3">
         <SelectField label={t("lessons.kind")} value={kind} onChange={setKind}>
@@ -316,19 +316,19 @@ export function ScheduleSessionDialog({
         </SelectField>
         <div className="grid gap-3 sm:grid-cols-2">
           <TextField
-            label={t("today.day")}
+            label={t("calendar.day")}
             value={scheduledOn}
             onChange={setScheduledOn}
             type="date"
             dir="ltr"
           />
           <TextField
-            label={t("today.time")}
+            label={t("calendar.time")}
             value={scheduledTime}
             onChange={setScheduledTime}
             type="time"
             dir="ltr"
-            hint={t("today.timeOptional")}
+            hint={t("calendar.timeOptional")}
           />
         </div>
         <TextField
@@ -339,10 +339,10 @@ export function ScheduleSessionDialog({
           dir="ltr"
         />
         <TextField
-          label={t("today.planNote")}
+          label={t("calendar.planNote")}
           value={planNote}
           onChange={setPlanNote}
-          hint={t("today.planNoteHint")}
+          hint={t("calendar.planNoteHint")}
         />
       </div>
     </Modal>

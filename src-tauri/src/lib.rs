@@ -112,6 +112,7 @@ pub fn run() {
             commands::training::complete_lesson,
             commands::training::set_lesson_not_held,
             commands::training::list_day,
+            commands::training::list_range,
             commands::training::next_up,
             commands::training::list_payments,
             commands::training::get_payment,

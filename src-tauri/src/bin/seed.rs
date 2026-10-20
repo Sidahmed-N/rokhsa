@@ -176,12 +176,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .await?;
         }
 
-        // Sessions booked for today, so the Today screen has a real day on it.
+        // Sessions spread over the week, so both the day and the week view
+        // have something real on them.
         let today = chrono::Utc::now().date_naive();
         for (days, time, kind, plan) in [
             (0i64, "09:00", "road", "créneau puis circulation en ville"),
             (0, "14:00", "theory", "panneaux et priorités"),
             (1, "10:30", "maneuvers", "démarrages en côte à revoir"),
+            (2, "09:00", "road", "circulation en ville, giratoires"),
+            (4, "15:00", "road", "préparation examen"),
         ] {
             db::lessons::schedule(
                 &pool,
@@ -234,20 +237,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .await?;
 
-        // A second candidate in today, so the day is not one person's diary.
-        db::lessons::schedule(
-            &pool,
-            e.id,
-            &db::lessons::ScheduleInput {
-                kind: "road".into(),
-                scheduled_on: chrono::Utc::now().date_naive().format("%Y-%m-%d").to_string(),
-                scheduled_time: "11:00".into(),
-                minutes: 60,
-                plan_note: "autoroute".into(),
-                ..Default::default()
-            },
-        )
-        .await?;
+        // A second candidate across the week, so no day is one person's diary.
+        let today = chrono::Utc::now().date_naive();
+        for (days, time, minutes, plan) in [
+            (0i64, "11:00", 60, "autoroute"),
+            (1, "16:00", 60, "stationnement en bataille"),
+            (3, "11:00", 90, "conduite de nuit"),
+        ] {
+            db::lessons::schedule(
+                &pool,
+                e.id,
+                &db::lessons::ScheduleInput {
+                    kind: "road".into(),
+                    scheduled_on: (today + chrono::Duration::days(days))
+                        .format("%Y-%m-%d")
+                        .to_string(),
+                    scheduled_time: time.into(),
+                    minutes,
+                    plan_note: plan.into(),
+                    ..Default::default()
+                },
+            )
+            .await?;
+        }
     }
 
     // A spread of debts so the receivables screen shows a realistic chase list.

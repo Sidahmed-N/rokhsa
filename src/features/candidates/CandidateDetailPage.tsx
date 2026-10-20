@@ -263,7 +263,7 @@ export default function CandidateDetailPage() {
                         onClick={() => setBookingFor(id)}
                         className="rounded-md border border-brand px-3 py-1.5 text-xs text-brand"
                       >
-                        {t("today.book")}
+                        {t("calendar.book")}
                       </button>
                       <button
                         type="button"
@@ -320,7 +320,7 @@ export default function CandidateDetailPage() {
                                           : "text-warn"
                                     }
                                   >
-                                    {t(`today.status_${lesson.status}`)}
+                                    {t(`calendar.status_${lesson.status}`)}
                                   </span>
                                   {/* The note used to be written and never shown. */}
                                   {(lesson.notes || lesson.planNote) && (
@@ -344,7 +344,7 @@ export default function CandidateDetailPage() {
                                       }
                                       className="me-2 text-brand hover:underline"
                                     >
-                                      {t("today.markDone")}
+                                      {t("calendar.markDone")}
                                     </button>
                                   )}
                                   <button

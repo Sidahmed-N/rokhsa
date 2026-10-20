@@ -5,13 +5,13 @@
   },
   "nav": {
     "home": "Accueil",
-    "today": "Aujourd'hui",
     "candidates": "Candidats",
     "payments": "Versements",
     "receivables": "Créances",
     "cashFlow": "Caisse",
     "settings": "Réglages",
-    "printProof": "Test d'impression"
+    "printProof": "Test d'impression",
+    "calendar": "Calendrier"
   },
   "backup": {
     "section": "Sauvegarde",
@@ -274,29 +274,6 @@
       "alreadyEnrolled": "Ce candidat est déjà inscrit à cette catégorie."
     }
   },
-  "today": {
-    "title": "Aujourd'hui",
-    "previousDay": "Veille",
-    "nextDay": "Lendemain",
-    "backToToday": "Aujourd'hui",
-    "summary": "{{planned}} séance(s) encore à faire sur {{total}}.",
-    "empty": "Rien de prévu ce jour-là.",
-    "noTime": "Sans heure",
-    "markDone": "Fait",
-    "markMissed": "Absent",
-    "markCancelled": "Annulée",
-    "status_planned": "Prévue",
-    "status_done": "Effectuée",
-    "status_missed": "Absent",
-    "status_cancelled": "Annulée",
-    "book": "Programmer une séance",
-    "bookTitle": "Programmer une séance",
-    "day": "Jour",
-    "time": "Heure",
-    "timeOptional": "Facultatif — laissez vide si le candidat passe quand il peut.",
-    "planNote": "À travailler",
-    "planNoteHint": "Repris de la dernière séance. L'instructeur le verra dans « Aujourd'hui »."
-  },
   "lessons": {
     "add": "+ Ajouter des heures",
     "addTitle": "Ajouter des heures",
@@ -395,5 +372,37 @@
     "C": "C — Poids lourd",
     "D": "D — Transport en commun",
     "F": "F — Véhicule aménagé"
+  },
+  "calendar": {
+    "title": "Calendrier",
+    "tabDay": "Jour",
+    "tabWeek": "Semaine",
+    "previousWeek": "Précédente",
+    "nextWeek": "Suivante",
+    "thisWeek": "Cette semaine",
+    "weekSummary": "{{planned}} séance(s) encore à faire sur {{total}} cette semaine.",
+    "todayBadge": "Aujourd'hui",
+    "dayEmpty": "Rien de prévu",
+    "dayCount": "{{count}} séance(s)",
+    "previousDay": "Veille",
+    "nextDay": "Lendemain",
+    "backToToday": "Aujourd'hui",
+    "summary": "{{planned}} séance(s) encore à faire sur {{total}}.",
+    "empty": "Rien de prévu ce jour-là.",
+    "noTime": "Sans heure",
+    "markDone": "Fait",
+    "markMissed": "Absent",
+    "markCancelled": "Annulée",
+    "status_planned": "Prévue",
+    "status_done": "Effectuée",
+    "status_missed": "Absent",
+    "status_cancelled": "Annulée",
+    "book": "Programmer une séance",
+    "bookTitle": "Programmer une séance",
+    "day": "Jour",
+    "time": "Heure",
+    "timeOptional": "Facultatif — laissez vide si le candidat passe quand il peut.",
+    "planNote": "À travailler",
+    "planNoteHint": "Repris de la dernière séance. L'instructeur le verra dans « Aujourd'hui »."
   }
 }

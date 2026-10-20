@@ -11,7 +11,7 @@ import ReceiptPage from "@/features/print/ReceiptPage";
 import CashFlowPage from "@/features/reports/CashFlowPage";
 import ReceivablesPage from "@/features/reports/ReceivablesPage";
 import SettingsPage from "@/features/settings/SettingsPage";
-import TodayPage from "@/features/today/TodayPage";
+import CalendarPage from "@/features/calendar/CalendarPage";
 
 /**
  * Application shell.
@@ -25,7 +25,7 @@ export default function App() {
 
   const navItems = [
     { to: "/", labelKey: "nav.home" },
-    { to: "/today", labelKey: "nav.today" },
+    { to: "/calendar", labelKey: "nav.calendar" },
     { to: "/candidates", labelKey: "nav.candidates" },
     { to: "/receivables", labelKey: "nav.receivables" },
     { to: "/cash-flow", labelKey: "nav.cashFlow" },
@@ -72,7 +72,7 @@ export default function App() {
       <main className="mx-auto max-w-6xl px-4 py-6">
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/today" element={<TodayPage />} />
+          <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/candidates" element={<CandidatesPage />} />
           <Route path="/candidates/:id" element={<CandidateDetailPage />} />
           <Route path="/receivables" element={<ReceivablesPage />} />
