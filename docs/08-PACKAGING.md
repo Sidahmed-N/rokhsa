@@ -128,11 +128,42 @@ for something he needs today, which is the only real test of a tier boundary.
 > relationship afterwards. A Basic school that loses a year of records ends your reputation in
 > that wilaya permanently.
 
-### Pro only
+### Pro only — kept deliberately small
 
-Multiple instructors · multiple logins with roles · per-instructor pass rates and productivity ·
-cash accountability by person and audit-log browsing · instructor payroll · vehicle cost-per-km
-and profitability comparison · full report suite with Excel export · multi-branch (post-v1).
+**Decided 2026-10-20.** Pro is TWO things:
+
+- **Multiple logins with roles** — the secretary takes payments but does not see revenue
+- **Who took which payment, and the audit trail**
+
+One sentence to sell: *"when someone else works here."*
+
+**Why so small.** If Pro contains everything, the roadmap is spent and there is nothing
+left to sell above it. Everything held back stays **unbuilt**, not built-and-withheld —
+withholding a finished feature is a tax on the customers you already have, whereas not
+building it yet costs nothing and keeps every option open. The remainder can later become a
+third tier, an add-on, or a paid v2, and that choice is made from real customers rather than
+guessed now. The licence file already carries a version ceiling, so a paid v2 needs no
+re-licensing.
+
+Shipping a small Pro is also faster, which matters while revenue is the goal.
+
+**On the shelf, unbuilt:** instructor payroll · per-instructor pass rates and productivity ·
+vehicle cost-per-km and profitability · full report suite with Excel export · multi-branch.
+
+### What Pro must NOT gate: recording reality
+
+**The number of instructors is not a Pro feature.** An earlier draft of this document gated
+it and that was wrong. The app's whole principle is that it records what the school actually
+does; refusing to record which instructor taught an hour blocks the truth rather than a
+feature. It also punishes the exact moment a school grows — an owner who has just taken on a
+salary finds the app got worse unless he pays.
+
+The line is: **record freely, charge for insight and for multi-user.** Any number of
+instructors in Basic; per-instructor pass rates, hours and payroll in Pro.
+
+Nothing is lost commercially. A school with four instructors almost certainly also has
+someone at the desk who should not see revenue, and an owner who wants to know which
+instructor's candidates pass. Both are still Pro.
 
 ### Never cap candidates on a paid edition
 Hitting a cap mid-season locks an owner out of his own business, and it teaches him to stop
