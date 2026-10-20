@@ -47,6 +47,23 @@ pub struct BackupInfo {
     pub size_bytes: i64,
     pub candidates: i64,
     pub payments: i64,
+    /// Highest migration applied to that file.
+    pub schema_version: i64,
+}
+
+/// Highest migration this binary knows about.
+///
+/// A backup from a NEWER version of the app cannot be restored into this one:
+/// migrations only go forward, so the database would contain tables and
+/// columns this build has never heard of. sqlx would fail at startup with a
+/// message about a missing migration, which looks like a corrupt file rather
+/// than an out-of-date app.
+fn known_schema_version() -> i64 {
+    sqlx::migrate!("./migrations")
+        .iter()
+        .map(|m| m.version)
+        .max()
+        .unwrap_or(0)
 }
 
 pub fn backups_dir(data_dir: &Path) -> PathBuf {
@@ -100,7 +117,19 @@ pub async fn inspect(path: &Path) -> Result<BackupInfo, AppError> {
         .await
         .map_err(|_| AppError::validation("backup.error.notTariqi"))?;
 
+    let schema: (Option<i64>,) = sqlx::query_as("SELECT MAX(version) FROM _sqlx_migrations")
+        .fetch_one(&mut conn)
+        .await
+        .map_err(|_| AppError::validation("backup.error.notTariqi"))?;
+    let schema_version = schema.0.unwrap_or(0);
+
     conn.close().await.ok();
+
+    // Refuse a file from a newer build rather than let it fail confusingly at
+    // the next startup, after the live database has already been swapped out.
+    if schema_version > known_schema_version() {
+        return Err(AppError::validation("backup.error.newerVersion"));
+    }
 
     let meta = std::fs::metadata(path).map_err(|e| io_err("reading backup metadata", e))?;
     let created: DateTime<Utc> = meta
@@ -118,6 +147,7 @@ pub async fn inspect(path: &Path) -> Result<BackupInfo, AppError> {
         size_bytes: meta.len() as i64,
         candidates: candidates.0,
         payments: payments.0,
+        schema_version,
     })
 }
 
@@ -127,7 +157,12 @@ pub async fn inspect(path: &Path) -> Result<BackupInfo, AppError> {
 /// is deleted, so a file in the backups folder always means a good backup.
 pub async fn write_backup(pool: &SqlitePool, dest: &Path) -> Result<BackupInfo, AppError> {
     if let Some(parent) = dest.parent() {
-        std::fs::create_dir_all(parent).map_err(|e| io_err("creating backup folder", e))?;
+        // A removed USB stick fails here rather than later, with a message
+        // about the destination rather than about the database.
+        if let Err(e) = std::fs::create_dir_all(parent) {
+            eprintln!("[tariqi] cannot reach backup folder {}: {e}", parent.display());
+            return Err(AppError::validation("backup.error.destinationUnreachable"));
+        }
     }
 
     // VACUUM INTO refuses to overwrite, which is the behaviour we want for a
@@ -142,10 +177,18 @@ pub async fn write_backup(pool: &SqlitePool, dest: &Path) -> Result<BackupInfo, 
     .fetch_one(pool)
     .await?;
 
-    sqlx::query("VACUUM INTO ?1")
+    // A USB stick pulled mid-write, or a full disk, fails here. Clean up
+    // whatever landed and say what actually went wrong — "database error" sends
+    // the owner to the wrong problem entirely.
+    if let Err(e) = sqlx::query("VACUUM INTO ?1")
         .bind(dest.to_string_lossy().to_string())
         .execute(pool)
-        .await?;
+        .await
+    {
+        std::fs::remove_file(dest).ok();
+        eprintln!("[tariqi] backup write to {} failed: {e}", dest.display());
+        return Err(AppError::validation("backup.error.writeFailed"));
+    }
 
     let info = match inspect(dest).await {
         Ok(info) => info,
@@ -436,6 +479,85 @@ mod tests {
         conn.close().await.ok();
 
         assert!(inspect(&foreign).await.is_err());
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[tokio::test]
+    async fn a_backup_from_a_newer_version_of_the_app_is_refused() {
+        // Otherwise it is accepted, swapped in at startup, and THEN fails —
+        // after the working database has already been moved aside.
+        let dir = temp_dir("newer");
+        let (_, pool) = seeded_db(&dir, &["BENALI"]).await;
+        let dest = dir.join("from-the-future.db");
+        write_backup(&pool, &dest).await.unwrap();
+        pool.close().await;
+
+        // Pretend a later release added migration 9999.
+        let options = SqliteConnectOptions::new().filename(&dest);
+        let mut conn = SqliteConnection::connect_with(&options).await.unwrap();
+        sqlx::query(
+            "INSERT INTO _sqlx_migrations
+               (version, description, installed_on, success, checksum, execution_time)
+             VALUES (9999, 'from a newer build', datetime('now'), 1, X'00', 0)",
+        )
+        .execute(&mut conn)
+        .await
+        .unwrap();
+        conn.close().await.ok();
+
+        let result = inspect(&dest).await;
+        assert!(
+            matches!(result, Err(AppError::Validation(code, _)) if code.contains("newerVersion")),
+            "expected a newer-version refusal, got {result:?}"
+        );
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[tokio::test]
+    async fn a_backup_reports_the_schema_it_was_made_with() {
+        let dir = temp_dir("schema");
+        let (_, pool) = seeded_db(&dir, &["BENALI"]).await;
+        let dest = dir.join("out.db");
+        let info = write_backup(&pool, &dest).await.unwrap();
+        assert!(info.schema_version > 0);
+        assert_eq!(info.schema_version, known_schema_version());
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[tokio::test]
+    async fn an_unreachable_destination_fails_with_a_useful_message() {
+        // The USB stick that was pulled out before the owner clicked save.
+        let dir = temp_dir("unreachable");
+        let (_, pool) = seeded_db(&dir, &["BENALI"]).await;
+
+        let gone = PathBuf::from(r"Z:\tariqi-no-such-drive\backup.db");
+        let result = write_backup(&pool, &gone).await;
+
+        assert!(
+            matches!(result, Err(AppError::Validation(code, _)) if code.contains("destinationUnreachable") || code.contains("writeFailed")),
+            "expected a destination error, got {result:?}"
+        );
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[tokio::test]
+    async fn a_failed_write_leaves_no_half_finished_file_behind() {
+        // A file in the backups folder must always mean a good backup.
+        let dir = temp_dir("partial");
+        let (_, pool) = seeded_db(&dir, &["BENALI"]).await;
+
+        // VACUUM INTO refuses a destination that is a directory.
+        let blocked = dir.join("not-a-file");
+        std::fs::create_dir_all(&blocked).unwrap();
+        let target = blocked.join("inner");
+        std::fs::create_dir_all(&target).unwrap();
+
+        let result = write_backup(&pool, &target).await;
+        assert!(result.is_err(), "writing onto a directory must fail");
+        assert!(target.is_dir(), "and must not have replaced it");
+
         std::fs::remove_dir_all(&dir).ok();
     }
 

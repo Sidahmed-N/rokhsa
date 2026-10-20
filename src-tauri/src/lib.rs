@@ -27,6 +27,18 @@ use commands::AppState;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        // MUST be registered first. Two copies of the app would each hold the
+        // database open and each take a backup on close — and a secretary who
+        // double-clicks the icon twice would be taking payments in a window
+        // showing stale balances. The second launch focuses the first window
+        // instead of opening another.
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.unminimize();
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             // One database per installation, in the OS's per-user data

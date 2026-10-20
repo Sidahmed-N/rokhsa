@@ -38,7 +38,10 @@
     "error": {
       "corrupt": "Ce fichier est endommagé et ne peut pas être utilisé.",
       "notTariqi": "Ce fichier n'est pas une sauvegarde Tariqi.",
-      "verificationFailed": "La sauvegarde n'a pas pu être vérifiée. Elle a été supprimée."
+      "verificationFailed": "La sauvegarde n'a pas pu être vérifiée. Elle a été supprimée.",
+      "newerVersion": "Cette sauvegarde vient d'une version plus récente de l'application. Mettez Tariqi à jour avant de la restaurer.",
+      "writeFailed": "Écriture impossible. La clé USB a-t-elle été retirée, ou le disque est-il plein ? Aucun fichier incomplet n'a été laissé.",
+      "destinationUnreachable": "Ce dossier est introuvable. Vérifiez que la clé USB est bien branchée."
     }
   },
   "settings": {

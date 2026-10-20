@@ -36,9 +36,17 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 chrono = { version = "0.4", features = ["serde"] }
 thiserror = "2"
 tauri-plugin-dialog = "2.7.3"
+tauri-plugin-single-instance = "2.4.5"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+# Integration tests in tests/ link the library but not its dependencies, so
+# the crash-consistency test needs its own handle on sqlx.
+sqlx = { version = "0.8", default-features = false, features = [
+    "runtime-tokio",
+    "sqlite",
+    "macros",
+] }
 
 [profile.release]
 # The installer travels by USB stick and slow links to Algerian schools, so

@@ -264,8 +264,17 @@ npm run check        # all three — run before every commit
 
 ```bash
 cd src-tauri && cargo test --lib   # domain + db tests
+cd src-tauri && cargo test         # the above plus the crash-consistency test
 cd src-tauri && cargo run --bin seed  # load demo candidates for a demo or a visual check
 ```
+
+**The power-cut test is real and must stay in the release checklist.**
+`tests/crash_consistency.rs` starts `crash_writer`, lets it write payments, then
+kills the process with no chance to flush, and checks the database still opens, has no
+duplicate or missing receipt numbers, and that the school's receipt counter agrees with
+the payments on disk — which is the proof that allocating a number and inserting a payment
+cannot be torn apart. It also asserts the durability pragmas are actually in force, because
+losing `synchronous = FULL` in a refactor would silently make the first test meaningless.
 
 **Verify Arabic by looking at it, not by reading the code.** Append `?lang=ar` to any URL to
 force Arabic for one load. Bidi and RTL bugs are invisible in source and invisible in French —
