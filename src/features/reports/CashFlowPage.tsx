@@ -34,7 +34,7 @@ function Breakdown({
 }) {
   const locale = currentLanguage();
   return (
-    <section className="rounded-lg border border-line bg-white">
+    <section className="rounded-lg border border-line bg-surface shadow-card">
       <h2 className="border-b border-line px-4 py-2 text-xs uppercase tracking-wide text-muted">
         {title}
       </h2>
@@ -213,10 +213,10 @@ export default function CashFlowPage() {
 
   return (
     <div>
-      <h1 className="mb-4 text-xl font-semibold">{t("cashFlow.title")}</h1>
+      <h1 className="mb-5 text-[1.375rem] font-semibold tracking-tight text-ink">{t("cashFlow.title")}</h1>
 
       {error && (
-        <p className="mb-3 rounded-md border border-owed bg-white px-3 py-2 text-sm text-owed">
+        <p className="mb-3 rounded-md border border-owed/30 bg-owed-soft px-3 py-2 text-sm text-owed">
           {error}
         </p>
       )}
@@ -260,7 +260,7 @@ export default function CashFlowPage() {
         </div>
       </div>
 
-      <section className="mb-5 grid gap-4 rounded-lg border border-line bg-white px-5 py-4 sm:grid-cols-3">
+      <section className="mb-5 grid gap-4 rounded-lg border border-line bg-surface shadow-card px-5 py-4 sm:grid-cols-3">
         <div>
           <p className="text-xs uppercase tracking-wide text-muted">{t("cashFlow.in")}</p>
           <Money centimes={flow?.inCentimes ?? 0} className="text-2xl font-bold text-ok" />
@@ -304,13 +304,13 @@ export default function CashFlowPage() {
         <button
           type="button"
           onClick={() => setAdding(true)}
-          className="rounded-md bg-brand px-3 py-1.5 text-sm font-medium text-white"
+          className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md bg-brand px-3.5 text-sm font-medium text-white shadow-card transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:bg-faint"
         >
           {t("expenses.add")}
         </button>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-line bg-white">
+      <div className="overflow-hidden rounded-lg border border-line bg-surface shadow-card">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-line text-xs uppercase tracking-wide text-muted">

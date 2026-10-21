@@ -1,34 +1,64 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import {
+  ArrowDownLeft,
+  ArrowUpRight,
+  CalendarDays,
+  ChevronRight,
+  Users,
+  Wallet,
+} from "lucide-react";
 
 import { Money, Num } from "@/components/Num";
+import { Card, ErrorNote, PageHeader } from "@/components/ui/Surface";
 import RuntimeBadge from "@/features/home/RuntimeBadge";
 import { isAppError, listCandidates } from "@/lib/candidates";
-import { getCashFlow, getReceivables, thisMonth, type CashFlow, type Receivables } from "@/lib/reports";
+import {
+  getCashFlow,
+  getReceivables,
+  thisMonth,
+  type CashFlow,
+  type Receivables,
+} from "@/lib/reports";
 import { isDesktop } from "@/lib/tauri";
 
-function Tile({
+/**
+ * One headline number, as a link to the screen that explains it.
+ *
+ * The figure is the biggest thing in the tile and the label the smallest:
+ * the owner is scanning for an amount, not reading a sentence.
+ */
+function Stat({
   label,
-  children,
-  to,
+  icon,
   tone,
+  to,
+  children,
 }: {
   label: string;
-  children: React.ReactNode;
-  to: string;
+  icon: React.ReactNode;
   tone?: "owed" | "ok" | undefined;
+  to: string;
+  children: React.ReactNode;
 }) {
   return (
     <Link
       to={to}
-      className="block rounded-lg border border-line bg-white px-4 py-3 transition-colors hover:border-brand"
+      className="group rounded-lg border border-line bg-surface p-4 shadow-card transition-colors hover:border-brand-line hover:bg-brand-soft/40"
     >
-      <p className="text-xs uppercase tracking-wide text-muted">{label}</p>
+      <div className="flex items-center gap-2">
+        <span className="text-faint">{icon}</span>
+        <span className="text-xs font-medium tracking-wide text-muted uppercase">{label}</span>
+        <ChevronRight
+          className="ms-auto size-4 text-faint opacity-0 transition-opacity group-hover:opacity-100 rtl:rotate-180"
+          aria-hidden="true"
+        />
+      </div>
       <p
         className={[
-          "mt-1 text-2xl font-bold",
-          tone === "owed" ? "text-owed" : tone === "ok" ? "text-ok" : "",
+          "mt-2 text-2xl font-semibold tracking-tight",
+          tone === "owed" ? "text-owed" : tone === "ok" ? "text-ok" : "text-ink",
         ].join(" ")}
       >
         {children}
@@ -74,34 +104,58 @@ export default function HomePage() {
   }, [load]);
 
   return (
-    <div className="max-w-4xl">
-      <h1 className="text-xl font-semibold">{t("home.title")}</h1>
-      <p className="mt-1 text-sm text-muted">{t("home.subtitle")}</p>
+    <div>
+      <PageHeader title={t("home.title")} description={t("home.subtitle")} />
 
-      {error && (
-        <p className="mt-3 rounded-md border border-owed bg-white px-3 py-2 text-sm text-owed">
-          {error}
-        </p>
-      )}
+      {error && <ErrorNote>{error}</ErrorNote>}
 
-      <section className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Tile label={t("receivables.totalOwed")} to="/receivables" tone="owed">
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Stat
+          label={t("receivables.totalOwed")}
+          to="/receivables"
+          tone="owed"
+          icon={<Wallet className="size-4" aria-hidden="true" />}
+        >
           <Money centimes={receivables?.totalOwedCentimes ?? 0} whole />
-        </Tile>
-        <Tile label={t("home.inThisMonth")} to="/cash-flow" tone="ok">
+        </Stat>
+        <Stat
+          label={t("home.inThisMonth")}
+          to="/cash-flow"
+          tone="ok"
+          icon={<ArrowDownLeft className="size-4" aria-hidden="true" />}
+        >
           <Money centimes={flow?.inCentimes ?? 0} whole />
-        </Tile>
-        <Tile label={t("home.outThisMonth")} to="/cash-flow" tone="owed">
+        </Stat>
+        <Stat
+          label={t("home.outThisMonth")}
+          to="/cash-flow"
+          icon={<ArrowUpRight className="size-4" aria-hidden="true" />}
+        >
           <Money centimes={flow?.outCentimes ?? 0} whole />
-        </Tile>
-        <Tile label={t("home.candidates")} to="/candidates">
+        </Stat>
+        <Stat
+          label={t("home.candidates")}
+          to="/candidates"
+          icon={<Users className="size-4" aria-hidden="true" />}
+        >
           <Num>{candidateCount ?? 0}</Num>
-        </Tile>
+        </Stat>
       </section>
 
-      <p className="mt-4 text-sm text-muted">
-        {t("home.owingCount", { n: receivables?.enrollmentsOwing ?? 0 })}
-      </p>
+      <Card className="mt-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <CalendarDays className="size-4 shrink-0 text-faint" aria-hidden="true" />
+          <p className="text-sm text-ink-soft">
+            {t("home.owingCount", { n: receivables?.enrollmentsOwing ?? 0 })}
+          </p>
+          <Link
+            to="/calendar"
+            className="ms-auto text-sm font-medium text-brand hover:underline"
+          >
+            {t("calendar.title")}
+          </Link>
+        </div>
+      </Card>
 
       <RuntimeBadge />
     </div>

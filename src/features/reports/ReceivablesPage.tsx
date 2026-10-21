@@ -2,7 +2,10 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
+import { Wallet } from "lucide-react";
+
 import { Money, Num } from "@/components/Num";
+import { Card, EmptyState, ErrorNote, PageHeader } from "@/components/ui/Surface";
 import { currentLanguage } from "@/i18n";
 import { isAppError } from "@/lib/candidates";
 import { getReceivables, type Receivables, type ReceivableRow } from "@/lib/reports";
@@ -60,50 +63,55 @@ export default function ReceivablesPage() {
 
   return (
     <div>
-      <h1 className="mb-4 text-xl font-semibold">{t("receivables.title")}</h1>
+      <PageHeader title={t("receivables.title")} />
 
-      {error && (
-        <p className="mb-3 rounded-md border border-owed bg-white px-3 py-2 text-sm text-owed">
-          {error}
-        </p>
-      )}
+      {error && <ErrorNote>{error}</ErrorNote>}
 
       {/* The number the owner came for. */}
-      <section className="mb-5 grid gap-4 rounded-lg border border-line bg-white px-5 py-4 sm:grid-cols-2">
-        <div>
-          <p className="text-xs uppercase tracking-wide text-muted">
-            {t("receivables.totalOwed")}
-          </p>
-          <Money
-            centimes={data?.totalOwedCentimes ?? 0}
-            className="text-3xl font-bold text-owed"
-          />
+      <Card className="mb-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <p className="text-xs font-medium tracking-wide text-muted uppercase">
+              {t("receivables.totalOwed")}
+            </p>
+            <Money
+              centimes={data?.totalOwedCentimes ?? 0}
+              className="mt-1 block text-3xl font-semibold tracking-tight text-owed"
+            />
+          </div>
+          <div className="sm:text-end">
+            <p className="text-xs font-medium tracking-wide text-muted uppercase">
+              {t("receivables.owingCount")}
+            </p>
+            <p className="mt-1 text-3xl font-semibold tracking-tight text-ink">
+              <Num>{data?.enrollmentsOwing ?? 0}</Num>
+            </p>
+          </div>
         </div>
-        <div className="sm:text-end">
-          <p className="text-xs uppercase tracking-wide text-muted">
-            {t("receivables.owingCount")}
-          </p>
-          <p className="text-3xl font-bold">
-            <Num>{data?.enrollmentsOwing ?? 0}</Num>
-          </p>
-        </div>
-      </section>
+      </Card>
 
-      <label className="mb-3 flex items-center gap-2 text-sm">
+      <label className="mb-4 inline-flex cursor-pointer items-center gap-2 text-sm text-ink-soft">
         <input
           type="checkbox"
           checked={onlyStale}
           onChange={(e) => setOnlyStale(e.target.checked)}
+          className="size-4 accent-[oklch(0.52_0.16_258)]"
         />
         {t("receivables.onlyStale", { days: STALE_DAYS })}
       </label>
 
       {loading && <p className="text-sm text-muted">{t("common.loading")}</p>}
 
-      <div className="overflow-hidden rounded-lg border border-line bg-white">
+      {!loading && rows.length === 0 ? (
+        <EmptyState
+          icon={<Wallet className="size-5" aria-hidden="true" />}
+          title={onlyStale ? t("receivables.noStale") : t("receivables.nobodyOwes")}
+        />
+      ) : (
+      <Card flush className="overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-line text-xs uppercase tracking-wide text-muted">
+            <tr className="border-b border-line bg-sunken/60 text-xs tracking-wide text-muted uppercase">
               <th className="px-4 py-2 text-start font-medium">{t("candidates.colName")}</th>
               <th className="px-4 py-2 text-start font-medium">{t("candidates.colPhone")}</th>
               <th className="px-4 py-2 text-start font-medium">{t("enrollments.category")}</th>
@@ -116,28 +124,23 @@ export default function ReceivablesPage() {
             </tr>
           </thead>
           <tbody>
-            {!loading && rows.length === 0 && (
-              <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-sm text-muted">
-                  {onlyStale ? t("receivables.noStale") : t("receivables.nobodyOwes")}
-                </td>
-              </tr>
-            )}
-
             {rows.map((row) => {
               const stale = (row.daysSincePayment ?? 0) >= STALE_DAYS;
               return (
-                <tr key={row.enrollmentId} className="border-b border-line last:border-b-0">
+                <tr
+                  key={row.enrollmentId}
+                  className="border-b border-line transition-colors last:border-b-0 hover:bg-sunken/50"
+                >
                   <td className="px-4 py-2">
                     <Link
                       to={`/candidates/${row.candidateId}`}
-                      className="font-medium text-brand hover:underline"
+                      className="font-medium text-ink hover:text-brand hover:underline"
                     >
                       {name(row, locale)}
                     </Link>
                   </td>
                   <td className="px-4 py-2">
-                    {row.phone ? <Num>{row.phone}</Num> : <span className="text-muted">—</span>}
+                    {row.phone ? <Num>{row.phone}</Num> : <span className="text-faint">—</span>}
                   </td>
                   <td className="px-4 py-2">{row.categoryCode}</td>
                   <td className="px-4 py-2 text-end">
@@ -147,7 +150,7 @@ export default function ReceivablesPage() {
                     <Money centimes={row.paidCentimes} whole />
                   </td>
                   <td className="px-4 py-2 text-end">
-                    <Money centimes={row.balanceCentimes} className="font-bold text-owed" />
+                    <Money centimes={row.balanceCentimes} className="font-semibold text-owed" />
                   </td>
                   <td className="px-4 py-2">
                     {row.lastPaymentOn ? (
@@ -166,7 +169,8 @@ export default function ReceivablesPage() {
             })}
           </tbody>
         </table>
-      </div>
+      </Card>
+      )}
     </div>
   );
 }

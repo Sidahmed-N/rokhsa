@@ -115,32 +115,32 @@ export default function BackupSection() {
     });
 
   return (
-    <section className="mb-6 rounded-lg border border-line bg-white">
+    <section className="mb-6 rounded-lg border border-line bg-surface shadow-card">
       <h2 className="border-b border-line px-4 py-3 text-xs uppercase tracking-wide text-muted">
         {t("backup.section")}
       </h2>
 
       <div className="px-4 py-4">
         {error && (
-          <p className="mb-3 rounded-md border border-owed bg-white px-3 py-2 text-sm text-owed">
+          <p className="mb-3 rounded-md border border-owed/30 bg-owed-soft px-3 py-2 text-sm text-owed">
             {error}
           </p>
         )}
         {notice && (
-          <p className="mb-3 rounded-md border border-ok bg-white px-3 py-2 text-sm text-ok">
+          <p className="mb-3 rounded-md border border-ok bg-surface px-3 py-2 text-sm text-ok">
             {notice}
           </p>
         )}
 
         {status?.pendingRestore && (
-          <div className="mb-4 rounded-md border border-warn bg-white px-3 py-3">
+          <div className="mb-4 rounded-md border border-warn bg-surface px-3 py-3">
             <p className="text-sm font-medium text-warn">{t("backup.pendingTitle")}</p>
             <p className="mt-1 text-xs text-muted">{t("backup.pendingBody")}</p>
             <button
               type="button"
               onClick={onCancelRestore}
               disabled={busy}
-              className="mt-2 rounded-md border border-line px-3 py-1.5 text-xs"
+              className="mt-2 inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-md border border-line-strong bg-surface px-2.5 text-xs font-medium text-ink shadow-card transition-colors hover:bg-sunken disabled:cursor-not-allowed disabled:text-faint"
             >
               {t("backup.cancelRestore")}
             </button>
@@ -154,7 +154,7 @@ export default function BackupSection() {
             type="button"
             onClick={onBackupHere}
             disabled={busy}
-            className="rounded-md bg-brand px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+            className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md bg-brand px-3.5 text-sm font-medium text-white shadow-card transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:bg-faint"
           >
             {t("backup.now")}
           </button>
@@ -162,7 +162,7 @@ export default function BackupSection() {
             type="button"
             onClick={onBackupToUsb}
             disabled={busy}
-            className="rounded-md border border-line px-3 py-1.5 text-sm disabled:opacity-50"
+            className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md border border-line-strong bg-surface px-3.5 text-sm font-medium text-ink shadow-card transition-colors hover:bg-sunken disabled:cursor-not-allowed disabled:text-faint"
           >
             {t("backup.toUsb")}
           </button>
@@ -170,7 +170,7 @@ export default function BackupSection() {
             type="button"
             onClick={onChooseRestore}
             disabled={busy}
-            className="rounded-md border border-line px-3 py-1.5 text-sm disabled:opacity-50"
+            className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md border border-line-strong bg-surface px-3.5 text-sm font-medium text-ink shadow-card transition-colors hover:bg-sunken disabled:cursor-not-allowed disabled:text-faint"
           >
             {t("backup.restore")}
           </button>

@@ -1,19 +1,23 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Duration, Num } from "@/components/Num";
+import Button, { IconButton } from "@/components/ui/Button";
+import { Badge, Card, ErrorNote, type Tone } from "@/components/ui/Surface";
 import { currentLanguage } from "@/i18n";
 import { isAppError } from "@/lib/candidates";
 import { isDesktop } from "@/lib/tauri";
-import {
-  listRange,
-  shiftIso,
-  todayIso,
-  weekDays,
-  type DayEntry,
-} from "@/lib/training";
+import { listRange, shiftIso, todayIso, weekDays, type DayEntry } from "@/lib/training";
 
-import { candidateName, formatDayLabel } from "./shared";
+import { candidateName, formatDayLabel, formatWeekday, formatDayNumber } from "./shared";
+
+const STATUS_TONE: Record<string, Tone> = {
+  planned: "brand",
+  done: "ok",
+  missed: "warn",
+  cancelled: "neutral",
+};
 
 /**
  * The week, as a diary.
@@ -79,46 +83,39 @@ export default function WeekView({
 
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <button
-          type="button"
+      <div className="mb-5 flex flex-wrap items-center gap-2">
+        <IconButton
+          aria-label={t("calendar.previousWeek")}
           onClick={() => setDate(shiftIso(date, -7))}
-          className="rounded-md border border-line px-3 py-1.5 text-sm"
+          variant="secondary"
         >
-          ← {t("calendar.previousWeek")}
-        </button>
-        <span className="rounded-md border border-line bg-white px-3 py-1.5 text-sm">
+          <ChevronLeft className="size-4 rtl:rotate-180" aria-hidden="true" />
+        </IconButton>
+
+        <span className="inline-flex h-9 items-center rounded-md border border-line-strong bg-surface px-3 text-sm font-medium shadow-card">
           <Num>{formatDayLabel(from, locale)}</Num>
-          <span className="px-1">–</span>
+          <span className="px-1.5 text-faint">–</span>
           <Num>{formatDayLabel(to, locale)}</Num>
         </span>
-        <button
-          type="button"
+
+        <IconButton
+          aria-label={t("calendar.nextWeek")}
           onClick={() => setDate(shiftIso(date, 7))}
-          className="rounded-md border border-line px-3 py-1.5 text-sm"
+          variant="secondary"
         >
-          {t("calendar.nextWeek")} →
-        </button>
-        <button
-          type="button"
-          onClick={() => setDate(today)}
-          className="rounded-md border border-line px-3 py-1.5 text-sm"
-        >
-          {t("calendar.thisWeek")}
-        </button>
+          <ChevronRight className="size-4 rtl:rotate-180" aria-hidden="true" />
+        </IconButton>
+
+        <Button onClick={() => setDate(today)}>{t("calendar.thisWeek")}</Button>
+
+        <p className="ms-auto text-sm text-muted">
+          {loading
+            ? t("common.loading")
+            : t("calendar.weekSummary", { planned: planned.length, total: rows.length })}
+        </p>
       </div>
 
-      {error && (
-        <p className="mb-3 rounded-md border border-owed bg-white px-3 py-2 text-sm text-owed">
-          {error}
-        </p>
-      )}
-
-      <p className="mb-3 text-sm text-muted">
-        {loading
-          ? t("common.loading")
-          : t("calendar.weekSummary", { planned: planned.length, total: rows.length })}
-      </p>
+      {error && <ErrorNote>{error}</ErrorNote>}
 
       <div className="grid gap-2">
         {days.map((day) => {
@@ -126,82 +123,78 @@ export default function WeekView({
           const isToday = day === today;
 
           return (
-            <section
-              key={day}
-              className={[
-                "rounded-lg border bg-white",
-                isToday ? "border-brand" : "border-line",
-              ].join(" ")}
-            >
-              <div className="flex items-baseline gap-2 border-b border-line px-4 py-2">
+            <Card key={day} flush tone={isToday ? "brand" : undefined}>
+              <div className="flex">
+                {/* Date rail, mirroring the day view's time rail so the two
+                    tabs feel like one screen in two zooms. */}
                 <button
                   type="button"
                   onClick={() => openDay(day)}
                   className={[
-                    "text-sm font-semibold hover:underline",
-                    isToday ? "text-brand" : "",
+                    "flex w-24 shrink-0 flex-col items-center justify-center gap-0.5",
+                    "border-e border-line px-3 py-3 transition-colors hover:bg-sunken",
+                    isToday ? "bg-brand-soft" : "",
                   ].join(" ")}
                 >
-                  <Num>{formatDayLabel(day, locale)}</Num>
-                </button>
-                {isToday && (
-                  <span className="rounded-full bg-brand-soft px-2 py-0.5 text-xs text-brand">
-                    {t("calendar.todayBadge")}
+                  <span
+                    className={[
+                      "text-xs",
+                      isToday ? "font-medium text-brand" : "text-muted",
+                    ].join(" ")}
+                  >
+                    {formatWeekday(day, locale)}
                   </span>
-                )}
-                <span className="ms-auto text-xs text-muted">
-                  {forDay.length === 0
-                    ? t("calendar.dayEmpty")
-                    : t("calendar.dayCount", { count: forDay.length })}
-                </span>
-              </div>
+                  <Num
+                    className={[
+                      "text-lg font-semibold",
+                      isToday ? "text-brand" : "text-ink",
+                    ].join(" ")}
+                  >
+                    {formatDayNumber(day, locale)}
+                  </Num>
+                </button>
 
-              {forDay.length > 0 && (
-                <ul className="divide-y divide-line">
-                  {forDay.map((row) => {
-                    const done = row.status === "done";
-                    const notHeld =
-                      row.status === "missed" || row.status === "cancelled";
-
-                    return (
-                      <li
-                        key={row.id}
-                        className={[
-                          "flex flex-wrap items-baseline gap-3 px-4 py-2 text-sm",
-                          notHeld ? "opacity-60" : "",
-                        ].join(" ")}
-                      >
-                        <span className="font-medium">
-                          {row.scheduledTime ? (
-                            <Num>{row.scheduledTime}</Num>
-                          ) : (
-                            <span className="text-muted">{t("calendar.noTime")}</span>
-                          )}
-                        </span>
-                        <span>{candidateName(row, locale)}</span>
-                        <span className="rounded-full bg-brand-soft px-2 py-0.5 text-xs text-brand">
-                          {t(`lessons.kind_${row.kind}`)}
-                        </span>
-                        <span className="text-xs text-muted">
-                          <Duration minutes={row.minutes} />
-                        </span>
-                        {row.planNote && (
-                          <span className="text-xs text-muted">{row.planNote}</span>
-                        )}
-                        <span
+                <div className="min-w-0 flex-1">
+                  {forDay.length === 0 ? (
+                    <p className="px-4 py-4 text-sm text-faint">{t("calendar.dayEmpty")}</p>
+                  ) : (
+                    <ul className="divide-y divide-line">
+                      {forDay.map((row) => (
+                        <li
+                          key={row.id}
                           className={[
-                            "ms-auto text-xs",
-                            done ? "text-ok" : notHeld ? "text-warn" : "text-muted",
+                            "flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 text-sm",
+                            row.status === "missed" || row.status === "cancelled"
+                              ? "opacity-60"
+                              : "",
                           ].join(" ")}
                         >
-                          {t(`calendar.status_${row.status}`)}
-                        </span>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </section>
+                          <Num className="w-12 font-semibold text-ink">
+                            {row.scheduledTime ?? "—"}
+                          </Num>
+                          <span className="font-medium text-ink">
+                            {candidateName(row, locale)}
+                          </span>
+                          <Badge tone="brand">{t(`lessons.kind_${row.kind}`)}</Badge>
+                          <span className="text-xs text-muted">
+                            <Duration minutes={row.minutes} />
+                          </span>
+                          {row.planNote && (
+                            <span className="truncate text-xs text-muted">{row.planNote}</span>
+                          )}
+                          <Badge
+                            tone={STATUS_TONE[row.status] ?? "neutral"}
+                            className="ms-auto"
+                          >
+                            {t(`calendar.status_${row.status}`)}
+                          </Badge>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            </Card>
           );
         })}
       </div>

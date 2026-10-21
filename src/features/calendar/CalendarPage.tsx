@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { CalendarDays, CalendarRange } from "lucide-react";
 
+import Segmented from "@/components/ui/Segmented";
+import { PageHeader } from "@/components/ui/Surface";
 import { todayIso } from "@/lib/training";
 
 import DayView from "./DayView";
@@ -30,40 +33,27 @@ export default function CalendarPage() {
   );
   const [date, setDate] = useState(todayIso());
 
-  const tabs: { id: Tab; labelKey: string }[] = [
-    { id: "day", labelKey: "calendar.tabDay" },
-    { id: "week", labelKey: "calendar.tabWeek" },
-  ];
-
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <h1 className="text-xl font-semibold">{t("calendar.title")}</h1>
-
-        <div
-          className="flex rounded-md border border-line bg-white p-0.5"
-          role="tablist"
-          aria-label={t("calendar.title")}
-        >
-          {tabs.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              role="tab"
-              aria-selected={tab === item.id}
-              onClick={() => setTab(item.id)}
-              className={[
-                "rounded px-3 py-1 text-sm transition-colors",
-                tab === item.id
-                  ? "bg-brand font-medium text-white"
-                  : "text-muted hover:text-brand",
-              ].join(" ")}
-            >
-              {t(item.labelKey)}
-            </button>
-          ))}
-        </div>
-      </div>
+      <PageHeader title={t("calendar.title")}>
+        <Segmented<Tab>
+          value={tab}
+          onChange={setTab}
+          label={t("calendar.title")}
+          options={[
+            {
+              id: "day",
+              label: t("calendar.tabDay"),
+              icon: <CalendarDays className="size-4" aria-hidden="true" />,
+            },
+            {
+              id: "week",
+              label: t("calendar.tabWeek"),
+              icon: <CalendarRange className="size-4" aria-hidden="true" />,
+            },
+          ]}
+        />
+      </PageHeader>
 
       {tab === "day" ? (
         <DayView date={date} setDate={setDate} />

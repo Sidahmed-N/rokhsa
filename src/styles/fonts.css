@@ -1,0 +1,84 @@
+/* ---------------------------------------------------------------------------
+   Fonts — bundled, never fetched
+   ---------------------------------------------------------------------------
+   The app must work with zero internet, forever, so every face is declared
+   here against a file that Vite bundles into the build. There is no link to
+   Google Fonts anywhere, and there must never be one: a school in a village
+   with no connection would silently fall back to a default face, and the
+   printed receipt — which is the school's legal output — would not match what
+   the owner saw on screen.
+
+   Only the subsets we actually render are declared. Inter ships Cyrillic,
+   Greek and Vietnamese too; importing the package's own stylesheet would pull
+   all of them into the installer for nothing.
+
+   Both faces are SIL Open Font Licence, which permits bundling and
+   redistribution inside a commercial product. The licences ship in
+   node_modules and are reproduced in the installer's about box.
+
+   Inter             — Latin UI text and all digits
+   IBM Plex Sans Arabic — Arabic UI text
+
+   They are drawn as a matched pair (IBM Plex Sans Arabic was designed to sit
+   with Plex Latin, and shares Inter's humanist proportions and x-height), so
+   switching language does not change the weight or rhythm of the page.
+--------------------------------------------------------------------------- */
+
+/* Inter is a variable font: one file covers every weight from 100 to 900,
+   which is why 48 KB buys the whole scale. */
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("@fontsource-variable/inter/files/inter-latin-wght-normal.woff2") format("woff2-variations");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191,
+    U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* IBM Plex Sans Arabic is not variable, so each weight is its own file. Only
+   the four the interface uses are declared: regular, medium, semibold, bold. */
+@font-face {
+  font-family: "IBM Plex Sans Arabic";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url("@fontsource/ibm-plex-sans-arabic/files/ibm-plex-sans-arabic-arabic-400-normal.woff2") format("woff2");
+  unicode-range: U+0600-06FF, U+0750-077F, U+0870-088E, U+0890-0891, U+0898-08E1,
+    U+08E3-08FF, U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74,
+    U+FE76-FEFC;
+}
+
+@font-face {
+  font-family: "IBM Plex Sans Arabic";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url("@fontsource/ibm-plex-sans-arabic/files/ibm-plex-sans-arabic-arabic-500-normal.woff2") format("woff2");
+  unicode-range: U+0600-06FF, U+0750-077F, U+0870-088E, U+0890-0891, U+0898-08E1,
+    U+08E3-08FF, U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74,
+    U+FE76-FEFC;
+}
+
+@font-face {
+  font-family: "IBM Plex Sans Arabic";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600;
+  src: url("@fontsource/ibm-plex-sans-arabic/files/ibm-plex-sans-arabic-arabic-600-normal.woff2") format("woff2");
+  unicode-range: U+0600-06FF, U+0750-077F, U+0870-088E, U+0890-0891, U+0898-08E1,
+    U+08E3-08FF, U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74,
+    U+FE76-FEFC;
+}
+
+@font-face {
+  font-family: "IBM Plex Sans Arabic";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url("@fontsource/ibm-plex-sans-arabic/files/ibm-plex-sans-arabic-arabic-700-normal.woff2") format("woff2");
+  unicode-range: U+0600-06FF, U+0750-077F, U+0870-088E, U+0890-0891, U+0898-08E1,
+    U+08E3-08FF, U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74,
+    U+FE76-FEFC;
+}

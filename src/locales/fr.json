@@ -113,7 +113,7 @@
   },
   "expenses": {
     "title": "Dépenses",
-    "add": "+ Ajouter une dépense",
+    "add": "Ajouter une dépense",
     "addTitle": "Nouvelle dépense",
     "category": "Catégorie",
     "amount": "Montant (DA)",
@@ -174,10 +174,10 @@
   },
   "candidates": {
     "title": "Candidats",
-    "new": "+ Nouveau candidat",
+    "new": "Nouveau candidat",
     "newTitle": "Nouveau candidat",
     "editTitle": "Modifier le candidat",
-    "searchPlaceholder": "Rechercher par nom, téléphone ou NIN — en français ou en arabe",
+    "searchPlaceholder": "Nom, téléphone ou NIN…",
     "count": "{{n}} candidat(s)",
     "showingRange": "{{from}}–{{to}} sur {{total}}",
     "empty": "Aucun candidat pour l'instant. Cliquez sur « Nouveau candidat » pour commencer.",
@@ -241,7 +241,7 @@
     "unnamed": "Auto-école (nom à renseigner)"
   },
   "enrollments": {
-    "new": "+ Nouvelle inscription",
+    "new": "Nouvelle inscription",
     "newTitle": "Nouvelle inscription",
     "none": "Ce candidat n'est inscrit à aucune catégorie.",
     "category": "Catégorie",
@@ -275,7 +275,7 @@
     }
   },
   "lessons": {
-    "add": "+ Ajouter des heures",
+    "add": "Ajouter des heures",
     "addTitle": "Ajouter des heures",
     "kind": "Type",
     "kind_theory": "Code",
@@ -403,6 +403,7 @@
     "time": "Heure",
     "timeOptional": "Facultatif — laissez vide si le candidat passe quand il peut.",
     "planNote": "À travailler",
-    "planNoteHint": "Repris de la dernière séance. L'instructeur le verra dans « Aujourd'hui »."
+    "planNoteHint": "Repris de la dernière séance. L'instructeur le verra dans « Aujourd'hui ».",
+    "emptyHint": "Programmez une séance depuis la fiche d'un candidat."
   }
 }

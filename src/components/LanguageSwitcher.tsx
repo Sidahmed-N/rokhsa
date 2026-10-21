@@ -8,6 +8,10 @@ import { SUPPORTED_LANGUAGES, currentLanguage, setLanguage, type Language } from
  * Changing the language also flips the document direction, so this control is
  * the fastest way to check that a screen survives RTL. Keep it reachable on
  * every page during development.
+ *
+ * Each label is written in its own script — "Français" and "العربية", never
+ * "French" and "Arabic" — so a secretary who reads only one of them can still
+ * find the one she wants.
  */
 export default function LanguageSwitcher() {
   const { t } = useTranslation();
@@ -20,7 +24,7 @@ export default function LanguageSwitcher() {
 
   return (
     <div
-      className="flex items-center gap-1 rounded-lg border border-line bg-white p-1"
+      className="flex rounded-lg border border-line bg-sunken p-0.5"
       role="group"
       aria-label={t("common.language")}
     >
@@ -33,10 +37,8 @@ export default function LanguageSwitcher() {
             onClick={() => void setLanguage(language)}
             aria-pressed={isActive}
             className={[
-              "rounded-md px-3 py-1 text-sm transition-colors",
-              isActive
-                ? "bg-brand text-white"
-                : "text-muted hover:bg-brand-soft hover:text-brand",
+              "flex-1 rounded-[0.3rem] px-2.5 py-1 text-xs font-medium transition-colors",
+              isActive ? "bg-surface text-ink shadow-card" : "text-muted hover:text-ink",
             ].join(" ")}
           >
             {labels[language]}

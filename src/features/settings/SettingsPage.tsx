@@ -88,7 +88,7 @@ function CategoryRow({
           value={theory}
           onChange={(e) => setTheory(e.target.value)}
           dir="ltr"
-          className="w-20 rounded-md border border-line px-2 py-1 text-sm"
+          className="w-20 rounded-md border border-line-strong bg-surface px-2 py-1 text-sm outline-none transition-colors focus:border-brand focus:ring-2 focus:ring-brand-soft"
         />
       </td>
       <td className="px-3 py-2">
@@ -97,7 +97,7 @@ function CategoryRow({
           value={practical}
           onChange={(e) => setPractical(e.target.value)}
           dir="ltr"
-          className="w-20 rounded-md border border-line px-2 py-1 text-sm"
+          className="w-20 rounded-md border border-line-strong bg-surface px-2 py-1 text-sm outline-none transition-colors focus:border-brand focus:ring-2 focus:ring-brand-soft"
         />
       </td>
       <td className="px-3 py-2">
@@ -107,7 +107,7 @@ function CategoryRow({
           onChange={(e) => setPrice(e.target.value)}
           dir="ltr"
           placeholder="35000"
-          className="w-28 rounded-md border border-line px-2 py-1 text-sm"
+          className="w-28 rounded-md border border-line-strong bg-surface px-2 py-1 text-sm outline-none transition-colors focus:border-brand focus:ring-2 focus:ring-brand-soft"
         />
       </td>
       <td className="px-3 py-2 text-end">
@@ -116,7 +116,7 @@ function CategoryRow({
             type="button"
             onClick={() => void save()}
             disabled={saving}
-            className="rounded-md bg-brand px-3 py-1 text-xs font-medium text-white disabled:opacity-50"
+            className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-md bg-brand px-2.5 text-xs font-medium text-white shadow-card transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:bg-faint"
           >
             {saving ? t("common.loading") : t("common.save")}
           </button>
@@ -181,22 +181,22 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-4xl">
-      <h1 className="mb-4 text-xl font-semibold">{t("settings.title")}</h1>
+      <h1 className="mb-5 text-[1.375rem] font-semibold tracking-tight text-ink">{t("settings.title")}</h1>
 
       {error && (
-        <p className="mb-3 rounded-md border border-owed bg-white px-3 py-2 text-sm text-owed">
+        <p className="mb-3 rounded-md border border-owed/30 bg-owed-soft px-3 py-2 text-sm text-owed">
           {error}
         </p>
       )}
       {saved && (
-        <p className="mb-3 rounded-md border border-ok bg-white px-3 py-2 text-sm text-ok">
+        <p className="mb-3 rounded-md border border-ok bg-surface px-3 py-2 text-sm text-ok">
           {t("settings.saved")}
         </p>
       )}
 
       {school && (
         <>
-          <section className="mb-6 rounded-lg border border-line bg-white">
+          <section className="mb-6 rounded-lg border border-line bg-surface shadow-card">
             <h2 className="border-b border-line px-4 py-3 text-xs uppercase tracking-wide text-muted">
               {t("settings.schoolSection")}
             </h2>
@@ -267,7 +267,7 @@ export default function SettingsPage() {
             </div>
           </section>
 
-          <section className="mb-6 rounded-lg border border-line bg-white">
+          <section className="mb-6 rounded-lg border border-line bg-surface shadow-card">
             <h2 className="border-b border-line px-4 py-3 text-xs uppercase tracking-wide text-muted">
               {t("settings.receiptSection")}
             </h2>
@@ -311,7 +311,7 @@ export default function SettingsPage() {
             type="button"
             onClick={() => void save()}
             disabled={saving}
-            className="mb-8 rounded-md bg-brand px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+            className="mb-8 inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md bg-brand px-3.5 text-sm font-medium text-white shadow-card transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:bg-faint"
           >
             {saving ? t("common.loading") : t("settings.saveSchool")}
           </button>
@@ -320,7 +320,7 @@ export default function SettingsPage() {
 
       <BackupSection />
 
-      <section className="rounded-lg border border-line bg-white">
+      <section className="rounded-lg border border-line bg-surface shadow-card">
         <h2 className="border-b border-line px-4 py-3 text-xs uppercase tracking-wide text-muted">
           {t("settings.priceListSection")}
         </h2>

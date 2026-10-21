@@ -1,31 +1,58 @@
 @import "tailwindcss";
+@import "./styles/fonts.css";
 
 /* ---------------------------------------------------------------------------
-   Fonts
+   Design tokens
    ---------------------------------------------------------------------------
-   Deliberately a SYSTEM font stack, no web fonts. The app must work with zero
-   internet, so pulling Noto Naskh Arabic from Google Fonts is not an option.
+   One accent colour, a warm neutral ramp, and semantic colours that only ever
+   mean one thing: money owed, money in, something needing attention. The
+   restraint is the point — this is software a school stares at all day, and a
+   palette that shouts gets tiring by Wednesday.
 
-   On Windows, "Segoe UI" and Tahoma both shape Arabic correctly, so Arabic
-   renders properly out of the box with no download. Bundling a proper Naskh
-   face later would improve typography on printed documents, but is not needed
-   for correctness.
-   TODO before release: evaluate bundling IBM Plex Sans Arabic as a local
-   @font-face so output is identical across machines.
+   Colours are oklch so the neutral ramp stays perceptually even: equal steps
+   look equal, which is what stops a border reading as a shadow.
 --------------------------------------------------------------------------- */
 
 @theme {
-  --font-sans: "Segoe UI", system-ui, -apple-system, sans-serif;
-  --font-arabic: "Segoe UI", Tahoma, "Traditional Arabic", "Arabic Typesetting", sans-serif;
+  --font-sans: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-arabic: "IBM Plex Sans Arabic", "Segoe UI", Tahoma, sans-serif;
 
-  --color-ink: oklch(0.21 0.01 260);
-  --color-muted: oklch(0.52 0.01 260);
-  --color-line: oklch(0.89 0.005 260);
-  --color-brand: oklch(0.48 0.14 250);
-  --color-brand-soft: oklch(0.96 0.02 250);
-  --color-ok: oklch(0.55 0.13 150);
-  --color-warn: oklch(0.65 0.15 70);
-  --color-owed: oklch(0.55 0.19 25);
+  /* Neutrals. Very slightly blue so white cards read as white against them. */
+  --color-canvas: oklch(0.985 0.002 260);
+  --color-surface: oklch(1 0 0);
+  --color-sunken: oklch(0.968 0.003 260);
+  --color-line: oklch(0.922 0.004 260);
+  --color-line-strong: oklch(0.865 0.006 260);
+
+  --color-ink: oklch(0.22 0.014 265);
+  --color-ink-soft: oklch(0.42 0.012 265);
+  --color-muted: oklch(0.56 0.011 265);
+  --color-faint: oklch(0.68 0.009 265);
+
+  /* Accent. Used for the primary action, the current page, and nothing else. */
+  --color-brand: oklch(0.52 0.16 258);
+  --color-brand-hover: oklch(0.46 0.17 258);
+  --color-brand-soft: oklch(0.955 0.022 258);
+  --color-brand-line: oklch(0.88 0.05 258);
+
+  /* Semantics. */
+  --color-ok: oklch(0.56 0.13 155);
+  --color-ok-soft: oklch(0.96 0.03 155);
+  --color-warn: oklch(0.68 0.14 72);
+  --color-warn-soft: oklch(0.965 0.04 80);
+  --color-owed: oklch(0.56 0.19 25);
+  --color-owed-soft: oklch(0.966 0.02 25);
+
+  /* Elevation. Deliberately shallow: a 1px line plus a hint of shadow reads as
+     precision, a big soft shadow reads as a web page. */
+  --shadow-card: 0 1px 2px oklch(0.22 0.014 265 / 0.05);
+  --shadow-raised: 0 1px 3px oklch(0.22 0.014 265 / 0.08),
+    0 4px 12px oklch(0.22 0.014 265 / 0.05);
+  --shadow-overlay: 0 12px 32px oklch(0.22 0.014 265 / 0.16),
+    0 2px 8px oklch(0.22 0.014 265 / 0.08);
+
+  --radius-base: 0.5rem;
+  --radius-lg: 0.75rem;
 }
 
 :root {
@@ -34,27 +61,54 @@
 
 html {
   font-family: var(--font-sans);
+  /* Inter's defaults leave Latin a touch loose at UI sizes. */
+  letter-spacing: -0.006em;
 }
 
-/* Arabic gets its own face and a touch more line-height: Arabic script sits
-   taller than Latin and looks cramped at Latin leading. */
+/* Arabic gets its own face, no negative tracking (it would collide joined
+   letterforms), and more leading — Arabic script sits taller than Latin and
+   looks cramped at Latin line-height. */
 html[lang="ar"] {
   font-family: var(--font-arabic);
-  line-height: 1.75;
+  letter-spacing: 0;
+  line-height: 1.8;
 }
 
 body {
   margin: 0;
-  background: oklch(0.98 0.003 260);
+  background: var(--color-canvas);
   color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Bidirectional isolation for numbers and Latin text.
+/* One focus ring for the whole app, on keyboard only. Never remove it: this is
+   software operated at speed, often by someone tabbing through a form with a
+   candidate waiting at the desk. */
+:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+  border-radius: 0.25rem;
+}
 
+/* The office PCs this runs on are slow and some have motion sensitivity
+   settings turned on; honour them. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Bidirectional isolation for numbers and Latin text
+   ---------------------------------------------------------------------------
    In Arabic (RTL) text the bidi algorithm reorders space-separated runs, so a
    national ID stored as "109 2004 16 0054821" prints as "0054821 16 2004 109".
-   Applied by the <Num> / <Money> components in src/components/Num.tsx — use
-   those rather than this class directly, so no call site can forget it.
+   Applied by the <Num> / <Money> / <Duration> components in
+   src/components/Num.tsx — use those rather than this class directly, so no
+   call site can forget it.
 
    Note this applies in BOTH directions, not only under [lang="ar"]: isolation
    is harmless in LTR, and making it unconditional means a value cannot be
@@ -62,10 +116,18 @@ body {
 
    Numerals stay Western (1234) rather than Eastern Arabic (١٢٣٤) — Algerian
    paperwork uses Western digits for money and identifiers even in Arabic
-   documents. If a school ever wants Eastern digits, that becomes a setting. */
+   documents. If a school ever wants Eastern digits, that becomes a setting.
+--------------------------------------------------------------------------- */
 .num {
   direction: ltr;
   unicode-bidi: isolate;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* Money and counts line up in columns only if every digit is the same width,
+   including inside Arabic, where IBM Plex Sans Arabic has its own figures. */
+.tabular {
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
 }

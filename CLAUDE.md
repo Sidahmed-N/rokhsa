@@ -70,6 +70,11 @@ These are not style preferences. Breaking them causes data loss, legal problems,
   stored as `109 2004 16 0054821` prints as `0054821 16 2004 109`. It looks perfect in French
   and silently wrong in Arabic. This was a real bug in the first receipt, caught only by
   measuring character positions in the browser — not by reading the code.
+- **A unit attached to a number goes INSIDE the isolate.** `<Num>{percent}</Num>%` renders as
+  `%23` in Arabic, because the `%` left outside is a neutral character that resolves against
+  the surrounding RTL text and lands on the far side of the digits. Write
+  `<Num>{percent}%</Num>`. The same applies to any suffix a reader treats as part of the
+  value.
 - **Never put a number on both sides of an Arabic word.** `<Num>` isolates a value from
   its *surroundings*; it does not stop the bidi algorithm reordering runs *inside* it. A
   duration built as `1 سا 30` renders as `1 30 سا` — the unit is stranded at the end and
@@ -158,7 +163,14 @@ Decided in `docs/03-STACK.md` (read it for the reasoning and the rejected altern
 
 - **Shell**: Tauri 2 (Rust) — small installer, low RAM, WebView2 on Windows
 - **UI**: React + TypeScript (strict), Vite
-- **Styling**: Tailwind CSS (logical properties) + shadcn/ui (Radix primitives)
+- **Styling**: Tailwind CSS (logical properties) + a small in-house primitive set in
+  `src/components/ui` (Button, Card, Badge, Segmented, DateField, EmptyState, …).
+  **shadcn/ui was planned and never adopted** — there is no `components.json` and no Radix
+  dependency. Reconsider it when a control needs real focus management (a combobox, a menu);
+  do not half-adopt it, and do not assume it is present.
+- **Icons**: `lucide-react`. **Fonts**: Inter + IBM Plex Sans Arabic, declared in
+  `src/styles/fonts.css` against bundled woff2 files. Never add a font or icon CDN — the app
+  must render identically with no internet, on screen and on paper.
 - **i18n**: i18next + react-i18next, with document `dir` switching
 - **Database**: SQLite, accessed from Rust via `sqlx` with compile-time checked queries
 - **Rust↔TS boundary**: Tauri commands with `tauri-specta` generating TypeScript types

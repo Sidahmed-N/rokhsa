@@ -49,7 +49,7 @@ function Field({
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
         className={[
-          "w-full rounded-md border bg-white px-3 py-2 text-sm outline-none",
+          "w-full rounded-md border bg-surface px-3 py-2 text-sm outline-none",
           "focus:border-brand focus:ring-2 focus:ring-brand-soft",
           error ? "border-owed" : "border-line",
         ].join(" ")}
@@ -127,7 +127,7 @@ export default function CandidateForm({ initial, editingId, onSaved, onCancel }:
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6">
-      <div className="w-full max-w-3xl rounded-lg border border-line bg-white shadow-lg">
+      <div className="w-full max-w-3xl rounded-lg border border-line bg-surface shadow-card shadow-lg">
         <header className="border-b border-line px-5 py-3">
           <h2 className="text-base font-semibold">
             {editingId ? t("candidates.editTitle") : t("candidates.newTitle")}
@@ -136,13 +136,13 @@ export default function CandidateForm({ initial, editingId, onSaved, onCancel }:
 
         <div className="max-h-[70vh] overflow-y-auto px-5 py-4">
           {generalError && (
-            <p className="mb-4 rounded-md border border-owed bg-white px-3 py-2 text-sm text-owed">
+            <p className="mb-4 rounded-md border border-owed/30 bg-owed-soft px-3 py-2 text-sm text-owed">
               {generalError}
             </p>
           )}
 
           {duplicates.length > 0 && (
-            <div className="mb-4 rounded-md border border-warn bg-white px-3 py-2">
+            <div className="mb-4 rounded-md border border-warn bg-surface px-3 py-2">
               <p className="text-sm font-medium text-warn">
                 {t("candidates.duplicateWarning", { n: duplicates.length })}
               </p>
@@ -259,7 +259,7 @@ export default function CandidateForm({ initial, editingId, onSaved, onCancel }:
                 <select
                   value={form.gender}
                   onChange={(e) => set("gender", e.target.value)}
-                  className="w-full rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-brand"
+                  className="w-full rounded-md border border-line bg-surface px-3 py-2 text-sm outline-none focus:border-brand"
                 >
                   <option value="">{t("common.none")}</option>
                   <option value="m">{t("candidates.genderMale")}</option>
@@ -306,7 +306,7 @@ export default function CandidateForm({ initial, editingId, onSaved, onCancel }:
                 <select
                   value={form.status}
                   onChange={(e) => set("status", e.target.value)}
-                  className="w-full rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-brand"
+                  className="w-full rounded-md border border-line bg-surface px-3 py-2 text-sm outline-none focus:border-brand"
                 >
                   {CANDIDATE_STATUSES.map((status) => (
                     <option key={status} value={status}>
@@ -324,7 +324,7 @@ export default function CandidateForm({ initial, editingId, onSaved, onCancel }:
               value={form.notes}
               onChange={(e) => set("notes", e.target.value)}
               rows={2}
-              className="w-full rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-brand"
+              className="w-full rounded-md border border-line bg-surface px-3 py-2 text-sm outline-none focus:border-brand"
             />
           </label>
         </div>
