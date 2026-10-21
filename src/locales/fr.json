@@ -11,7 +11,10 @@
     "cashFlow": "Caisse",
     "settings": "Réglages",
     "printProof": "Test d'impression",
-    "calendar": "Calendrier"
+    "calendar": "Calendrier",
+    "groupDaily": "Au quotidien",
+    "groupMoney": "Argent",
+    "groupSystem": "Système"
   },
   "backup": {
     "section": "Sauvegarde",
@@ -404,6 +407,7 @@
     "timeOptional": "Facultatif — laissez vide si le candidat passe quand il peut.",
     "planNote": "À travailler",
     "planNoteHint": "Repris de la dernière séance. L'instructeur le verra dans « Aujourd'hui ».",
-    "emptyHint": "Programmez une séance depuis la fiche d'un candidat."
+    "emptyHint": "Programmez une séance depuis la fiche d'un candidat.",
+    "allKinds": "Toutes"
   }
 }

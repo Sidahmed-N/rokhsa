@@ -51,6 +51,30 @@
   --shadow-overlay: 0 12px 32px oklch(0.22 0.014 265 / 0.16),
     0 2px 8px oklch(0.22 0.014 265 / 0.08);
 
+  /* The navigation rail. Tinted, so the white content panel beside it reads
+     as raised rather than as the same sheet of paper. */
+  --color-rail: oklch(0.955 0.012 250);
+  --color-rail-edge: oklch(0.925 0.016 250);
+  --color-rail-ink: oklch(0.38 0.02 260);
+
+  /* ---------------------------------------------------------------------
+     Session kinds
+     ---------------------------------------------------------------------
+     Each kind of session gets its own colour, used on every screen, so an
+     instructor learns the calendar by shape and colour rather than by
+     reading each block. Pastel fills with a saturated ink on top: strong
+     enough to tell apart at a glance on a cheap monitor, quiet enough that
+     a full week is not a fairground.
+
+     These are NOT status colours. Green here would fight "paid"; the
+     done/missed state is shown separately. */
+  --color-theory: oklch(0.93 0.045 300);
+  --color-theory-ink: oklch(0.45 0.16 300);
+  --color-maneuvers: oklch(0.945 0.055 85);
+  --color-maneuvers-ink: oklch(0.52 0.13 70);
+  --color-road: oklch(0.93 0.045 240);
+  --color-road-ink: oklch(0.46 0.15 250);
+
   --radius-base: 0.5rem;
   --radius-lg: 0.75rem;
 }

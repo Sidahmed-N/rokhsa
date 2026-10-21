@@ -19,6 +19,7 @@ import {
   type DayEntry,
 } from "@/lib/training";
 
+import { kindStyle } from "./kinds";
 import { candidateName } from "./shared";
 
 const STATUS_TONE: Record<string, Tone> = {
@@ -150,15 +151,18 @@ export default function DayView({
               <div className="flex">
                 {/* Time rail. Gives the day a spine to scan down, instead of
                     the eye hunting for the hour inside each row. */}
-                <div className="flex w-24 shrink-0 flex-col items-center justify-center border-e border-line px-3 py-3.5">
+                <div
+                  className={[
+                    "flex w-24 shrink-0 flex-col items-center justify-center px-3 py-3.5",
+                    kindStyle(row.kind).block,
+                  ].join(" ")}
+                >
                   {row.scheduledTime ? (
-                    <Num className="text-base font-semibold text-ink">{row.scheduledTime}</Num>
+                    <Num className="text-base font-semibold">{row.scheduledTime}</Num>
                   ) : (
-                    <span className="text-center text-xs text-faint">
-                      {t("calendar.noTime")}
-                    </span>
+                    <span className="text-center text-xs opacity-70">{t("calendar.noTime")}</span>
                   )}
-                  <span className="mt-0.5 text-xs text-muted">
+                  <span className="mt-0.5 text-xs opacity-80">
                     <Duration minutes={row.minutes} />
                   </span>
                 </div>
@@ -171,7 +175,9 @@ export default function DayView({
                     >
                       {candidateName(row, locale)}
                     </Link>
-                    <Badge tone="brand">{t(`lessons.kind_${row.kind}`)}</Badge>
+                    <span className="text-xs font-medium text-muted">
+                      {t(`lessons.kind_${row.kind}`)}
+                    </span>
 
                     <Badge tone={STATUS_TONE[row.status] ?? "neutral"} className="ms-auto">
                       {t(`calendar.status_${row.status}`)}
