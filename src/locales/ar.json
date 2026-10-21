@@ -173,7 +173,9 @@
     "owingCount": "{{n}} تسجيل عليه مبلغ متبقٍّ.",
     "runtimeDesktop": "تطبيق سطح المكتب",
     "runtimeBrowser": "متصفح (تطوير) — الجزء البرمجي بلغة Rust غير متوفر",
-    "version": "الإصدار"
+    "version": "الإصدار",
+    "todayTitle": "اليوم",
+    "chaseTitle": "للمتابعة"
   },
   "candidates": {
     "title": "المترشحون",

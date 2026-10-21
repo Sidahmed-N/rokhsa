@@ -8,6 +8,7 @@ import { Money, Num } from "@/components/Num";
 import { Card, EmptyState, ErrorNote, PageHeader } from "@/components/ui/Surface";
 import { currentLanguage } from "@/i18n";
 import { isAppError } from "@/lib/candidates";
+import { personName } from "@/lib/names";
 import { getReceivables, type Receivables, type ReceivableRow } from "@/lib/reports";
 import { isDesktop } from "@/lib/tauri";
 
@@ -15,9 +16,7 @@ import { isDesktop } from "@/lib/tauri";
 const STALE_DAYS = 30;
 
 function name(row: ReceivableRow, locale: "fr" | "ar"): string {
-  const arabic = `${row.lastNameAr} ${row.firstNameAr}`.trim();
-  const latin = `${row.lastNameFr} ${row.firstNameFr}`.trim();
-  return locale === "ar" ? arabic || latin : latin || arabic;
+  return personName(row, locale);
 }
 
 /**

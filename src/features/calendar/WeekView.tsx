@@ -19,7 +19,7 @@ import {
   placeDay,
   untimed,
 } from "./grid";
-import { KINDS, kindStyle } from "./kinds";
+import { KINDS, kindStyle } from "@/lib/kinds";
 import { candidateName, formatDayLabel, formatDayNumber, formatWeekday } from "./shared";
 
 /**

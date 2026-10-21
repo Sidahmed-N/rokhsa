@@ -1,15 +1,9 @@
+import { personName } from "@/lib/names";
 import type { DayEntry } from "@/lib/training";
 
-/**
- * The candidate's name in the reader's script, falling back to the other.
- *
- * Both forms are stored and neither is derived from the other, so a school
- * that only ever typed the Latin name still sees something in Arabic.
- */
+/** The candidate's name in the reader's script. */
 export function candidateName(row: DayEntry, locale: "fr" | "ar"): string {
-  const arabic = `${row.lastNameAr} ${row.firstNameAr}`.trim();
-  const latin = `${row.lastNameFr} ${row.firstNameFr}`.trim();
-  return locale === "ar" ? arabic || latin : latin || arabic;
+  return personName(row, locale);
 }
 
 function asDate(iso: string): Date {

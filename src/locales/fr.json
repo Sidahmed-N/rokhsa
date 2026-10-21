@@ -173,7 +173,9 @@
     "owingCount": "{{n}} inscription(s) avec un reste à payer.",
     "runtimeDesktop": "Application de bureau",
     "runtimeBrowser": "Navigateur (développement) — la partie Rust n'est pas disponible",
-    "version": "version"
+    "version": "version",
+    "todayTitle": "Aujourd'hui",
+    "chaseTitle": "À relancer"
   },
   "candidates": {
     "title": "Candidats",

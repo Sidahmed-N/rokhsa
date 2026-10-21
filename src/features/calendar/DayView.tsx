@@ -20,7 +20,7 @@ import {
   type DayEntry,
 } from "@/lib/training";
 
-import { kindStyle } from "./kinds";
+import { kindStyle } from "@/lib/kinds";
 import { candidateName } from "./shared";
 
 const STATUS_TONE: Record<string, Tone> = {
