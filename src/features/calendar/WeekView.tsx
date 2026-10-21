@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 
+import FreeText from "@/components/FreeText";
 import { Num } from "@/components/Num";
 import Button, { IconButton } from "@/components/ui/Button";
 import { ErrorNote } from "@/components/ui/Surface";
@@ -312,9 +313,12 @@ export default function WeekView({
                         {candidateName(entry, locale)}
                       </span>
                       {height > 44 && entry.planNote && (
-                        <span className="block truncate text-[0.625rem] leading-tight opacity-80">
+                        <FreeText
+                          as="span"
+                          className="block truncate text-[0.625rem] leading-tight opacity-80"
+                        >
                           {entry.planNote}
-                        </span>
+                        </FreeText>
                       )}
                     </button>
                   );

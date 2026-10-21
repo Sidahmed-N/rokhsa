@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Check, ChevronLeft, ChevronRight, Phone, X } from "lucide-react";
 
+import FreeText from "@/components/FreeText";
 import { Duration, Num } from "@/components/Num";
 import Button, { IconButton } from "@/components/ui/Button";
 import DateField from "@/components/ui/DateField";
@@ -185,9 +186,15 @@ export default function DayView({
                   </div>
 
                   {/* What to work on — the reason this screen is worth opening. */}
-                  {row.planNote && <p className="mt-1.5 text-sm text-ink-soft">{row.planNote}</p>}
+                  {row.planNote && (
+                    <div className="mt-1.5">
+                      <FreeText className="text-sm text-ink-soft">{row.planNote}</FreeText>
+                    </div>
+                  )}
                   {row.status === "done" && row.notes && (
-                    <p className="mt-1.5 text-sm text-muted">{row.notes}</p>
+                    <div className="mt-1.5">
+                      <FreeText className="text-sm text-muted">{row.notes}</FreeText>
+                    </div>
                   )}
 
                   <div className="mt-2.5 flex flex-wrap items-center gap-2">

@@ -70,6 +70,12 @@ These are not style preferences. Breaking them causes data loss, legal problems,
   stored as `109 2004 16 0054821` prints as `0054821 16 2004 109`. It looks perfect in French
   and silently wrong in Arabic. This was a real bug in the first receipt, caught only by
   measuring character positions in the browser — not by reading the code.
+- **Text the school typed goes through `<FreeText>`** (`src/components/FreeText.tsx`), which
+  sets `dir="auto"`. A plan note, a lesson note or an expense description may be French or
+  Arabic and the app cannot know which. Beyond alignment, this decides where `truncate` puts
+  the ellipsis: a French note in an Arabic page without it is laid out RTL and clipped at its
+  *beginning*, so the week grid showed `...ation en ville, giratoires`. Correct in French,
+  wrong only in Arabic — the signature of every bidi bug here.
 - **A unit attached to a number goes INSIDE the isolate.** `<Num>{percent}</Num>%` renders as
   `%23` in Arabic, because the `%` left outside is a neutral character that resolves against
   the surrounding RTL text and lands on the far side of the digits. Write

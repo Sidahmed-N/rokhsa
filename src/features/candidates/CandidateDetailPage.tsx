@@ -16,6 +16,7 @@ import {
   Undo2,
 } from "lucide-react";
 
+import FreeText from "@/components/FreeText";
 import { Duration, Money, Num } from "@/components/Num";
 import Button, { IconButton } from "@/components/ui/Button";
 import { Badge, Card, EmptyState, ErrorNote, type Tone } from "@/components/ui/Surface";
@@ -407,8 +408,10 @@ export default function CandidateDetailPage() {
                                     </Badge>
                                     {/* The note used to be written and never shown. */}
                                     {(lesson.notes || lesson.planNote) && (
-                                      <span className="ms-2 text-muted">
-                                        {lesson.notes || lesson.planNote}
+                                      <span className="ms-2">
+                                        <FreeText as="span" className="text-muted">
+                                          {lesson.notes || lesson.planNote}
+                                        </FreeText>
                                       </span>
                                     )}
                                   </td>
