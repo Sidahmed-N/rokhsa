@@ -23,6 +23,15 @@ import { KINDS, kindStyle } from "./kinds";
 import { candidateName, formatDayLabel, formatDayNumber, formatWeekday } from "./shared";
 
 /**
+ * The time rail's width, shared by every row that has to line up with it.
+ *
+ * It was written out at each of the three call sites and they drifted apart,
+ * which is how the day headings came to sit a couple of pixels off the
+ * columns they label.
+ */
+const GUTTER = "w-16";
+
+/**
  * The week, as a time grid.
  *
  * A list told the owner what was booked; a grid tells him what is *not* —
@@ -175,7 +184,7 @@ export default function WeekView({
       <div className="overflow-hidden rounded-lg border border-line bg-surface shadow-card">
         {/* Day headings */}
         <div className="flex border-b border-line">
-          <div className="w-14 shrink-0 border-e border-line" />
+          <div className={[GUTTER, "shrink-0 border-e border-line"].join(" ")} />
           {days.map((day) => {
             const isToday = day === today;
             return (
@@ -205,7 +214,12 @@ export default function WeekView({
             candidate turns up when he can, so these cannot be dropped. */}
         {days.some((day) => untimed(visible.filter((r) => r.day === day)).length > 0) && (
           <div className="flex border-b border-line bg-sunken/40">
-            <div className="flex w-14 shrink-0 items-center justify-center border-e border-line px-1 py-1.5 text-center text-[0.625rem] leading-tight text-faint">
+            <div
+              className={[
+                GUTTER,
+                "flex shrink-0 items-center justify-center border-e border-line px-1 py-1.5 text-center text-[0.625rem] leading-tight text-faint",
+              ].join(" ")}
+            >
               {t("calendar.noTime")}
             </div>
             {days.map((day) => (
@@ -233,14 +247,21 @@ export default function WeekView({
 
         {/* The grid itself */}
         <div className="flex">
-          <div className="w-14 shrink-0 border-e border-line">
-            {GRID_HOURS.slice(0, -1).map((hour) => (
+          <div
+            className={[GUTTER, "relative shrink-0 border-e border-line"].join(" ")}
+            style={{ height: GRID_HEIGHT }}
+          >
+            {GRID_HOURS.map((hour, index) => (
+              // The label is centred on its hour line, not stacked above it.
+              // Spacing sits here, on the element that inherits the page
+              // direction; the dir="ltr" that keeps "08:00" from being
+              // reordered lives inside, on <Num>.
               <div
                 key={hour}
-                style={{ height: HOUR_HEIGHT }}
-                className="relative border-b border-line last:border-b-0"
+                style={{ top: index * HOUR_HEIGHT }}
+                className="absolute end-2 -translate-y-1/2"
               >
-                <Num className="absolute -top-2 end-1.5 text-[0.6875rem] text-faint">
+                <Num className="text-[0.6875rem] text-muted">
                   {`${String(hour).padStart(2, "0")}:00`}
                 </Num>
               </div>
@@ -271,8 +292,11 @@ export default function WeekView({
 
                 {/* Current time */}
                 {isToday && marker !== null && (
+                  // Behind the blocks (z-2 against their z-5). Drawn on top it
+                  // ran across the middle of whatever session was in progress
+                  // and read as a line through the candidate's name.
                   <div
-                    className="pointer-events-none absolute inset-x-0 z-10 flex items-center"
+                    className="pointer-events-none absolute inset-x-0 z-[2] flex items-center"
                     style={{ top: marker }}
                     aria-hidden="true"
                   >
@@ -293,11 +317,11 @@ export default function WeekView({
                         height,
                         // Inline-start, so the columns pack from the right
                         // in Arabic without any extra work.
-                        insetInlineStart: `${leftPercent}%`,
-                        width: `calc(${widthPercent}% - 4px)`,
+                        insetInlineStart: `calc(${leftPercent}% + 3px)`,
+                        width: `calc(${widthPercent}% - 6px)`,
                       }}
                       className={[
-                        "absolute z-[5] mx-0.5 overflow-hidden rounded-md px-1.5 py-1 text-start",
+                        "absolute z-[5] overflow-hidden rounded-md px-1.5 py-1 text-start",
                         "transition-shadow hover:shadow-raised",
                         kindStyle(entry.kind).block,
                         settled ? "opacity-55" : "",
