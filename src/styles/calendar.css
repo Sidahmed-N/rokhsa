@@ -1,0 +1,163 @@
+/* ---------------------------------------------------------------------------
+   FullCalendar, wearing this app's clothes
+   ---------------------------------------------------------------------------
+   FullCalendar ships its own look. Left alone it reads as a widget dropped
+   into the page rather than part of the product, which is the usual tell that
+   a calendar was bolted on. Everything here maps its CSS variables onto our
+   own tokens, so the grid uses the same lines, the same type scale and the
+   same colour per session kind as the day list and the dashboard.
+
+   Only variables and a few element rules — no copying FullCalendar's internal
+   class structure beyond what it documents, so an upgrade does not silently
+   un-style the screen.
+--------------------------------------------------------------------------- */
+
+.tariqi-calendar {
+  --fc-border-color: var(--color-line);
+  --fc-page-bg-color: var(--color-surface);
+  --fc-neutral-bg-color: var(--color-sunken);
+  --fc-today-bg-color: color-mix(in oklch, var(--color-brand-soft) 55%, transparent);
+  --fc-now-indicator-color: var(--color-owed);
+  --fc-event-border-color: transparent;
+  --fc-small-font-size: 0.6875rem;
+}
+
+/* The hour labels and day headings are chrome, not content: quiet, and the
+   same size as the rest of the app's secondary text. */
+.tariqi-calendar .fc {
+  font-size: 0.8125rem;
+}
+
+.tariqi-calendar .fc .fc-col-header-cell-cushion,
+.tariqi-calendar .fc .fc-daygrid-day-number {
+  padding: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-muted);
+  text-decoration: none;
+}
+
+.tariqi-calendar .fc .fc-timegrid-slot-label-cushion,
+.tariqi-calendar .fc .fc-timegrid-axis-cushion {
+  font-size: 0.6875rem;
+  color: var(--color-faint);
+  /* Times are digits: isolate them so Arabic cannot reorder "09:30". */
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+/* Today's column heading gets the same black pill the rest of the app uses
+   for "this is now". */
+.tariqi-calendar .fc .fc-day-today .fc-col-header-cell-cushion {
+  display: inline-block;
+  border-radius: 9999px;
+  background: var(--color-ink);
+  color: white;
+}
+
+.tariqi-calendar .fc .fc-scrollgrid {
+  border-radius: var(--radius-base);
+  overflow: hidden;
+}
+
+/* ------------------------------- events -------------------------------- */
+
+.tariqi-calendar .fc-event {
+  border: none;
+  border-radius: 0.375rem;
+  padding: 0;
+  box-shadow: 0 0 0 2px var(--color-surface);
+  cursor: pointer;
+}
+
+.fc-tariqi-event {
+  display: flex;
+  flex-direction: column;
+  gap: 0.0625rem;
+  overflow: hidden;
+  padding: 0.1875rem 0.375rem;
+  line-height: 1.25;
+}
+
+.fc-tariqi-time {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  /* Same reason as the axis: a time is a number run. */
+  direction: ltr;
+  unicode-bidi: isolate;
+  align-self: flex-start;
+}
+
+.fc-tariqi-title {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fc-tariqi-note {
+  font-size: 0.625rem;
+  opacity: 0.8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------------------------- session kinds ----------------------------
+   The same three colours as the day list and the filter chips, so a week can
+   be read by shape without reading any words. Deliberately NOT status
+   colours — green here would fight "paid". Status is shown by fading a
+   settled session instead.
+------------------------------------------------------------------------ */
+
+.tariqi-calendar .fc-kind-theory,
+.fc-chip-theory {
+  background-color: var(--color-theory);
+  color: var(--color-theory-ink);
+}
+
+.tariqi-calendar .fc-kind-maneuvers,
+.fc-chip-maneuvers {
+  background-color: var(--color-maneuvers);
+  color: var(--color-maneuvers-ink);
+}
+
+.tariqi-calendar .fc-kind-road,
+.fc-chip-road {
+  background-color: var(--color-road);
+  color: var(--color-road-ink);
+}
+
+.fc-dot-theory {
+  background-color: var(--color-theory-ink);
+}
+.fc-dot-maneuvers {
+  background-color: var(--color-maneuvers-ink);
+}
+.fc-dot-road {
+  background-color: var(--color-road-ink);
+}
+
+/* A session that is settled — done, missed or called off — recedes. It still
+   has to be visible: a pattern of missed sessions is something an owner
+   wants to see. */
+.tariqi-calendar .fc-status-done,
+.tariqi-calendar .fc-status-missed,
+.tariqi-calendar .fc-status-cancelled {
+  opacity: 0.5;
+}
+
+/* In the month view FullCalendar draws a dot plus text rather than a block;
+   colour the dot to match its kind. */
+.tariqi-calendar .fc-daygrid-event-dot {
+  border-color: currentColor;
+}
+
+/* The day heading is rendered by us rather than by FullCalendar, so that the
+   date keeps its own direction in Arabic. Two spans, read as one label. */
+.fc-tariqi-dayhead {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+}

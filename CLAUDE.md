@@ -174,6 +174,19 @@ Decided in `docs/03-STACK.md` (read it for the reasoning and the rejected altern
   **shadcn/ui was planned and never adopted** — there is no `components.json` and no Radix
   dependency. Reconsider it when a control needs real focus management (a combobox, a menu);
   do not half-adopt it, and do not assume it is present.
+- **Calendar**: FullCalendar (`@fullcalendar/core`, `react`, `timegrid`, `daygrid`,
+  `interaction`), all pinned to the same 6.x minor — the packages must match majors, and
+  `interaction` has no 7.x. These are **MIT and free to ship commercially**, provided the
+  copyright headers stay intact.
+  **FullCalendar Premium is NOT licensed here.** Premium is what provides *resource* views —
+  one column per instructor or per vehicle — which is exactly the obvious Pro-tier feature.
+  It starts around $480. Do not promise per-instructor columns without budgeting for it.
+  The week and month views are FullCalendar; the **day view deliberately is not**. The day is
+  a to-do list with Fait/Absent on each row, which is the morning routine that keeps the
+  hours current. A grid would make that worse.
+  FullCalendar renders its own day headings and "+N more" badge as plain text, which the
+  bidi algorithm reorders in Arabic ("17/10" became "10/17", "+1" became "1+"). Both are
+  overridden in `PlannerView.tsx` and rendered inside an isolate.
 - **Icons**: `lucide-react`. **Fonts**: Inter + IBM Plex Sans Arabic, declared in
   `src/styles/fonts.css` against bundled woff2 files. Never add a font or icon CDN — the app
   must render identically with no internet, on screen and on paper.

@@ -1,15 +1,15 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { CalendarDays, CalendarRange } from "lucide-react";
+import { CalendarDays, CalendarRange, Grid3x3 } from "lucide-react";
 
 import Segmented from "@/components/ui/Segmented";
 import { PageHeader } from "@/components/ui/Surface";
 import { todayIso } from "@/lib/training";
 
 import DayView from "./DayView";
-import WeekView from "./WeekView";
+import PlannerView from "./PlannerView";
 
-type Tab = "day" | "week";
+type Tab = "day" | "week" | "month";
 
 /**
  * The schedule.
@@ -28,9 +28,10 @@ export default function CalendarPage() {
 
   // `?tab=week` opens straight on the week, so the view can be linked to and
   // checked on screen without clicking through. Anything else means the day.
-  const [tab, setTab] = useState<Tab>(() =>
-    new URLSearchParams(window.location.search).get("tab") === "week" ? "week" : "day",
-  );
+  const [tab, setTab] = useState<Tab>(() => {
+    const asked = new URLSearchParams(window.location.search).get("tab");
+    return asked === "week" || asked === "month" ? asked : "day";
+  });
   const [date, setDate] = useState(todayIso());
 
   return (
@@ -51,6 +52,11 @@ export default function CalendarPage() {
               label: t("calendar.tabWeek"),
               icon: <CalendarRange className="size-4" aria-hidden="true" />,
             },
+            {
+              id: "month",
+              label: t("calendar.tabMonth"),
+              icon: <Grid3x3 className="size-4" aria-hidden="true" />,
+            },
           ]}
         />
       </PageHeader>
@@ -58,7 +64,11 @@ export default function CalendarPage() {
       {tab === "day" ? (
         <DayView date={date} setDate={setDate} />
       ) : (
-        <WeekView
+        <PlannerView
+          // Remounting on a view change lets FullCalendar own its own
+          // initialView rather than being driven through its imperative API.
+          key={tab}
+          view={tab}
           date={date}
           setDate={setDate}
           openDay={(iso) => {

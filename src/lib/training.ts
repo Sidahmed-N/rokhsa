@@ -230,6 +230,13 @@ export const scheduleLesson = (enrollmentId: number, input: ScheduleInput) =>
 export const completeLesson = (id: number, input: CompleteInput) =>
   call<Lesson>("complete_lesson", { id, input });
 
+export const rescheduleLesson = (
+  id: number,
+  scheduledOn: string,
+  scheduledTime: string,
+  minutes: number,
+) => call<Lesson>("reschedule_lesson", { id, scheduledOn, scheduledTime, minutes });
+
 export const setLessonNotHeld = (id: number, status: "missed" | "cancelled") =>
   call<Lesson>("set_lesson_not_held", { id, status });
 

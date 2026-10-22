@@ -422,6 +422,50 @@ pub async fn complete(
     get(pool, id).await
 }
 
+/// Move a booked session to another day, time or length.
+///
+/// What dragging a block on the calendar does. Only a session that has not
+/// happened yet can move: once it is marked done its day and length are a
+/// record of what took place and feed the candidate's hours, so changing
+/// them by dragging would quietly rewrite history. Correcting a completed
+/// session stays an explicit edit.
+pub async fn reschedule(
+    pool: &SqlitePool,
+    id: i64,
+    scheduled_on: &str,
+    scheduled_time: &str,
+    minutes: i64,
+) -> Result<Lesson, AppError> {
+    let lesson = get(pool, id).await?;
+    if lesson.status != "planned" {
+        return Err(AppError::validation("lessons.error.notPlanned"));
+    }
+
+    check_minutes(minutes)?;
+    let on = parse_planned(scheduled_on)
+        .map_err(|p| date_error(p, "scheduledOn"))?
+        .format("%Y-%m-%d")
+        .to_string();
+    let time = parse_optional_time(scheduled_time)
+        .map_err(|p| date_error(p, "scheduledTime"))?;
+
+    let now = Utc::now().to_rfc3339();
+    sqlx::query(
+        "UPDATE lessons SET scheduled_on = ?1, scheduled_time = ?2,
+                            occurred_on = ?1, minutes = ?3, updated_at = ?4
+         WHERE id = ?5 AND deleted_at IS NULL",
+    )
+    .bind(&on)
+    .bind(time)
+    .bind(minutes)
+    .bind(&now)
+    .bind(id)
+    .execute(pool)
+    .await?;
+
+    get(pool, id).await
+}
+
 /// The candidate did not turn up, or the session was called off.
 ///
 /// Kept rather than deleted: a pattern of missed sessions is something an
@@ -689,6 +733,43 @@ mod tests {
 
         assert_eq!(week.len(), 1);
         assert_eq!(week[0].day, "2026-10-20");
+    }
+
+    /// Dragging a block on the calendar moves the booking.
+    #[tokio::test]
+    async fn a_booking_can_be_moved() {
+        let pool = test_pool().await;
+        let enrollment = setup(&pool).await;
+
+        let booked = schedule(&pool, enrollment, &booking(90)).await.unwrap();
+        let moved = reschedule(&pool, booked.id, "2026-11-12", "14:00", 120)
+            .await
+            .unwrap();
+
+        assert_eq!(moved.scheduled_on.as_deref(), Some("2026-11-12"));
+        assert_eq!(moved.scheduled_time.as_deref(), Some("14:00"));
+        assert_eq!(moved.minutes, 120);
+        assert_eq!(moved.status, "planned");
+        // Still no hours: moving a booking is not teaching it.
+        assert_eq!(road_minutes(&pool, enrollment).await, 0);
+    }
+
+    /// A session that already happened is a record of what happened. Dragging
+    /// it would rewrite the hours the candidate has been credited with.
+    #[tokio::test]
+    async fn a_completed_session_cannot_be_dragged() {
+        let pool = test_pool().await;
+        let enrollment = setup(&pool).await;
+
+        let booked = schedule(&pool, enrollment, &booking(90)).await.unwrap();
+        complete(&pool, booked.id, &CompleteInput::default())
+            .await
+            .unwrap();
+
+        assert!(reschedule(&pool, booked.id, "2026-11-12", "14:00", 120)
+            .await
+            .is_err());
+        assert_eq!(road_minutes(&pool, enrollment).await, 90);
     }
 
     /// A walk-in recorded after the fact counts immediately — there is no

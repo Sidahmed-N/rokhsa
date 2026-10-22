@@ -126,6 +126,18 @@ pub async fn complete_lesson(
     Ok(lessons::complete(&state.pool, id, &input).await?)
 }
 
+/// Move a booked session — what dragging it on the calendar does.
+#[tauri::command]
+pub async fn reschedule_lesson(
+    state: State<'_, AppState>,
+    id: i64,
+    scheduled_on: String,
+    scheduled_time: String,
+    minutes: i64,
+) -> CommandResult<lessons::Lesson> {
+    Ok(lessons::reschedule(&state.pool, id, &scheduled_on, &scheduled_time, minutes).await?)
+}
+
 /// The candidate did not turn up, or it was called off.
 #[tauri::command]
 pub async fn set_lesson_not_held(

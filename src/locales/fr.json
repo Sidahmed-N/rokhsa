@@ -410,6 +410,7 @@
     "planNote": "À travailler",
     "planNoteHint": "Repris de la dernière séance. L'instructeur le verra dans « Aujourd'hui ».",
     "emptyHint": "Programmez une séance depuis la fiche d'un candidat.",
-    "allKinds": "Toutes"
+    "allKinds": "Toutes",
+    "tabMonth": "Mois"
   }
 }
