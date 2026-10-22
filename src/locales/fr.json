@@ -175,10 +175,7 @@
     "runtimeBrowser": "Navigateur (développement) — la partie Rust n'est pas disponible",
     "version": "version",
     "todayTitle": "Aujourd'hui",
-    "chaseTitle": "À relancer",
-    "vsLastPeriod": "vs. période précédente",
-    "chartTitle": "Entrées et sorties ce mois-ci",
-    "chartSummary": "Graphique sur {{days}} jours."
+    "chaseTitle": "À relancer"
   },
   "candidates": {
     "title": "Candidats",

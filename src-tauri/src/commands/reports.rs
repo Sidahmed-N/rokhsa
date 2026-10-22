@@ -50,13 +50,3 @@ pub async fn create_expense(
 pub async fn delete_expense(state: State<'_, AppState>, id: i64) -> CommandResult<()> {
     Ok(expenses::soft_delete(&state.pool, id).await?)
 }
-
-/// Money in and out, one row per day — the dashboard's chart.
-#[tauri::command]
-pub async fn get_cash_flow_daily(
-    state: State<'_, AppState>,
-    from: String,
-    to: String,
-) -> CommandResult<Vec<reports::DayTotal>> {
-    Ok(reports::cash_flow_daily(&state.pool, &from, &to).await?)
-}

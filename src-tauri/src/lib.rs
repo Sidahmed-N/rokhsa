@@ -126,7 +126,6 @@ pub fn run() {
             commands::settings::update_category,
             commands::reports::get_receivables,
             commands::reports::get_cash_flow,
-            commands::reports::get_cash_flow_daily,
             commands::reports::list_expense_categories,
             commands::reports::list_expenses,
             commands::reports::create_expense,

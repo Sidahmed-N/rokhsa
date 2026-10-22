@@ -19,7 +19,7 @@
   --font-arabic: "IBM Plex Sans Arabic", "Segoe UI", Tahoma, sans-serif;
 
   /* Neutrals. Very slightly blue so white cards read as white against them. */
-  --color-canvas: oklch(0.965 0.003 260);
+  --color-canvas: oklch(0.985 0.002 260);
   --color-surface: oklch(1 0 0);
   --color-sunken: oklch(0.968 0.003 260);
   --color-line: oklch(0.922 0.004 260);
@@ -46,22 +46,17 @@
 
   /* Elevation. Deliberately shallow: a 1px line plus a hint of shadow reads as
      precision, a big soft shadow reads as a web page. */
-  --shadow-card: 0 1px 2px oklch(0.22 0.014 265 / 0.04);
-  --shadow-raised: 0 1px 2px oklch(0.22 0.014 265 / 0.04),
-    0 8px 24px oklch(0.22 0.014 265 / 0.06);
-  /* The app card itself: a single wide, soft shadow lifting it off the
-     canvas, with no hard edge. */
-  --shadow-app: 0 1px 3px oklch(0.22 0.014 265 / 0.06),
-    0 12px 40px oklch(0.22 0.014 265 / 0.08);
+  --shadow-card: 0 1px 2px oklch(0.22 0.014 265 / 0.05);
+  --shadow-raised: 0 1px 3px oklch(0.22 0.014 265 / 0.08),
+    0 4px 12px oklch(0.22 0.014 265 / 0.05);
   --shadow-overlay: 0 12px 32px oklch(0.22 0.014 265 / 0.16),
     0 2px 8px oklch(0.22 0.014 265 / 0.08);
 
-  /* The navigation rail is the SAME white as the content; the whole app is
-     one card floating on the canvas, divided by a hairline rather than by a
-     change of tone. Depth comes from the card's edge, not from a tint. */
-  --color-rail: oklch(1 0 0);
-  --color-rail-edge: oklch(0.93 0.004 260);
-  --color-rail-ink: oklch(0.42 0.012 265);
+  /* The navigation rail. Tinted, so the white content panel beside it reads
+     as raised rather than as the same sheet of paper. */
+  --color-rail: oklch(0.955 0.012 250);
+  --color-rail-edge: oklch(0.925 0.016 250);
+  --color-rail-ink: oklch(0.38 0.02 260);
 
   /* ---------------------------------------------------------------------
      Session kinds
@@ -85,8 +80,8 @@
   --color-road: oklch(0.9 0.055 240);
   --color-road-ink: oklch(0.35 0.14 250);
 
-  --radius-base: 0.625rem;
-  --radius-lg: 0.875rem;
+  --radius-base: 0.5rem;
+  --radius-lg: 0.75rem;
 }
 
 :root {

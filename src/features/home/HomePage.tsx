@@ -7,8 +7,6 @@ import {
   Check,
   ChevronRight,
   Phone,
-  TrendingDown,
-  TrendingUp,
   Users,
   Wallet,
 } from "lucide-react";
@@ -22,15 +20,11 @@ import RuntimeBadge from "@/features/home/RuntimeBadge";
 import { isAppError, listCandidates } from "@/lib/candidates";
 import { kindStyle } from "@/lib/kinds";
 import { personName } from "@/lib/names";
-import MoneyChart from "@/features/home/MoneyChart";
 import {
   getCashFlow,
-  getCashFlowDaily,
   getReceivables,
-  previousPeriod,
   thisMonth,
   type CashFlow,
-  type DayTotal,
   type ReceivableRow,
   type Receivables,
 } from "@/lib/reports";
@@ -52,55 +46,17 @@ const PANEL_ROWS = 5;
  * The figure is the biggest thing in the tile and the label the smallest:
  * the owner is scanning for an amount, not reading a sentence.
  */
-/**
- * The change against the same span one period back.
- *
- * Direction is not the same as good: more money in is good, more money out
- * is not, so the caller says which way is up. Omitted entirely when the
- * previous period was zero — "+100%" against nothing means nothing.
- */
-function Delta({ now, before, moreIsGood }: { now: number; before: number; moreIsGood: boolean }) {
-  const { t } = useTranslation();
-  if (before <= 0) return null;
-
-  const percent = Math.round(((now - before) / before) * 100);
-  if (percent === 0) return null;
-
-  const up = percent > 0;
-  const good = up === moreIsGood;
-  const Icon = up ? TrendingUp : TrendingDown;
-
-  return (
-    <span className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs">
-      <span
-        className={[
-          "inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 font-medium",
-          good ? "bg-ok-soft text-ok" : "bg-owed-soft text-owed",
-        ].join(" ")}
-      >
-        <Icon className="size-3" aria-hidden="true" />
-        {/* The sign and the % both sit INSIDE the isolate; left outside, the
-            bidi algorithm moves them to the far side of the digits. */}
-        <Num>{`${up ? "+" : "−"}${Math.abs(percent)}%`}</Num>
-      </span>
-      <span className="text-muted">{t("home.vsLastPeriod")}</span>
-    </span>
-  );
-}
-
 function Stat({
   label,
   icon,
   tone,
   to,
-  delta,
   children,
 }: {
   label: string;
   icon: React.ReactNode;
   tone?: "owed" | "ok" | undefined;
   to: string;
-  delta?: React.ReactNode | undefined;
   children: React.ReactNode;
 }) {
   return (
@@ -124,7 +80,6 @@ function Stat({
       >
         {children}
       </p>
-      {delta}
     </Link>
   );
 }
@@ -184,29 +139,22 @@ export default function HomePage() {
   const [flow, setFlow] = useState<CashFlow | null>(null);
   const [candidateCount, setCandidateCount] = useState<number | null>(null);
   const [today, setToday] = useState<DayEntry[]>([]);
-  const [before, setBefore] = useState<CashFlow | null>(null);
-  const [series, setSeries] = useState<DayTotal[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!isDesktop()) return;
     const range = thisMonth();
     try {
-      const last = previousPeriod(range);
-      const [r, f, page, day, previous, daily] = await Promise.all([
+      const [r, f, page, day] = await Promise.all([
         getReceivables(),
         getCashFlow(range.from, range.to),
         listCandidates("", 1, 0),
         listDay(todayIso()),
-        getCashFlow(last.from, last.to),
-        getCashFlowDaily(range.from, range.to),
       ]);
       setReceivables(r);
       setFlow(f);
       setCandidateCount(page.total);
       setToday(day);
-      setBefore(previous);
-      setSeries(daily);
       setError(null);
     } catch (raw: unknown) {
       setError(isAppError(raw) ? t(raw.code, { defaultValue: raw.message }) : String(raw));
@@ -259,13 +207,6 @@ export default function HomePage() {
           to="/cash-flow"
           tone="ok"
           icon={<ArrowDownLeft className="size-4" aria-hidden="true" />}
-          delta={
-            <Delta
-              now={flow?.inCentimes ?? 0}
-              before={before?.inCentimes ?? 0}
-              moreIsGood
-            />
-          }
         >
           <Money centimes={flow?.inCentimes ?? 0} whole />
         </Stat>
@@ -273,13 +214,6 @@ export default function HomePage() {
           label={t("home.outThisMonth")}
           to="/cash-flow"
           icon={<ArrowUpRight className="size-4" aria-hidden="true" />}
-          delta={
-            <Delta
-              now={flow?.outCentimes ?? 0}
-              before={before?.outCentimes ?? 0}
-              moreIsGood={false}
-            />
-          }
         >
           <Money centimes={flow?.outCentimes ?? 0} whole />
         </Stat>
@@ -291,13 +225,6 @@ export default function HomePage() {
           <Num>{candidateCount ?? 0}</Num>
         </Stat>
       </section>
-
-      {series.length > 0 && (
-        <Card className="mt-4">
-          <h2 className="mb-3 text-sm font-semibold text-ink">{t("home.chartTitle")}</h2>
-          <MoneyChart days={series} />
-        </Card>
-      )}
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         {/* Who is coming in */}

@@ -175,10 +175,7 @@
     "runtimeBrowser": "متصفح (تطوير) — الجزء البرمجي بلغة Rust غير متوفر",
     "version": "الإصدار",
     "todayTitle": "اليوم",
-    "chaseTitle": "للمتابعة",
-    "vsLastPeriod": "مقارنة بالفترة السابقة",
-    "chartTitle": "الداخل والخارج هذا الشهر",
-    "chartSummary": "رسم بياني على {{days}} يوما."
+    "chaseTitle": "للمتابعة"
   },
   "candidates": {
     "title": "المترشحون",
