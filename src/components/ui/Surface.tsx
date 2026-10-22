@@ -35,7 +35,9 @@ export function Card({
   return (
     <section
       className={[
-        "rounded-lg border bg-surface shadow-card",
+        // `surface-blur` does nothing in the solid theme and frosts the card
+        // in the glass one — see styles/surfaces.css.
+        "surface-blur rounded-lg border bg-surface shadow-card",
         border,
         flush ? "" : "p-4",
         className ?? "",
@@ -75,6 +77,43 @@ export function PageHeader({
       </div>
       {description && <p className="mt-1 text-sm text-muted">{description}</p>}
     </header>
+  );
+}
+
+/**
+ * The one card on a screen that matters more than the others.
+ *
+ * Dark, so it wins without needing to be bigger, and so the figure on it can
+ * be large without the page turning into a wall of competing boxes. A screen
+ * has at most one — the moment there are two, neither is a hero.
+ */
+export function Hero({
+  label,
+  children,
+  footer,
+  action,
+}: {
+  label: string;
+  children: ReactNode;
+  footer?: ReactNode | undefined;
+  action?: ReactNode | undefined;
+}) {
+  return (
+    <section className="relative overflow-hidden rounded-xl bg-ink p-5 text-white shadow-raised">
+      {/* A single soft highlight so the dark panel is not a flat rectangle. */}
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute -top-24 -end-16 size-56 rounded-full bg-white/10 blur-2xl"
+      />
+      <div className="relative flex flex-wrap items-end gap-x-6 gap-y-3">
+        <div className="min-w-0">
+          <p className="text-xs font-medium tracking-wide text-white/60 uppercase">{label}</p>
+          <p className="mt-1.5 text-4xl font-semibold tracking-tight">{children}</p>
+          {footer && <div className="mt-2 text-sm text-white/70">{footer}</div>}
+        </div>
+        {action && <div className="ms-auto">{action}</div>}
+      </div>
+    </section>
   );
 }
 

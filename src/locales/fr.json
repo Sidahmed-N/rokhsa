@@ -84,7 +84,12 @@
       "receiptNumberLocked": "Le compteur de reçus ne peut plus être modifié : des versements existent.",
       "hoursNegative": "Les heures ne peuvent pas être négatives.",
       "priceNegative": "Le prix ne peut pas être négatif."
-    }
+    },
+    "appearance": "Apparence",
+    "surface": "Style des cartes",
+    "surfaceHint": "« Verre » est plus joli mais plus lourd ; sur un PC lent, gardez « Uni ».",
+    "surfaceSolid": "Uni",
+    "surfaceGlass": "Verre"
   },
   "receivables": {
     "title": "Créances — qui vous doit de l'argent",

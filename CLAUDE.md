@@ -187,6 +187,17 @@ Decided in `docs/03-STACK.md` (read it for the reasoning and the rejected altern
   FullCalendar renders its own day headings and "+N more" badge as plain text, which the
   bidi algorithm reorders in Arabic ("17/10" became "10/17", "+1" became "1+"). Both are
   overridden in `PlannerView.tsx` and rendered inside an isolate.
+- **Motion**: `motion` (MIT). Transforms only — a card lifting under the pointer. Never
+  animate layout, filters or shadows in a list: this runs on 4 GB and an HDD.
+- **Surface themes**: `solid` (default) and `glass`, switched in Réglages and stored in
+  localStorage as a per-device display preference — it is not business data and does not
+  belong in a backup. `?surface=glass` forces one for a single load, like `?lang=ar`.
+  Glass costs real compositing: `backdrop-filter` re-samples everything behind every
+  translucent element each frame, so the calendar's blocks and the content panel deliberately
+  do NOT blur — only cards and the rail do. The frosted tokens are more opaque than a usual
+  glassmorphism recipe because this project has twice had to fix contrast.
+  The content panel is a WINDOW onto the gradient, not a frosted sheet itself; painting it
+  made every card frost against near-white and the theme looked like the solid one, greyer.
 - **Icons**: `lucide-react`. **Fonts**: Inter + IBM Plex Sans Arabic, declared in
   `src/styles/fonts.css` against bundled woff2 files. Never add a font or icon CDN — the app
   must render identically with no internet, on screen and on paper.

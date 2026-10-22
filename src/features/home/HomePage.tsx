@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { motion } from "motion/react";
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -8,13 +9,12 @@ import {
   ChevronRight,
   Phone,
   Users,
-  Wallet,
 } from "lucide-react";
 
 import FreeText from "@/components/FreeText";
 import { Money, Num } from "@/components/Num";
 import Button from "@/components/ui/Button";
-import { Card, ErrorNote, PageHeader } from "@/components/ui/Surface";
+import { Card, ErrorNote, Hero, PageHeader } from "@/components/ui/Surface";
 import { currentLanguage } from "@/i18n";
 import RuntimeBadge from "@/features/home/RuntimeBadge";
 import { isAppError, listCandidates } from "@/lib/candidates";
@@ -59,28 +59,32 @@ function Stat({
   to: string;
   children: React.ReactNode;
 }) {
+  // Lifts under the pointer. A transform only — no layout and no blur — so
+  // it stays cheap on the machines this runs on.
   return (
-    <Link
-      to={to}
-      className="group rounded-lg border border-line bg-surface p-4 shadow-card transition-colors hover:border-brand-line hover:bg-brand-soft/40"
-    >
-      <div className="flex items-center gap-2">
-        <span className="text-faint">{icon}</span>
-        <span className="text-xs font-medium tracking-wide text-muted uppercase">{label}</span>
-        <ChevronRight
-          className="ms-auto size-4 text-faint opacity-0 transition-opacity group-hover:opacity-100 rtl:rotate-180"
-          aria-hidden="true"
-        />
-      </div>
-      <p
-        className={[
-          "mt-2 text-2xl font-semibold tracking-tight",
-          tone === "owed" ? "text-owed" : tone === "ok" ? "text-ok" : "text-ink",
-        ].join(" ")}
+    <motion.div whileHover={{ y: -2 }} transition={{ type: "spring", stiffness: 400, damping: 28 }}>
+      <Link
+        to={to}
+        className="group surface-blur block rounded-lg border border-line bg-surface p-4 shadow-card transition-all hover:border-brand-line hover:shadow-raised"
       >
-        {children}
-      </p>
-    </Link>
+        <div className="flex items-center gap-2">
+          <span className="text-faint">{icon}</span>
+          <span className="text-xs font-medium tracking-wide text-muted uppercase">{label}</span>
+          <ChevronRight
+            className="ms-auto size-4 text-faint opacity-0 transition-opacity group-hover:opacity-100 rtl:rotate-180"
+            aria-hidden="true"
+          />
+        </div>
+        <p
+          className={[
+            "mt-2 text-2xl font-semibold tracking-tight",
+            tone === "owed" ? "text-owed" : tone === "ok" ? "text-ok" : "text-ink",
+          ].join(" ")}
+        >
+          {children}
+        </p>
+      </Link>
+    </motion.div>
   );
 }
 
@@ -193,15 +197,25 @@ export default function HomePage() {
 
       {error && <ErrorNote>{error}</ErrorNote>}
 
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat
-          label={t("receivables.totalOwed")}
-          to="/receivables"
-          tone="owed"
-          icon={<Wallet className="size-4" aria-hidden="true" />}
-        >
-          <Money centimes={receivables?.totalOwedCentimes ?? 0} whole />
-        </Stat>
+      {/* The money owed is what an owner walks in worrying about, so it stops
+          being a peer of the other three and becomes the screen's hero. */}
+      <Hero
+        label={t("receivables.totalOwed")}
+        footer={t("home.owingCount", { n: receivables?.enrollmentsOwing ?? 0 })}
+        action={
+          <Link
+            to="/receivables"
+            className="inline-flex items-center gap-1 rounded-lg bg-white/15 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-white/25"
+          >
+            {t("nav.receivables")}
+            <ChevronRight className="size-4 rtl:rotate-180" aria-hidden="true" />
+          </Link>
+        }
+      >
+        <Money centimes={receivables?.totalOwedCentimes ?? 0} whole />
+      </Hero>
+
+      <section className="mt-4 grid gap-3 sm:grid-cols-3">
         <Stat
           label={t("home.inThisMonth")}
           to="/cash-flow"
