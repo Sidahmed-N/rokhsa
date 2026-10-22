@@ -305,7 +305,7 @@ export default function WeekView({
                   </div>
                 )}
 
-                {placed.map(({ entry, top, height, widthPercent, leftPercent }) => {
+                {placed.map(({ entry, top, height, widthPercent, leftPercent, layer }) => {
                   const settled = entry.status !== "planned";
                   return (
                     <button
@@ -315,13 +315,17 @@ export default function WeekView({
                       style={{
                         top,
                         height,
+                        // Later blocks sit over earlier ones, so the newest in
+                        // an overlapping run is the one fully readable.
+                        zIndex: 5 + layer,
                         // Inline-start, so the columns pack from the right
                         // in Arabic without any extra work.
                         insetInlineStart: `calc(${leftPercent}% + 3px)`,
                         width: `calc(${widthPercent}% - 6px)`,
                       }}
                       className={[
-                        "absolute z-[5] overflow-hidden rounded-md px-1.5 py-1 text-start",
+                        "absolute overflow-hidden rounded-md px-1.5 py-1 text-start",
+                        "ring-2 ring-surface",
                         "transition-shadow hover:shadow-raised",
                         kindStyle(entry.kind).block,
                         settled ? "opacity-55" : "",
