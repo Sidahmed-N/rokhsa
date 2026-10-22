@@ -79,6 +79,35 @@ export interface ExpenseInput {
   vehicleLabel: string;
 }
 
+export interface DayTotal {
+  day: string;
+  inCentimes: Centimes;
+  outCentimes: Centimes;
+}
+
+export const getCashFlowDaily = (from: string, to: string) =>
+  call<DayTotal[]>("get_cash_flow_daily", { from, to });
+
+/**
+ * The same span, one period earlier — for "vs. last month" on the dashboard.
+ *
+ * Returns the range only; the totals come from the same get_cash_flow the
+ * current period uses, so there is no second definition of what "money in"
+ * means that could drift from the first.
+ */
+export function previousPeriod(range: { from: string; to: string }): { from: string; to: string } {
+  const start = new Date(range.from);
+  const end = new Date(range.to);
+  const days = Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1;
+  const shift = (d: Date) => {
+    const out = new Date(d);
+    out.setDate(out.getDate() - days);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${out.getFullYear()}-${pad(out.getMonth() + 1)}-${pad(out.getDate())}`;
+  };
+  return { from: shift(start), to: shift(end) };
+}
+
 export const getReceivables = () => call<Receivables>("get_receivables");
 
 export const getCashFlow = (from: string, to: string) =>

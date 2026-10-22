@@ -65,8 +65,9 @@ export default function App() {
   ] as const;
 
   return (
-    <div className="flex min-h-screen bg-rail">
-      <aside className="screen-only sticky top-0 flex h-screen w-60 shrink-0 flex-col">
+    <div className="min-h-screen bg-canvas p-3">
+      <div className="flex min-h-[calc(100vh-1.5rem)] overflow-hidden rounded-2xl bg-surface shadow-app">
+      <aside className="screen-only sticky top-0 flex h-[calc(100vh-1.5rem)] w-60 shrink-0 flex-col border-e border-rail-edge">
         <div className="flex items-center gap-2.5 px-5 py-5">
           {/* The mark is the app's initial in a rounded tile — enough to feel
               like a product, with no asset to ship or to get wrong in RTL. */}
@@ -96,17 +97,17 @@ export default function App() {
                     end={to === "/"}
                     className={({ isActive }) =>
                       [
-                        "flex items-center gap-2.5 rounded-full px-3 py-2 text-sm transition-colors",
+                        "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors",
                         isActive
-                          ? "bg-surface font-medium text-ink shadow-card"
-                          : "text-rail-ink hover:bg-surface/60",
+                          ? "bg-brand-soft font-medium text-brand"
+                          : "text-rail-ink hover:bg-sunken",
                       ].join(" ")
                     }
                   >
                     {({ isActive }) => (
                       <>
                         <Icon
-                          className={["size-4 shrink-0", isActive ? "text-brand" : "text-muted"].join(
+                          className={["size-4 shrink-0", isActive ? "text-brand" : "text-faint"].join(
                             " ",
                           )}
                           aria-hidden="true"
@@ -129,7 +130,7 @@ export default function App() {
       {/* The white panel. Rounded on the side that meets the rail, which is
           the inline start in French and the inline end in Arabic — hence the
           logical corner utilities rather than rounded-l-*. */}
-      <div className="flex min-w-0 flex-1 flex-col border-s border-rail-edge bg-surface shadow-raised rounded-ss-2xl rounded-es-2xl">
+      <div className="flex min-w-0 flex-1 flex-col bg-canvas/40">
         <ClockWarning />
         <main className="mx-auto w-full max-w-5xl px-8 py-7">
           <Routes>
@@ -145,6 +146,7 @@ export default function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
+      </div>
       </div>
     </div>
   );
