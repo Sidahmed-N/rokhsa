@@ -149,27 +149,23 @@ export default function CandidatesPage() {
         />
       ) : (
         <Card flush className="overflow-hidden">
-          <table className="w-full text-sm">
+          <table className="data-table">
             <thead>
-              <tr className="border-b border-line bg-sunken/60 text-xs tracking-wide text-muted uppercase">
-                <th className="px-4 py-2.5 text-start font-medium">{t("candidates.colName")}</th>
-                <th className="px-4 py-2.5 text-start font-medium">{t("candidates.colPhone")}</th>
-                <th className="px-4 py-2.5 text-start font-medium">{t("candidates.colNin")}</th>
-                <th className="px-4 py-2.5 text-start font-medium">
-                  {t("candidates.colStatus")}
-                </th>
-                <th className="px-4 py-2.5 text-end font-medium">
-                  {t("candidates.colActions")}
-                </th>
+              <tr>
+                <th>{t("candidates.colName")}</th>
+                <th>{t("candidates.colPhone")}</th>
+                <th>{t("candidates.colNin")}</th>
+                <th>{t("candidates.colStatus")}</th>
+                <th>{t("candidates.colActions")}</th>
               </tr>
             </thead>
             <tbody>
               {items.map((candidate) => (
                 <tr
                   key={candidate.id}
-                  className="group border-b border-line transition-colors last:border-b-0 hover:bg-sunken/50"
+                  className="group"
                 >
-                  <td className="px-4 py-2.5">
+                  <td>
                     <Link
                       to={`/candidates/${candidate.id}`}
                       className="font-medium text-ink hover:text-brand hover:underline"
@@ -189,26 +185,26 @@ export default function CandidatesPage() {
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-2.5 text-ink-soft">
+                  <td className="text-ink-soft">
                     {candidate.phone ? (
                       <Num>{candidate.phone}</Num>
                     ) : (
                       <span className="text-faint">—</span>
                     )}
                   </td>
-                  <td className="px-4 py-2.5 text-ink-soft">
+                  <td className="text-ink-soft">
                     {candidate.nin ? (
                       <Num>{candidate.nin}</Num>
                     ) : (
                       <span className="text-faint">—</span>
                     )}
                   </td>
-                  <td className="px-4 py-2.5">
+                  <td>
                     <Badge tone={STATUS_TONE[candidate.status] ?? "neutral"}>
                       {t(`candidates.status_${candidate.status}`)}
                     </Badge>
                   </td>
-                  <td className="px-4 py-2.5">
+                  <td>
                     {/* Row actions stay faint until the row is hovered or
                         something in it has keyboard focus, so fifty rows do
                         not read as a hundred buttons. */}

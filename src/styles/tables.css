@@ -1,0 +1,89 @@
+/* ---------------------------------------------------------------------------
+   Data tables
+   ---------------------------------------------------------------------------
+   The candidate list, the receivables chase list and the payments log are the
+   same object three times, so they are styled once here rather than by three
+   sets of utility classes that drift apart.
+
+   The treatment is a sculpted edge, not a theme: a recessed header, hairline
+   dividers that stop short of the card's rounded corners, and a row that
+   lights up under the pointer. No heavy borders — the card around it already
+   draws the outline, and a second one inside reads as a box in a box.
+--------------------------------------------------------------------------- */
+
+.data-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.875rem;
+}
+
+/* The header sits BELOW the plane of the rows: a faint inset at the top plus
+   a definite line underneath, so the column names read as a label strip
+   rather than as the first row of data. */
+.data-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: linear-gradient(
+    to bottom,
+    var(--color-sunken),
+    color-mix(in oklch, var(--color-sunken) 55%, transparent)
+  );
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.8),
+    inset 0 -1px 0 var(--color-line-strong);
+  padding: 0.625rem 1rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  text-align: start;
+}
+
+.data-table thead th:last-child {
+  text-align: end;
+}
+
+.data-table tbody td {
+  padding: 0.625rem 1rem;
+  border-bottom: 1px solid var(--color-line);
+  vertical-align: middle;
+}
+
+/* The last row's divider would cut across the card's rounded corner. */
+.data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Hover lights the row from within rather than tinting it flat, so the
+   cursor's position is obvious without the row changing colour. */
+.data-table tbody tr {
+  transition: background-color 120ms ease;
+}
+
+.data-table tbody tr:hover {
+  background: linear-gradient(
+    to bottom,
+    color-mix(in oklch, var(--color-brand-soft) 70%, transparent),
+    color-mix(in oklch, var(--color-brand-soft) 35%, transparent)
+  );
+}
+
+/* A frosted card has no solid fill for a gradient header to sit on, so the
+   strip becomes a translucent wash instead. */
+:root[data-surface="glass"] .data-table thead th {
+  background: oklch(1 0 0 / 0.35);
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.7),
+    inset 0 -1px 0 oklch(1 0 0 / 0.6);
+}
+
+:root[data-surface="glass"] .data-table tbody td {
+  border-bottom-color: oklch(1 0 0 / 0.45);
+}
+
+:root[data-surface="glass"] .data-table tbody tr:hover {
+  background: oklch(1 0 0 / 0.3);
+}

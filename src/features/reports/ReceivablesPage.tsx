@@ -108,16 +108,16 @@ export default function ReceivablesPage() {
         />
       ) : (
       <Card flush className="overflow-hidden">
-        <table className="w-full text-sm">
+        <table className="data-table">
           <thead>
-            <tr className="border-b border-line bg-sunken/60 text-xs tracking-wide text-muted uppercase">
-              <th className="px-4 py-2 text-start font-medium">{t("candidates.colName")}</th>
-              <th className="px-4 py-2 text-start font-medium">{t("candidates.colPhone")}</th>
-              <th className="px-4 py-2 text-start font-medium">{t("enrollments.category")}</th>
-              <th className="px-4 py-2 text-end font-medium">{t("enrollments.totalDue")}</th>
-              <th className="px-4 py-2 text-end font-medium">{t("enrollments.paid")}</th>
-              <th className="px-4 py-2 text-end font-medium">{t("enrollments.balance")}</th>
-              <th className="px-4 py-2 text-start font-medium">
+            <tr>
+              <th>{t("candidates.colName")}</th>
+              <th>{t("candidates.colPhone")}</th>
+              <th>{t("enrollments.category")}</th>
+              <th className="text-end">{t("enrollments.totalDue")}</th>
+              <th className="text-end">{t("enrollments.paid")}</th>
+              <th className="text-end">{t("enrollments.balance")}</th>
+              <th>
                 {t("receivables.lastPayment")}
               </th>
             </tr>
@@ -126,11 +126,8 @@ export default function ReceivablesPage() {
             {rows.map((row) => {
               const stale = (row.daysSincePayment ?? 0) >= STALE_DAYS;
               return (
-                <tr
-                  key={row.enrollmentId}
-                  className="border-b border-line transition-colors last:border-b-0 hover:bg-sunken/50"
-                >
-                  <td className="px-4 py-2">
+                <tr key={row.enrollmentId}>
+                  <td>
                     <Link
                       to={`/candidates/${row.candidateId}`}
                       className="font-medium text-ink hover:text-brand hover:underline"
@@ -138,20 +135,20 @@ export default function ReceivablesPage() {
                       {name(row, locale)}
                     </Link>
                   </td>
-                  <td className="px-4 py-2">
+                  <td>
                     {row.phone ? <Num>{row.phone}</Num> : <span className="text-faint">—</span>}
                   </td>
-                  <td className="px-4 py-2">{row.categoryCode}</td>
-                  <td className="px-4 py-2 text-end">
+                  <td>{row.categoryCode}</td>
+                  <td className="text-end">
                     <Money centimes={row.totalDueCentimes} whole />
                   </td>
-                  <td className="px-4 py-2 text-end">
+                  <td className="text-end">
                     <Money centimes={row.paidCentimes} whole />
                   </td>
-                  <td className="px-4 py-2 text-end">
+                  <td className="text-end">
                     <Money centimes={row.balanceCentimes} className="font-semibold text-owed" />
                   </td>
-                  <td className="px-4 py-2">
+                  <td>
                     {row.lastPaymentOn ? (
                       <Num>{row.lastPaymentOn}</Num>
                     ) : (
