@@ -19,6 +19,11 @@
   --fc-today-bg-color: color-mix(in oklch, var(--color-brand-soft) 55%, transparent);
   --fc-now-indicator-color: var(--color-owed);
   --fc-event-border-color: transparent;
+  /* FullCalendar paints event text with this, and its default is white.
+     Our blocks are deliberately pale, so white text on them is invisible —
+     measured at the pixel: fill rgb(227,214,254), text rgb(243,238,255).
+     Inheriting lets each block take its own kind's ink colour instead. */
+  --fc-event-text-color: inherit;
   --fc-small-font-size: 0.6875rem;
 }
 
@@ -160,4 +165,46 @@
   display: inline-flex;
   align-items: baseline;
   gap: 0.3rem;
+}
+
+/* Half-hour slots were rendering about 20px tall, so a one-hour session had
+   40px for a time, a name and a note. Give the grid its own rhythm instead of
+   letting it collapse to fit. */
+.tariqi-calendar .fc .fc-timegrid-slot {
+  height: 1.75rem;
+}
+
+/* The name is the thing being read; make it the thing that looks like it. */
+.fc-tariqi-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* A settled session recedes, but half-opacity on an already-light fill made
+   it illegible. Mute it rather than fade it away. */
+.tariqi-calendar .fc-status-done,
+.tariqi-calendar .fc-status-missed,
+.tariqi-calendar .fc-status-cancelled {
+  opacity: 0.72;
+}
+
+/* The "+N" link is a control, not a note: make it look clickable. */
+.tariqi-calendar .fc .fc-timegrid-more-link,
+.tariqi-calendar .fc .fc-daygrid-more-link {
+  border-radius: 0.25rem;
+  background: var(--color-sunken);
+  padding: 0 0.25rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--color-ink-soft);
+}
+
+/* The kind class sits on the event root and sets `color`; everything inside
+   must inherit it rather than fall back to FullCalendar's own event colour. */
+.tariqi-calendar .fc-event,
+.tariqi-calendar .fc-event .fc-event-main,
+.tariqi-calendar .fc-event .fc-event-main-frame,
+.tariqi-calendar .fc-event .fc-event-time,
+.tariqi-calendar .fc-event .fc-event-title {
+  color: inherit;
 }

@@ -220,13 +220,19 @@ export default function PlannerView({
           slotMinTime={`${String(GRID_START_HOUR).padStart(2, "0")}:00:00`}
           slotMaxTime={`${String(GRID_END_HOUR).padStart(2, "0")}:00:00`}
           slotDuration="00:30:00"
+          /* FullCalendar's default for a time grid is to let overlapping
+             events COVER one another, which reads as a pile of cards. Side
+             by side instead: narrower, but every block's own edges are
+             visible and nothing hides behind anything. */
+          slotEventOverlap={false}
           slotLabelInterval="01:00"
           nowIndicator
-          /* At most two sessions side by side; the rest collapse into a
-             "+N" link. Three abreast in a 100px column is how the
-             hand-rolled grid became unreadable, and unlimited stacking here
-             would land in the same place. */
-          eventMaxStack={2}
+          /* ONE session across the column, the rest behind a "+N" link.
+             A day column is about 100px: split even two ways, neither name
+             fits, which is the same failure the hand-rolled grid had. The
+             week is for seeing how full a day is — the day view is where you
+             read every name. */
+          eventMaxStack={1}
           dayMaxEvents={4}
           expandRows
           allDaySlot
