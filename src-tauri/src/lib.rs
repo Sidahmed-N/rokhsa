@@ -109,6 +109,7 @@ pub fn run() {
             commands::exams::remove_exam_result,
             commands::exams::list_exam_results,
             commands::exams::get_exam_progress,
+            commands::exams::get_exam_board,
             commands::training::list_enrollments,
             commands::training::list_bookable_enrollments,
             commands::training::get_enrollment,

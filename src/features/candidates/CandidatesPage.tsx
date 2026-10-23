@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, ChevronRight, Pencil, Plus, Search, Trash2, Users } from "lucide-react";
+import { ChevronLeft, ChevronRight, Columns3, List, Pencil, Plus, Search, Trash2, Users } from "lucide-react";
 
 import { Num } from "@/components/Num";
 import Button, { IconButton } from "@/components/ui/Button";
@@ -19,6 +19,8 @@ import {
 } from "@/lib/candidates";
 import { isDesktop } from "@/lib/tauri";
 import CandidateForm from "@/features/candidates/CandidateForm";
+import ProgressBoard from "@/features/candidates/ProgressBoard";
+import Segmented from "@/components/ui/Segmented";
 
 const PAGE_SIZE = 50;
 
@@ -30,9 +32,17 @@ const STATUS_TONE: Record<string, Tone> = {
   withdrawn: "warn",
 };
 
+type View = "list" | "board";
+
 export default function CandidatesPage() {
   const { t } = useTranslation();
   const locale = currentLanguage();
+
+  // `?view=board` opens straight on the board, the same escape hatch the
+  // calendar has, so it can be looked at without clicking through.
+  const [view, setView] = useState<View>(() =>
+    new URLSearchParams(window.location.search).get("view") === "board" ? "board" : "list",
+  );
 
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
@@ -108,8 +118,30 @@ export default function CandidatesPage() {
             {t("candidates.new")}
           </Button>
         }
-      />
+      >
+        <Segmented<View>
+          value={view}
+          onChange={setView}
+          label={t("candidates.title")}
+          options={[
+            {
+              id: "list",
+              label: t("candidates.viewList"),
+              icon: <List className="size-4" aria-hidden="true" />,
+            },
+            {
+              id: "board",
+              label: t("candidates.viewBoard"),
+              icon: <Columns3 className="size-4" aria-hidden="true" />,
+            },
+          ]}
+        />
+      </PageHeader>
 
+      {view === "board" && <ProgressBoard />}
+
+      {view === "list" && (
+      <>
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <div className="relative w-full max-w-md">
           <Search
@@ -258,6 +290,9 @@ export default function CandidatesPage() {
             })}
           </span>
         </div>
+      )}
+
+      </>
       )}
 
       {editing && (

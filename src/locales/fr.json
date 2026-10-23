@@ -241,7 +241,9 @@
       "genderInvalid": "Sexe invalide.",
       "statusInvalid": "Statut invalide.",
       "phoneInvalid": "Numéro de téléphone invalide."
-    }
+    },
+    "viewList": "Liste",
+    "viewBoard": "Tableau"
   },
   "school": {
     "unnamed": "Auto-école (nom à renseigner)"
@@ -438,5 +440,12 @@
     "outcome_absent": "Absent",
     "error.outcomeInvalid": "Résultat inconnu.",
     "error.alreadyInSession": "Ce candidat est déjà dans cette session."
+  },
+  "board": {
+    "col_awaiting": "En attente",
+    "col_finished": "Terminé",
+    "col_withdrawn": "Abandons",
+    "columnEmpty": "Personne",
+    "retake": "{{n}}e tentative"
   }
 }

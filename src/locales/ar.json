@@ -241,7 +241,9 @@
       "genderInvalid": "الجنس غير صالح.",
       "statusInvalid": "الحالة غير صالحة.",
       "phoneInvalid": "رقم الهاتف غير صالح."
-    }
+    },
+    "viewList": "قائمة",
+    "viewBoard": "لوحة"
   },
   "school": {
     "unnamed": "مدرسة تعليم السياقة (الاسم غير محدد)"
@@ -438,5 +440,12 @@
     "outcome_absent": "غائب",
     "error.outcomeInvalid": "نتيجة غير معروفة.",
     "error.alreadyInSession": "هذا المترشح موجود في هذه الدورة بالفعل."
+  },
+  "board": {
+    "col_awaiting": "في الانتظار",
+    "col_finished": "أنهى التكوين",
+    "col_withdrawn": "المنقطعون",
+    "columnEmpty": "لا أحد",
+    "retake": "المحاولة {{n}}"
   }
 }

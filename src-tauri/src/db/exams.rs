@@ -525,3 +525,108 @@ mod tests {
         assert_eq!(p.next_due.as_deref(), Some("theory"));
     }
 }
+
+/// One card on the progress board.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BoardCard {
+    pub enrollment_id: i64,
+    pub candidate_id: i64,
+    pub last_name_fr: String,
+    pub first_name_fr: String,
+    pub last_name_ar: String,
+    pub first_name_ar: String,
+    pub phone: String,
+    pub category_code: String,
+    /// The enrolment's own status, which is how a withdrawal is known — that
+    /// is a decision the school made, not something the exam results imply.
+    pub enrollment_status: String,
+    pub progress: ExamProgress,
+    /// Days since the most recent exam, so a candidate stuck at one stage for
+    /// months is visible. None when they have never sat one.
+    pub days_since_exam: Option<i64>,
+}
+
+#[derive(sqlx::FromRow)]
+struct BoardRow {
+    enrollment_id: i64,
+    candidate_id: i64,
+    last_name_fr: String,
+    first_name_fr: String,
+    last_name_ar: String,
+    first_name_ar: String,
+    phone: String,
+    category_code: String,
+    enrollment_status: String,
+}
+
+/// Every live enrolment with the stage it has reached.
+///
+/// Two queries, not one per enrolment: the results come back in a single
+/// pass and are grouped here. At thirty candidates N+1 would be survivable
+/// and at three hundred it would not, and this screen is the one that gets
+/// opened when a school has grown.
+pub async fn board(pool: &SqlitePool) -> Result<Vec<BoardCard>, AppError> {
+    let rows = sqlx::query_as::<_, BoardRow>(
+        "SELECT e.id AS enrollment_id, c.id AS candidate_id,
+                c.last_name_fr, c.first_name_fr, c.last_name_ar, c.first_name_ar,
+                c.phone, e.category_code, e.status AS enrollment_status
+         FROM enrollments e
+         JOIN candidates c ON c.id = e.candidate_id
+         WHERE e.deleted_at IS NULL AND c.deleted_at IS NULL
+         ORDER BY c.last_name_fr COLLATE NOCASE, c.first_name_fr COLLATE NOCASE",
+    )
+    .fetch_all(pool)
+    .await?;
+
+    let results: Vec<(i64, String, String, String)> = sqlx::query_as(
+        "SELECT enrollment_id, kind, outcome, sat_on FROM exam_results
+         WHERE deleted_at IS NULL",
+    )
+    .fetch_all(pool)
+    .await?;
+
+    let today = Utc::now().date_naive();
+
+    let cards = rows
+        .into_iter()
+        .map(|row| {
+            let mine: Vec<&(i64, String, String, String)> = results
+                .iter()
+                .filter(|(id, _, _, _)| *id == row.enrollment_id)
+                .collect();
+
+            let attempts: Vec<Attempt> = mine
+                .iter()
+                .map(|(_, kind, outcome, _)| Attempt {
+                    kind: kind.as_str(),
+                    outcome: outcome.as_str(),
+                })
+                .collect();
+
+            let days_since_exam = mine
+                .iter()
+                .filter_map(|(_, _, _, sat_on)| {
+                    chrono::NaiveDate::parse_from_str(sat_on, "%Y-%m-%d").ok()
+                })
+                .max()
+                .map(|last| (today - last).num_days());
+
+            BoardCard {
+                enrollment_id: row.enrollment_id,
+                candidate_id: row.candidate_id,
+                last_name_fr: row.last_name_fr,
+                first_name_fr: row.first_name_fr,
+                last_name_ar: row.last_name_ar,
+                first_name_ar: row.first_name_ar,
+                phone: row.phone,
+                category_code: row.category_code,
+                enrollment_status: row.enrollment_status,
+                progress: progress(&attempts),
+                days_since_exam,
+            }
+        })
+        .collect();
+
+    Ok(cards)
+}

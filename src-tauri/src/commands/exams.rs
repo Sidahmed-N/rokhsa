@@ -83,3 +83,9 @@ pub async fn get_exam_progress(
 ) -> CommandResult<ExamProgress> {
     Ok(exams::progress_for_enrollment(&state.pool, enrollment_id).await?)
 }
+
+/// Every enrolment with the stage it has reached — the progress board.
+#[tauri::command]
+pub async fn get_exam_board(state: State<'_, AppState>) -> CommandResult<Vec<exams::BoardCard>> {
+    Ok(exams::board(&state.pool).await?)
+}

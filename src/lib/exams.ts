@@ -80,6 +80,24 @@ export interface ExamProgress {
   finished: boolean;
 }
 
+/** One card on the progress board. A card is an ENROLMENT, not a candidate. */
+export interface BoardCard {
+  enrollmentId: number;
+  candidateId: number;
+  lastNameFr: string;
+  firstNameFr: string;
+  lastNameAr: string;
+  firstNameAr: string;
+  phone: string;
+  categoryCode: string;
+  /** How a withdrawal is known — the results cannot imply one. */
+  enrollmentStatus: string;
+  progress: ExamProgress;
+  daysSinceExam: number | null;
+}
+
+export const getExamBoard = () => call<BoardCard[]>("get_exam_board");
+
 export const listExamSessions = () => call<ExamSession[]>("list_exam_sessions");
 
 export const createExamSession = (input: ExamSessionInput) =>
