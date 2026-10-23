@@ -10,7 +10,7 @@
  * window and comes back empty with site data cleared — and a theme that
  * cannot be read must never stop the app starting.
  */
-export const SURFACES = ["solid", "glass"] as const;
+export const SURFACES = ["solid", "clay", "glass"] as const;
 export type Surface = (typeof SURFACES)[number];
 
 const KEY = "tariqi.surface";
@@ -21,7 +21,7 @@ export const DEFAULT_SURFACE: Surface = "solid";
 export function currentSurface(): Surface {
   try {
     const stored = window.localStorage.getItem(KEY);
-    return stored === "glass" || stored === "solid" ? stored : DEFAULT_SURFACE;
+    return SURFACES.includes(stored as Surface) ? (stored as Surface) : DEFAULT_SURFACE;
   } catch {
     return DEFAULT_SURFACE;
   }
@@ -45,6 +45,6 @@ export function applySurface(surface: Surface): void {
  */
 export function initSurface(): void {
   const asked = new URLSearchParams(window.location.search).get("surface");
-  const forced = asked === "glass" || asked === "solid" ? asked : null;
+  const forced = SURFACES.includes(asked as Surface) ? (asked as Surface) : null;
   document.documentElement.dataset["surface"] = forced ?? currentSurface();
 }

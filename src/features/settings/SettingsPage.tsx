@@ -190,7 +190,7 @@ export default function SettingsPage() {
       {/* A display preference, kept on this device rather than in the school's
           database — two people on two machines may reasonably differ, and
           nothing about it belongs in a backup. */}
-      <section className="surface-blur mb-6 rounded-lg border border-line bg-surface shadow-card">
+      <section className="app-surface mb-6 rounded-lg border border-line bg-surface shadow-card">
         <h2 className="border-b border-line px-4 py-3 text-xs tracking-wide text-muted uppercase">
           {t("settings.appearance")}
         </h2>
@@ -209,6 +209,7 @@ export default function SettingsPage() {
               }}
               options={[
                 { id: "solid", label: t("settings.surfaceSolid") },
+                { id: "clay", label: t("settings.surfaceClay") },
                 { id: "glass", label: t("settings.surfaceGlass") },
               ]}
             />

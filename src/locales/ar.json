@@ -89,7 +89,8 @@
     "surface": "شكل البطاقات",
     "surfaceHint": "«زجاج» أجمل لكنه أثقل؛ على جهاز بطيء اترك «عادي».",
     "surfaceSolid": "عادي",
-    "surfaceGlass": "زجاج"
+    "surfaceGlass": "زجاج",
+    "surfaceClay": "طين"
   },
   "receivables": {
     "title": "المبالغ المستحقة — من عليه دين لك",

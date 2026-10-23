@@ -66,7 +66,7 @@ export default function App() {
 
   return (
     <div className="flex min-h-screen bg-rail">
-      <aside className="screen-only surface-blur sticky top-0 flex h-screen w-60 shrink-0 flex-col">
+      <aside className="screen-only app-surface sticky top-0 flex h-screen w-60 shrink-0 flex-col">
         <div className="flex items-center gap-2.5 px-5 py-5">
           {/* The mark is the app's initial in a rounded tile — enough to feel
               like a product, with no asset to ship or to get wrong in RTL. */}

@@ -89,7 +89,8 @@
     "surface": "Style des cartes",
     "surfaceHint": "« Verre » est plus joli mais plus lourd ; sur un PC lent, gardez « Uni ».",
     "surfaceSolid": "Uni",
-    "surfaceGlass": "Verre"
+    "surfaceGlass": "Verre",
+    "surfaceClay": "Argile"
   },
   "receivables": {
     "title": "Créances — qui vous doit de l'argent",
