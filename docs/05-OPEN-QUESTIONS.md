@@ -304,3 +304,62 @@ Two separate hints, neither confirmed:
 **Easy to answer during the school visit — just ask the owner.**
 
 **Answer:**
+
+---
+
+## How exams actually work — ANSWERED 23 Oct 2026
+
+Asked because the app had no exam record at all: a single `enrollments.status`
+column, which cannot say "passed the code, failed the créneau, hasn't sat the
+circulation yet".
+
+**Answered by the PM, who is the authority on this:**
+
+### 1. Candidates are presented in batches, not individually
+
+The school does not get a time per candidate. It is told, in effect, *"these
+three, tomorrow at 08:00, at this centre, for the code"*. One date, one place,
+one exam type, several candidates.
+
+→ So an **exam sitting is a real object**, not a date field on a candidate.
+The school needs to assemble the batch, print who is going, and afterwards
+record who passed. Modelling it as a per-candidate date would lose the batch,
+which is the thing the school's own paperwork is organised around.
+
+### 2. The three exams are sequential, and each gates the next
+
+```
+  code ──pass──▶ weeks of créneau training ──▶ créneau exam
+                                                   │
+                                                 pass
+                                                   ▼
+                            weeks of circulation training ──▶ circulation exam
+```
+
+A candidate sits the code first. Once passed, the instructor teaches créneau
+for several weeks; when the candidate is ready the school presents them for the
+créneau exam. Same again for circulation.
+
+Each exam is passed or failed **on its own**. Failing one means retaking *that
+one* — a *repassage* — while the earlier passes stand.
+
+→ So the three session kinds (`theory` / `maneuvers` / `road`) are not merely
+lesson types. They are the three **stages of the journey**, and which stage a
+candidate is in is derivable from which exams they have passed.
+
+### What this means for the build
+
+- `enrollments.status` as a single stored value is the wrong shape. The stage
+  is **derived** from the exam results, the same argument as the balance: a
+  stored "passed" that disagrees with the result rows is the bug.
+- **Record, do not enforce.** Per CLAUDE.md the app never refuses an action
+  because a rule says so. If the school presents someone for the créneau who
+  has not passed the code, the app warns and lets the owner decide. Schools
+  have reasons we do not know about.
+- A retake is not a correction — it is a new result for the same exam, with the
+  earlier failure kept. Attempt count matters to the owner.
+
+**Still unknown, and deliberately not assumed:**
+- Whether there is a mandatory waiting period between a failure and a retake.
+  Not needed: the app records dates, it does not police them.
+- Whether a cap on attempts exists. Same answer.

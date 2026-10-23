@@ -5,5 +5,6 @@
 
 pub mod candidate;
 pub mod dates;
+pub mod exams;
 pub mod money;
 pub mod text;
