@@ -49,7 +49,7 @@ export default function Button({
       type="button"
       {...rest}
       className={[
-        "app-button inline-flex shrink-0 items-center justify-center rounded-md font-medium",
+        "inline-flex shrink-0 items-center justify-center rounded-md font-medium",
         "transition-colors disabled:cursor-not-allowed",
         VARIANTS[variant],
         SIZES[size],
@@ -87,7 +87,7 @@ export function IconButton({
       type="button"
       {...rest}
       className={[
-        "app-button inline-flex size-9 shrink-0 items-center justify-center rounded-md",
+        "inline-flex size-9 shrink-0 items-center justify-center rounded-md",
         "transition-colors disabled:cursor-not-allowed",
         VARIANTS[variant],
         className ?? "",

@@ -70,20 +70,3 @@
     color-mix(in oklch, var(--color-brand-soft) 35%, transparent)
   );
 }
-
-/* A frosted card has no solid fill for a gradient header to sit on, so the
-   strip becomes a translucent wash instead. */
-:root[data-surface="glass"] .data-table thead th {
-  background: oklch(1 0 0 / 0.35);
-  box-shadow:
-    inset 0 1px 0 oklch(1 0 0 / 0.7),
-    inset 0 -1px 0 oklch(1 0 0 / 0.6);
-}
-
-:root[data-surface="glass"] .data-table tbody td {
-  border-bottom-color: oklch(1 0 0 / 0.45);
-}
-
-:root[data-surface="glass"] .data-table tbody tr:hover {
-  background: oklch(1 0 0 / 0.3);
-}

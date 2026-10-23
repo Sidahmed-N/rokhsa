@@ -66,7 +66,7 @@ export default function App() {
 
   return (
     <div className="flex min-h-screen bg-rail">
-      <aside className="screen-only app-surface sticky top-0 flex h-screen w-60 shrink-0 flex-col">
+      <aside className="screen-only sticky top-0 flex h-screen w-60 shrink-0 flex-col">
         <div className="flex items-center gap-2.5 px-5 py-5">
           {/* The mark is the app's initial in a rounded tile — enough to feel
               like a product, with no asset to ship or to get wrong in RTL. */}
@@ -129,7 +129,7 @@ export default function App() {
       {/* The white panel. Rounded on the side that meets the rail, which is
           the inline start in French and the inline end in Arabic — hence the
           logical corner utilities rather than rounded-l-*. */}
-      <div className="app-panel flex min-w-0 flex-1 flex-col rounded-ss-2xl rounded-es-2xl border-s border-rail-edge bg-surface shadow-raised">
+      <div className="flex min-w-0 flex-1 flex-col rounded-ss-2xl rounded-es-2xl border-s border-rail-edge bg-surface shadow-raised">
         <ClockWarning />
         <main className="mx-auto w-full max-w-5xl px-8 py-7">
           <Routes>

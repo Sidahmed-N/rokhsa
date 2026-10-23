@@ -35,9 +35,7 @@ export function Card({
   return (
     <section
       className={[
-        // `app-surface` does nothing in the solid theme and frosts the card
-        // in the glass one — see styles/surfaces.css.
-        "app-surface rounded-lg border bg-surface shadow-card",
+        "rounded-lg border bg-surface shadow-card",
         border,
         flush ? "" : "p-4",
         className ?? "",

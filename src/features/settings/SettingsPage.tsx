@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import Segmented from "@/components/ui/Segmented";
-import { applySurface, currentSurface, type Surface } from "@/lib/surface";
 
 import { SelectField, TextField } from "@/components/FormField";
 import { Num } from "@/components/Num";
@@ -137,7 +135,6 @@ function CategoryRow({
  */
 export default function SettingsPage() {
   const { t } = useTranslation();
-  const [surface, setSurface] = useState<Surface>(() => currentSurface());
 
   const [school, setSchool] = useState<SchoolSettings | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -186,36 +183,6 @@ export default function SettingsPage() {
   return (
     <div className="max-w-4xl">
       <h1 className="mb-5 text-[1.375rem] font-semibold tracking-tight text-ink">{t("settings.title")}</h1>
-
-      {/* A display preference, kept on this device rather than in the school's
-          database — two people on two machines may reasonably differ, and
-          nothing about it belongs in a backup. */}
-      <section className="app-surface mb-6 rounded-lg border border-line bg-surface shadow-card">
-        <h2 className="border-b border-line px-4 py-3 text-xs tracking-wide text-muted uppercase">
-          {t("settings.appearance")}
-        </h2>
-        <div className="flex flex-wrap items-center gap-4 px-4 py-4">
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-ink">{t("settings.surface")}</p>
-            <p className="mt-0.5 text-xs text-muted">{t("settings.surfaceHint")}</p>
-          </div>
-          <div className="ms-auto">
-            <Segmented<Surface>
-              value={surface}
-              label={t("settings.surface")}
-              onChange={(next) => {
-                setSurface(next);
-                applySurface(next);
-              }}
-              options={[
-                { id: "solid", label: t("settings.surfaceSolid") },
-                { id: "clay", label: t("settings.surfaceClay") },
-                { id: "glass", label: t("settings.surfaceGlass") },
-              ]}
-            />
-          </div>
-        </div>
-      </section>
 
       {error && (
         <p className="mb-3 rounded-md border border-owed/30 bg-owed-soft px-3 py-2 text-sm text-owed">
