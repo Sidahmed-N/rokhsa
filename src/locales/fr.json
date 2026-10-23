@@ -439,7 +439,13 @@
     "outcome_failed": "Ajourné",
     "outcome_absent": "Absent",
     "error.outcomeInvalid": "Résultat inconnu.",
-    "error.alreadyInSession": "Ce candidat est déjà dans cette session."
+    "error.alreadyInSession": "Ce candidat est déjà dans cette session.",
+    "nextDue": "Prochain :",
+    "noneForCandidate": "Aucun examen passé pour l'instant.",
+    "standing_notSat": "À passer",
+    "standing_awaiting": "En attente",
+    "standing_failed": "Ajourné",
+    "standing_passed": "Admis"
   },
   "board": {
     "col_awaiting": "En attente",

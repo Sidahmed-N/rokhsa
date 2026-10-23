@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 
 import FreeText from "@/components/FreeText";
+import ExamHistory from "@/features/candidates/ExamHistory";
 import { Duration, Money, Num } from "@/components/Num";
 import Button, { IconButton } from "@/components/ui/Button";
 import { Badge, Card, EmptyState, ErrorNote, type Tone } from "@/components/ui/Surface";
@@ -34,6 +35,12 @@ import {
   type Lesson,
   type Payment,
 } from "@/lib/training";
+import {
+  getExamProgress,
+  listExamResults,
+  type ExamProgress,
+  type ExamResult,
+} from "@/lib/exams";
 import {
   AddLessonDialog,
   NewEnrollmentDialog,
@@ -139,6 +146,8 @@ export default function CandidateDetailPage() {
   const [summaries, setSummaries] = useState<EnrollmentSummary[]>([]);
   const [lessonsBy, setLessonsBy] = useState<Record<number, Lesson[]>>({});
   const [paymentsBy, setPaymentsBy] = useState<Record<number, Payment[]>>({});
+  const [examsBy, setExamsBy] = useState<Record<number, ExamResult[]>>({});
+  const [examProgressBy, setExamProgressBy] = useState<Record<number, ExamProgress>>({});
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -174,8 +183,16 @@ export default function CandidateDetailPage() {
       const paymentEntries = await Promise.all(
         list.map(async (e) => [e.enrollment.id, await listPayments(e.enrollment.id)] as const),
       );
+      const examEntries = await Promise.all(
+        list.map(async (e) => [e.enrollment.id, await listExamResults(e.enrollment.id)] as const),
+      );
+      const progressEntries = await Promise.all(
+        list.map(async (e) => [e.enrollment.id, await getExamProgress(e.enrollment.id)] as const),
+      );
       setLessonsBy(Object.fromEntries(lessonEntries));
       setPaymentsBy(Object.fromEntries(paymentEntries));
+      setExamsBy(Object.fromEntries(examEntries));
+      setExamProgressBy(Object.fromEntries(progressEntries));
       setError(null);
     } catch (raw: unknown) {
       setError(errorText(raw));
@@ -369,6 +386,16 @@ export default function CandidateDetailPage() {
                         >
                           {t("lessons.add")}
                         </Button>
+                      </div>
+
+                      {/* Exams, above the lesson log on purpose: "where is
+                          this candidate up to" is the question, and twenty
+                          rows of séances is the answer to a different one. */}
+                      <div className="mt-4 border-t border-line pt-4">
+                        <ExamHistory
+                          results={examsBy[id] ?? []}
+                          progress={examProgressBy[id]}
+                        />
                       </div>
 
                       {lessons.length > 0 && (
