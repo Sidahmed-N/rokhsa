@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Check, ChevronLeft, ChevronRight, Phone, X } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Phone, Plus, X } from "lucide-react";
 
 import FreeText from "@/components/FreeText";
 import { Duration, Num } from "@/components/Num";
@@ -47,9 +47,11 @@ const STATUS_TONE: Record<string, Tone> = {
 export default function DayView({
   date,
   setDate,
+  onBook,
 }: {
   date: string;
   setDate: (iso: string) => void;
+  onBook: (day: string) => void;
 }) {
   const { t } = useTranslation();
   const locale = currentLanguage();
@@ -125,6 +127,14 @@ export default function DayView({
           <Button onClick={() => setDate(todayIso())}>{t("calendar.backToToday")}</Button>
         )}
 
+        <Button
+          variant="primary"
+          icon={<Plus className="size-4" aria-hidden="true" />}
+          onClick={() => onBook(date)}
+        >
+          {t("calendar.book")}
+        </Button>
+
         <p className="ms-auto text-sm text-muted">
           {loading
             ? t("common.loading")
@@ -135,7 +145,18 @@ export default function DayView({
       {error && <ErrorNote>{error}</ErrorNote>}
 
       {!loading && rows.length === 0 && (
-        <EmptyState title={t("calendar.empty")} description={t("calendar.emptyHint")} />
+        <EmptyState
+          title={t("calendar.empty")}
+          action={
+            <Button
+              variant="primary"
+              icon={<Plus className="size-4" aria-hidden="true" />}
+              onClick={() => onBook(date)}
+            >
+              {t("calendar.book")}
+            </Button>
+          }
+        />
       )}
 
       <div className="grid gap-2.5">

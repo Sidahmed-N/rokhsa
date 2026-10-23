@@ -5,6 +5,7 @@ import { CalendarDays, CalendarRange, Grid3x3 } from "lucide-react";
 import Segmented from "@/components/ui/Segmented";
 import { PageHeader } from "@/components/ui/Surface";
 import { todayIso } from "@/lib/training";
+import { ScheduleSessionDialog } from "@/features/training/TrainingDialogs";
 
 import DayView from "./DayView";
 import PlannerView from "./PlannerView";
@@ -33,6 +34,10 @@ export default function CalendarPage() {
     return asked === "week" || asked === "month" ? asked : "day";
   });
   const [date, setDate] = useState(todayIso());
+  // The slot a click landed on, and therefore whether the dialog is open.
+  const [booking, setBooking] = useState<{ day: string; time: string | null } | null>(null);
+  // Bumped after a booking so the open view reloads its sessions.
+  const [version, setVersion] = useState(0);
 
   return (
     <div>
@@ -62,18 +67,37 @@ export default function CalendarPage() {
       </PageHeader>
 
       {tab === "day" ? (
-        <DayView date={date} setDate={setDate} />
+        <DayView
+          key={version}
+          date={date}
+          setDate={setDate}
+          onBook={(day) => setBooking({ day, time: null })}
+        />
       ) : (
         <PlannerView
           // Remounting on a view change lets FullCalendar own its own
           // initialView rather than being driven through its imperative API.
-          key={tab}
+          key={`${tab}-${version}`}
           view={tab}
           date={date}
           setDate={setDate}
           openDay={(iso) => {
             setDate(iso);
             setTab("day");
+          }}
+          onPickSlot={(day, time) => setBooking({ day, time })}
+        />
+      )}
+
+      {booking && (
+        <ScheduleSessionDialog
+          enrollmentId={null}
+          initialDay={booking.day}
+          {...(booking.time === null ? {} : { initialTime: booking.time })}
+          onClose={() => setBooking(null)}
+          onDone={() => {
+            setBooking(null);
+            setVersion((n) => n + 1);
           }}
         />
       )}

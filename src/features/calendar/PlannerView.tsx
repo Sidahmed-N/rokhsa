@@ -69,11 +69,14 @@ export default function PlannerView({
   date,
   setDate,
   openDay,
+  onPickSlot,
 }: {
   view: "week" | "month";
   date: string;
   setDate: (iso: string) => void;
   openDay: (iso: string) => void;
+  /** Clicking empty space books there — day, and time when the view has one. */
+  onPickSlot: (day: string, time: string | null) => void;
 }) {
   const { t } = useTranslation();
   const locale = currentLanguage();
@@ -292,7 +295,14 @@ export default function PlannerView({
             const start = arg.event.start;
             if (start) openDay(localParts(start).day);
           }}
-          dateClick={(arg) => openDay(localParts(arg.date).day)}
+          /* Clicking an empty slot books it. The week grid knows the hour
+              that was clicked; the month only knows the day, so the dialog
+              keeps its own default time there. This is the whole point of
+              looking at the week — the gap you can see is the gap you fill. */
+          dateClick={(arg) => {
+            const { day, time } = localParts(arg.date);
+            onPickSlot(day, arg.allDay ? null : time);
+          }}
           eventDrop={(arg: EventDropArg) =>
             void move(arg.event.id, arg.event.start, arg.event.end, arg.revert)
           }

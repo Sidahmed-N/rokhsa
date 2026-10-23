@@ -126,6 +126,16 @@ pub async fn complete_lesson(
     Ok(lessons::complete(&state.pool, id, &input).await?)
 }
 
+/// Every live enrolment, for the "who is this for?" picker when booking a
+/// session straight from the calendar.
+#[tauri::command]
+pub async fn list_bookable_enrollments(
+    state: State<'_, AppState>,
+    query: String,
+) -> CommandResult<Vec<enrollments::BookableEnrollment>> {
+    Ok(enrollments::bookable(&state.pool, &query).await?)
+}
+
 /// Move a booked session — what dragging it on the calendar does.
 #[tauri::command]
 pub async fn reschedule_lesson(

@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+
+import CandidatePicker from "@/features/training/CandidatePicker";
 import { useTranslation } from "react-i18next";
 
 import { SelectField, TextField } from "@/components/FormField";
@@ -247,41 +249,62 @@ export function AddLessonDialog({
 
 /* ------------------------------ book ahead ----------------------------- */
 
+/**
+ * Booking a session.
+ *
+ * Opened two ways, which is why the enrolment is optional. From a
+ * candidate's file it is already known, so the picker is not shown. From the
+ * calendar nobody has been chosen yet but the slot has — clicking Thursday
+ * at 10:00 should not then ask you to type Thursday's date.
+ */
 export function ScheduleSessionDialog({
   enrollmentId,
+  initialDay,
+  initialTime,
   onDone,
   onClose,
 }: {
-  enrollmentId: number;
+  /** Known when opened from a candidate's file; null from the calendar. */
+  enrollmentId: number | null;
+  initialDay?: string | undefined;
+  initialTime?: string | undefined;
   onDone: () => void;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
   const errorText = useErrorText();
 
+  const [chosen, setChosen] = useState<number | null>(enrollmentId);
   const [kind, setKind] = useState<string>("road");
-  const [scheduledOn, setScheduledOn] = useState(today());
-  const [scheduledTime, setScheduledTime] = useState("09:00");
+  const [scheduledOn, setScheduledOn] = useState(initialDay ?? today());
+  const [scheduledTime, setScheduledTime] = useState(initialTime ?? "09:00");
   const [minutes, setMinutes] = useState("60");
   const [planNote, setPlanNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pickError, setPickError] = useState<string | undefined>(undefined);
 
   // Pre-fill what to work on from the last session's note, so the instructor
-  // does not have to go and find it.
+  // does not have to go and find it. Re-runs when a candidate is picked from
+  // the calendar, since there was nobody to look it up for until then.
   useEffect(() => {
-    nextUp(enrollmentId)
+    if (chosen === null) return;
+    nextUp(chosen)
       .then((info) => {
         if (info.lastNote) setPlanNote(info.lastNote);
       })
       .catch(() => {});
-  }, [enrollmentId]);
+  }, [chosen]);
 
   async function save() {
+    if (chosen === null) {
+      setPickError(t("calendar.pickCandidate"));
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
-      await scheduleLesson(enrollmentId, {
+      await scheduleLesson(chosen, {
         kind,
         scheduledOn,
         scheduledTime,
@@ -307,6 +330,16 @@ export function ScheduleSessionDialog({
       submitLabel={t("calendar.book")}
     >
       <div className="grid gap-3">
+        {enrollmentId === null && (
+          <CandidatePicker
+            value={chosen}
+            error={pickError}
+            onChange={(id) => {
+              setChosen(id);
+              setPickError(undefined);
+            }}
+          />
+        )}
         <SelectField label={t("lessons.kind")} value={kind} onChange={setKind}>
           {LESSON_KINDS.map((k) => (
             <option key={k} value={k}>

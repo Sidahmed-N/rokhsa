@@ -411,6 +411,8 @@
     "planNoteHint": "مأخوذ من الحصة الأخيرة. سيراه المدرب في شاشة «اليوم».",
     "emptyHint": "برمج حصة من ملف المترشح.",
     "allKinds": "الكل",
-    "tabMonth": "الشهر"
+    "tabMonth": "الشهر",
+    "forCandidate": "لأي مترشح",
+    "pickCandidate": "اختر مترشحا."
   }
 }

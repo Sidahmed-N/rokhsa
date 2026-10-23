@@ -1035,3 +1035,57 @@ mod tests {
         assert_eq!(e.practical_hours_target, 25);
     }
 }
+
+/// One row of the "who is this session for?" picker.
+///
+/// Carries the candidate's name in both scripts so the picker can show the
+/// right one without a second query per row, and the enrolment's status so a
+/// candidate who has been presented or has abandoned can be told apart from
+/// one still in training — both are still bookable. Someone who was ajourné
+/// needs more hours before a repassage, which is exactly a session someone
+/// has to book.
+#[derive(Debug, Clone, FromRow, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BookableEnrollment {
+    pub enrollment_id: i64,
+    pub candidate_id: i64,
+    pub last_name_fr: String,
+    pub first_name_fr: String,
+    pub last_name_ar: String,
+    pub first_name_ar: String,
+    pub category_code: String,
+    pub status: String,
+    /// Normalised name and phone, so the picker can filter without a round
+    /// trip per keystroke on a machine with an HDD.
+    pub search_text: String,
+}
+
+/// Every live enrolment, for picking one to book a session against.
+///
+/// Filtering happens here rather than in the picker so that searching for a
+/// candidate means the same thing everywhere: `fold_query` already handles
+/// accents, the several Arabic alef forms, tashkeel and tatweel, and a second
+/// implementation in TypeScript would drift from it without anyone noticing.
+pub async fn bookable(
+    pool: &SqlitePool,
+    query: &str,
+) -> Result<Vec<BookableEnrollment>, AppError> {
+    let folded = crate::domain::text::fold_query(query);
+    let pattern = format!("%{folded}%");
+
+    let rows = sqlx::query_as::<_, BookableEnrollment>(
+        "SELECT e.id AS enrollment_id, c.id AS candidate_id,
+                c.last_name_fr, c.first_name_fr, c.last_name_ar, c.first_name_ar,
+                e.category_code, e.status, c.search_text
+         FROM enrollments e
+         JOIN candidates c ON c.id = e.candidate_id
+         WHERE e.deleted_at IS NULL AND c.deleted_at IS NULL
+           AND (?1 = '' OR c.search_text LIKE ?2)
+         ORDER BY c.last_name_fr COLLATE NOCASE, c.first_name_fr COLLATE NOCASE",
+    )
+    .bind(&folded)
+    .bind(&pattern)
+    .fetch_all(pool)
+    .await?;
+    Ok(rows)
+}

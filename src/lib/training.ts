@@ -205,6 +205,22 @@ export const listCategories = () => call<LicenceCategory[]>("list_categories");
 export const listPaymentMethods = () => call<PaymentMethod[]>("list_payment_methods");
 export const getSchool = () => call<School>("get_school");
 
+export interface BookableEnrollment {
+  enrollmentId: number;
+  candidateId: number;
+  lastNameFr: string;
+  firstNameFr: string;
+  lastNameAr: string;
+  firstNameAr: string;
+  categoryCode: string;
+  status: string;
+  /** Normalised name and phone — filter against this, never the display name. */
+  searchText: string;
+}
+
+export const listBookableEnrollments = (query: string) =>
+  call<BookableEnrollment[]>("list_bookable_enrollments", { query });
+
 export const listEnrollments = (candidateId: number) =>
   call<EnrollmentSummary[]>("list_enrollments", { candidateId });
 

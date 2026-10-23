@@ -101,6 +101,7 @@ pub fn run() {
             commands::training::list_categories,
             commands::training::list_payment_methods,
             commands::training::list_enrollments,
+            commands::training::list_bookable_enrollments,
             commands::training::get_enrollment,
             commands::training::create_enrollment,
             commands::training::update_enrollment,
