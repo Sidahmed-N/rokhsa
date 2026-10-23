@@ -17,7 +17,7 @@
 
 @theme {
   --font-sans: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
-  --font-arabic: "IBM Plex Sans Arabic", "Segoe UI", Tahoma, sans-serif;
+  --font-arabic: "Cairo", "Segoe UI", Tahoma, sans-serif;
 
   /* Neutrals. Very slightly blue so white cards read as white against them. */
   --color-canvas: oklch(0.985 0.002 260);
