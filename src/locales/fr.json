@@ -14,7 +14,8 @@
     "calendar": "Calendrier",
     "groupDaily": "Au quotidien",
     "groupMoney": "Argent",
-    "groupSystem": "Système"
+    "groupSystem": "Système",
+    "exams": "Examens"
   },
   "backup": {
     "section": "Sauvegarde",
@@ -414,5 +415,28 @@
     "tabMonth": "Mois",
     "forCandidate": "Pour quel candidat",
     "pickCandidate": "Choisissez un candidat."
+  },
+  "exams": {
+    "title": "Examens",
+    "subtitle": "Les candidats présentés, et qui est admis.",
+    "newSession": "Nouvelle session",
+    "none": "Aucune session d'examen",
+    "noneHint": "Créez une session quand la wilaya vous donne une date.",
+    "nobodyYet": "Personne dans cette session pour l'instant.",
+    "addCandidate": "Ajouter un candidat",
+    "removeFromSession": "Retirer de la session",
+    "whichExam": "Quel examen",
+    "heldOn": "Date",
+    "heldAt": "Heure",
+    "heldAtHint": "Laissez vide si on ne vous a pas donné d'heure.",
+    "place": "Lieu",
+    "attempt": "{{n}}e tentative",
+    "settledCount": "{{settled}} résultat(s) sur {{total}}",
+    "outcome_presented": "Présenté",
+    "outcome_passed": "Admis",
+    "outcome_failed": "Ajourné",
+    "outcome_absent": "Absent",
+    "error.outcomeInvalid": "Résultat inconnu.",
+    "error.alreadyInSession": "Ce candidat est déjà dans cette session."
   }
 }

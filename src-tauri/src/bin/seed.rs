@@ -357,6 +357,63 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     println!("  {booked} session(s) booked this week");
 
+    // ------------------------------------------------------------- exams
+    // Past sittings with results, and one coming up that is still being
+    // assembled — so the screen shows both halves of its job.
+    let mut presented = Vec::new();
+    for (days_ago, kind, place) in [
+        (45i64, "theory", "Centre d'examen, Alger-Centre"),
+        (18, "maneuvers", "Centre d'examen, Hussein Dey"),
+    ] {
+        let session = db::exams::create_session(
+            &pool,
+            &db::exams::ExamSessionInput {
+                kind: kind.into(),
+                held_on: iso(today - Duration::days(days_ago)),
+                held_at: "08:00".into(),
+                place: place.into(),
+                ..Default::default()
+            },
+        )
+        .await?;
+        presented.push((session.id, days_ago));
+    }
+
+    // Six candidates sat the code; most passed, a couple did not.
+    if let Some((session_id, _)) = presented.first() {
+        for (n, (enrollment_id, _, _, _, _)) in enrollments.iter().take(6).enumerate() {
+            let entry = db::exams::add_to_session(&pool, *session_id, *enrollment_id).await?;
+            let outcome = if n % 4 == 3 { "failed" } else { "passed" };
+            db::exams::set_outcome(&pool, entry.id, outcome, "").await?;
+        }
+    }
+
+    // Four went on to the créneau; one of them is a repassage.
+    if let Some((session_id, _)) = presented.get(1) {
+        for (n, (enrollment_id, _, _, _, _)) in enrollments.iter().take(4).enumerate() {
+            let entry = db::exams::add_to_session(&pool, *session_id, *enrollment_id).await?;
+            let outcome = if n == 2 { "failed" } else { "passed" };
+            db::exams::set_outcome(&pool, entry.id, outcome, "").await?;
+        }
+    }
+
+    // And one being assembled for next week: presented, no results yet.
+    let upcoming = db::exams::create_session(
+        &pool,
+        &db::exams::ExamSessionInput {
+            kind: "road".into(),
+            held_on: iso(today + Duration::days(9)),
+            held_at: "08:30".into(),
+            place: "Centre d'examen, Alger-Centre".into(),
+            ..Default::default()
+        },
+    )
+    .await?;
+    for (enrollment_id, _, _, _, _) in enrollments.iter().take(3) {
+        db::exams::add_to_session(&pool, upcoming.id, *enrollment_id).await?;
+    }
+    println!("  3 exam sitting(s)");
+
     // ---------------------------------------------------------------- expenses
     for (n, (amount, category, description)) in [
         (4_500i64, "fuel", "Plein Clio + Symbol"),

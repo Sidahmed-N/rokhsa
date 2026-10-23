@@ -5,6 +5,7 @@
 
 pub mod backup;
 pub mod candidates;
+pub mod exams;
 pub mod reports;
 pub mod settings;
 pub mod training;

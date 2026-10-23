@@ -14,7 +14,8 @@
     "calendar": "جدول الحصص",
     "groupDaily": "العمل اليومي",
     "groupMoney": "المال",
-    "groupSystem": "النظام"
+    "groupSystem": "النظام",
+    "exams": "الامتحانات"
   },
   "backup": {
     "section": "النسخ الاحتياطي",
@@ -414,5 +415,28 @@
     "tabMonth": "الشهر",
     "forCandidate": "لأي مترشح",
     "pickCandidate": "اختر مترشحا."
+  },
+  "exams": {
+    "title": "الامتحانات",
+    "subtitle": "المترشحون المقدمون، ومن نجح.",
+    "newSession": "دورة جديدة",
+    "none": "لا توجد دورة امتحان",
+    "noneHint": "أنشئ دورة عندما تعطيك الولاية تاريخا.",
+    "nobodyYet": "لا أحد في هذه الدورة بعد.",
+    "addCandidate": "إضافة مترشح",
+    "removeFromSession": "إزالة من الدورة",
+    "whichExam": "أي امتحان",
+    "heldOn": "التاريخ",
+    "heldAt": "التوقيت",
+    "heldAtHint": "اتركه فارغا إذا لم يعطوك توقيتا.",
+    "place": "المكان",
+    "attempt": "المحاولة {{n}}",
+    "settledCount": "{{settled}} نتيجة من أصل {{total}}",
+    "outcome_presented": "مقدم",
+    "outcome_passed": "ناجح",
+    "outcome_failed": "راسب",
+    "outcome_absent": "غائب",
+    "error.outcomeInvalid": "نتيجة غير معروفة.",
+    "error.alreadyInSession": "هذا المترشح موجود في هذه الدورة بالفعل."
   }
 }

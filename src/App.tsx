@@ -2,6 +2,7 @@ import { NavLink, Navigate, Route, Routes } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   CalendarDays,
+  GraduationCap,
   LayoutDashboard,
   Receipt,
   Settings,
@@ -14,6 +15,7 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 import CalendarPage from "@/features/calendar/CalendarPage";
 import CandidateDetailPage from "@/features/candidates/CandidateDetailPage";
 import CandidatesPage from "@/features/candidates/CandidatesPage";
+import ExamsPage from "@/features/exams/ExamsPage";
 import HomePage from "@/features/home/HomePage";
 import PrintProofPage from "@/features/print/PrintProofPage";
 import ReceiptPage from "@/features/print/ReceiptPage";
@@ -49,6 +51,7 @@ export default function App() {
         { to: "/", labelKey: "nav.home", Icon: LayoutDashboard },
         { to: "/calendar", labelKey: "nav.calendar", Icon: CalendarDays },
         { to: "/candidates", labelKey: "nav.candidates", Icon: Users },
+        { to: "/exams", labelKey: "nav.exams", Icon: GraduationCap },
       ],
     },
     {
@@ -137,6 +140,7 @@ export default function App() {
             <Route path="/calendar" element={<CalendarPage />} />
             <Route path="/candidates" element={<CandidatesPage />} />
             <Route path="/candidates/:id" element={<CandidateDetailPage />} />
+          <Route path="/exams" element={<ExamsPage />} />
             <Route path="/receivables" element={<ReceivablesPage />} />
             <Route path="/cash-flow" element={<CashFlowPage />} />
             <Route path="/settings" element={<SettingsPage />} />
