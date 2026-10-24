@@ -122,3 +122,33 @@ export const listExamResults = (enrollmentId: number) =>
 
 export const getExamProgress = (enrollmentId: number) =>
   call<ExamProgress>("get_exam_progress", { enrollmentId });
+
+/**
+ * Exam fees.
+ *
+ * Charged once per STAGE, which is why there is no "charge this candidate"
+ * call: the fee arises in Rust when he is entered for a sitting, and a
+ * repassage finds the stage already charged. See docs/05-OPEN-QUESTIONS.md Q16.
+ */
+export interface ExamFee {
+  kind: string;
+  amountCentimes: number;
+  updatedAt: string;
+}
+
+/** What one candidate was actually charged, at the price of that day. */
+export interface ExamFeeCharge {
+  id: number;
+  enrollmentId: number;
+  kind: string;
+  amountCentimes: number;
+  chargedOn: string;
+}
+
+export const listExamFees = () => call<ExamFee[]>("list_exam_fees");
+
+export const setExamFee = (kind: string, amountCentimes: number) =>
+  call<void>("set_exam_fee", { input: { kind, amountCentimes } });
+
+export const listExamFeeCharges = (enrollmentId: number) =>
+  call<ExamFeeCharge[]>("list_exam_fee_charges", { enrollmentId });

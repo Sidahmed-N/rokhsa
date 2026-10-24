@@ -114,6 +114,19 @@ These are not style preferences. Breaking them causes data loss, legal problems,
   payments, lessons, exam results). Hard delete is reserved for genuinely transient rows.
 - Every write path must be safe to interrupt: wrap multi-row operations in a transaction.
   The user *will* lose power mid-save.
+- **Never open the database with ad-hoc connection options — always `db::connect`.**
+  A second connection that does not set `journal_mode = WAL` will try to change the
+  journal mode of a database another connection already holds in WAL, and that corrupts
+  it: `database disk image is malformed`, with the main tables still readable so the
+  damage is easy to miss. This happened to a diagnostic binary that opened the live
+  database "just to count rows" while the app was running. `src-tauri/src/bin/inspect.rs`
+  now goes through `db::connect` for exactly this reason, which also means it applies
+  migrations — so copy a file before pointing it at one you want left untouched.
+- **A read-only SQLite connection cannot read the `-wal` sidecar**, because it cannot
+  create the `-shm` it needs. It silently reports the stale contents of the main file
+  instead of failing. During the same incident this reported 30 candidates and migrations
+  1–6 for a database that actually held neither, and sent the investigation the wrong way
+  twice. Never diagnose a WAL database read-only.
 
 ### Identity and access
 - **One person can hold several roles at once, and usually does.** In most Algerian

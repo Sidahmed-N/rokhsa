@@ -325,6 +325,16 @@ export default function CandidateDetailPage() {
                         label={t("enrollments.totalDue")}
                         extra={
                           <>
+                            {/* Called out separately because it is not the
+                                school's money — it is collected on the day
+                                and handed to the examiner. An owner reading
+                                his own total should not count it as takings. */}
+                            {summary.charges.examFees > 0 && (
+                              <p className="mt-1 text-xs text-muted">
+                                {t("enrollments.includesExamFees")}{" "}
+                                <Money centimes={summary.charges.examFees} />
+                              </p>
+                            )}
                             {summary.charges.extraHours > 0 && (
                               <p className="mt-1 text-xs text-warn">
                                 {t("enrollments.includesExtraHours")}{" "}

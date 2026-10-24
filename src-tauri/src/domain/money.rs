@@ -29,12 +29,24 @@ pub struct Charges {
     pub discount: Centimes,
     /// Charge for practical hours beyond what the agreed price includes.
     pub extra_hours: Centimes,
+    /// Exam fees, one per stage he has been entered for.
+    ///
+    /// Separate from `agreed_price` because it is not the school's money: it
+    /// is collected on the day and handed to the examiner. Keeping it apart
+    /// is what lets the revenue figures show what the school actually earned
+    /// rather than what passed through its hands.
+    pub exam_fees: Centimes,
 }
 
 impl Charges {
     /// Everything the candidate owes before payments.
     pub fn total_due(&self) -> Centimes {
-        self.agreed_price - self.discount + self.extra_hours
+        self.agreed_price - self.discount + self.extra_hours + self.exam_fees
+    }
+
+    /// What the school keeps — the total without the examiner's money.
+    pub fn school_due(&self) -> Centimes {
+        self.total_due() - self.exam_fees
     }
 }
 
@@ -117,6 +129,7 @@ mod tests {
             agreed_price: price * DA,
             discount: discount * DA,
             extra_hours: extra * DA,
+            exam_fees: 0,
         }
     }
 
@@ -173,8 +186,50 @@ mod tests {
     #[test]
     fn centimes_are_exact_where_a_float_would_drift() {
         // 0.1 + 0.2 != 0.3 in binary floating point. In centimes it is exact.
-        let c = Charges { agreed_price: 10, discount: 0, extra_hours: 20 };
+        let c = Charges {
+            agreed_price: 10,
+            discount: 0,
+            extra_hours: 20,
+            exam_fees: 0,
+        };
         assert_eq!(c.total_due(), 30);
+    }
+
+    // ----- exam fees -----------------------------------------------------
+
+    #[test]
+    fn an_exam_fee_is_owed_on_top_of_the_training_price() {
+        let mut c = charges(35_000, 0, 0);
+        c.exam_fees = 3_000 * DA;
+        assert_eq!(c.total_due(), 38_000 * DA);
+    }
+
+    #[test]
+    fn the_examiners_money_is_not_counted_as_the_schools() {
+        // 3 000 collected for the code is handed straight to the examiner.
+        // The owner's revenue is the 35 000, and reporting 38 000 would
+        // flatter the books by money that was never his.
+        let mut c = charges(35_000, 0, 0);
+        c.exam_fees = 3_000 * DA;
+        assert_eq!(c.school_due(), 35_000 * DA);
+    }
+
+    #[test]
+    fn a_discount_does_not_reduce_the_examiners_fee() {
+        // The school can forgive its own price. It cannot forgive the
+        // administration's, so a discount must not eat into the exam fee.
+        let mut c = charges(35_000, 5_000, 0);
+        c.exam_fees = 3_000 * DA;
+        assert_eq!(c.total_due(), 33_000 * DA);
+        assert_eq!(c.school_due(), 30_000 * DA);
+    }
+
+    #[test]
+    fn fees_for_several_stages_add_up() {
+        // Code, then créneau, then circulation — each charged once.
+        let mut c = charges(35_000, 0, 0);
+        c.exam_fees = 3_000 * DA + 3_500 * DA + 4_000 * DA;
+        assert_eq!(c.total_due(), 45_500 * DA);
     }
 
     // ----- extra hours ---------------------------------------------------

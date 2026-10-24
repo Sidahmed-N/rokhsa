@@ -18,6 +18,8 @@ use crate::domain::dates::{parse_optional_time, parse_planned, DateProblem};
 use crate::domain::exams::{progress, Attempt, ExamProgress};
 use crate::error::AppError;
 
+use super::fees;
+
 pub const KINDS: [&str; 3] = ["theory", "maneuvers", "road"];
 pub const OUTCOMES: [&str; 4] = ["presented", "passed", "failed", "absent"];
 
@@ -203,6 +205,11 @@ pub async fn add_to_session(
     let session = get_session(pool, session_id).await?;
     let now = Utc::now().to_rfc3339();
 
+    // One transaction: entering him for the exam and charging him the fee
+    // are the same act. Half of it surviving a power cut would either give
+    // away an exam or bill for one he was never entered for.
+    let mut tx = pool.begin().await?;
+
     let row: (i64,) = sqlx::query_as(
         "INSERT INTO exam_results
             (enrollment_id, session_id, kind, sat_on, outcome, created_at, updated_at)
@@ -213,7 +220,7 @@ pub async fn add_to_session(
     .bind(&session.kind)
     .bind(&session.held_on)
     .bind(&now)
-    .fetch_one(pool)
+    .fetch_one(&mut *tx)
     .await
     .map_err(|e| match e {
         // The unique index catches the same candidate added twice.
@@ -222,6 +229,11 @@ pub async fn add_to_session(
         }
         other => other.into(),
     })?;
+
+    // No-op on a repassage: he paid for this stage the first time.
+    fees::charge(&mut tx, enrollment_id, &session.kind, &session.held_on, &now).await?;
+
+    tx.commit().await?;
 
     entries_for_session(pool, session_id)
         .await?
@@ -259,18 +271,37 @@ pub async fn set_outcome(
 /// Take a candidate back out of a sitting before it happens.
 pub async fn remove_result(pool: &SqlitePool, result_id: i64) -> Result<(), AppError> {
     let now = Utc::now().to_rfc3339();
-    let result = sqlx::query(
+
+    // Who this was, before it is gone — the fee hangs off the enrolment and
+    // the stage, not off the row being removed.
+    let owner: Option<(i64, String)> = sqlx::query_as(
+        "SELECT enrollment_id, kind FROM exam_results
+         WHERE id = ?1 AND deleted_at IS NULL",
+    )
+    .bind(result_id)
+    .fetch_optional(pool)
+    .await?;
+
+    let Some((enrollment_id, kind)) = owner else {
+        return Err(AppError::NotFound);
+    };
+
+    let mut tx = pool.begin().await?;
+
+    sqlx::query(
         "UPDATE exam_results SET deleted_at = ?1, updated_at = ?1
          WHERE id = ?2 AND deleted_at IS NULL",
     )
     .bind(&now)
     .bind(result_id)
-    .execute(pool)
+    .execute(&mut *tx)
     .await?;
 
-    if result.rows_affected() == 0 {
-        return Err(AppError::NotFound);
-    }
+    // Taking back the charge only if he is no longer entered for that stage
+    // at all. Removing one of two sittings leaves the fee standing.
+    fees::release_if_unused(&mut tx, enrollment_id, &kind, &now).await?;
+
+    tx.commit().await?;
     Ok(())
 }
 

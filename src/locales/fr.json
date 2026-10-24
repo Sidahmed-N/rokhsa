@@ -280,7 +280,8 @@
       "discountTooLarge": "La remise dépasse le prix convenu.",
       "statusInvalid": "Statut invalide.",
       "alreadyEnrolled": "Ce candidat est déjà inscrit à cette catégorie."
-    }
+    },
+    "includesExamFees": "dont examens :"
   },
   "lessons": {
     "add": "Ajouter des heures",
@@ -453,5 +454,14 @@
     "col_withdrawn": "Abandons",
     "columnEmpty": "Personne",
     "retake": "{{n}}e tentative"
+  },
+  "fees": {
+    "section": "Frais d’examen",
+    "note": "Perçus pour l’examinateur, une seule fois par examen — un repassage est gratuit. Un montant modifié ne s’applique qu’aux candidats présentés ensuite.",
+    "exam": "Examen",
+    "amount": "Montant",
+    "error": {
+      "negative": "Le montant ne peut pas être négatif."
+    }
   }
 }

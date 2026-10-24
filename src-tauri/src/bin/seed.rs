@@ -357,6 +357,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     println!("  {booked} session(s) booked this week");
 
+    // -------------------------------------------------------- exam fees
+    // Set BEFORE any sitting exists, because the charge is raised when a
+    // candidate is entered for one and snapshots the amount of that moment.
+    // A demo with zero fees would show none of the money this school handles
+    // on behalf of the examiner.
+    for (kind, dinars) in [("theory", 3_000i64), ("maneuvers", 3_500), ("road", 4_000)] {
+        db::fees::set(
+            &pool,
+            &db::fees::ExamFeeInput {
+                kind: kind.into(),
+                amount_centimes: dinars * DA,
+            },
+        )
+        .await?;
+    }
+    println!("  exam fees set");
+
     // ------------------------------------------------------------- exams
     // Past sittings with results, and one coming up that is still being
     // assembled — so the screen shows both halves of its job.

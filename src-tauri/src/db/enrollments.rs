@@ -4,7 +4,7 @@ use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, SqlitePool};
 
-use crate::db::{lessons, payments};
+use crate::db::{fees, lessons, payments};
 use crate::domain::money::{balance, extra_hour_charge, progress, Centimes, Charges, Progress};
 use crate::error::AppError;
 
@@ -327,6 +327,7 @@ pub async fn summary(pool: &SqlitePool, id: i64) -> Result<EnrollmentSummary, Ap
             enrollment.practical_hours_target,
             enrollment.extra_hour_price_centimes,
         ),
+        exam_fees: fees::total_for_enrollment(pool, id).await?,
     };
 
     Ok(EnrollmentSummary {

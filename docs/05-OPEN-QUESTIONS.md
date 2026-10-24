@@ -363,3 +363,102 @@ candidate is in is derivable from which exams they have passed.
 - Whether there is a mandatory waiting period between a failure and a retake.
   Not needed: the app records dates, it does not police them.
 - Whether a cap on attempts exists. Same answer.
+
+---
+
+## Q16. How the money actually works — **ANSWERED 2026-10-24** 🟢
+
+Asked because the app had been built on an hour-based *forfait*: a price per
+category, a target of N hours, and a progress bar counting them down. The owner
+was asked plainly what a candidate pays and when.
+
+### The owner's answer, in his words
+
+> They pay the first time when they subscribe or whatever. They pay, so they
+> learn and all that stuff. And then every time they pass an exam, for example,
+> Code or Créneau, they pay for that too, separately. But they pay for it once,
+> you know what I mean? So for example, if I have one of the candidates and he
+> have Code tomorrow, he will pay me 3,000 that I will pay the examinator or
+> whatever it's called. And if he succeeds, he moves to the next one. And if he
+> doesn't, he doesn't pay for the next time he passed the exam.
+
+Confirmed back to him as a story and agreed: *"Yes, exactly."* He added one
+requirement — **"let's keep the each exam fee flexible, you know, just in case
+we don't know"** — i.e. the amount must be editable, not shipped as a constant.
+
+### The model
+
+| What | When | How often |
+|---|---|---|
+| Training fee | At registration | Once per enrolment, payable in *versements* |
+| Exam fee | Before each exam | Once per **stage**, never again for a *repassage* |
+
+1. Registration fee — for the training itself, paid in instalments as before.
+2. An exam fee per stage, collected by the school and handed to the examiner.
+3. **A retake is free.** He has already paid for that exam.
+
+### What this means for the build
+
+- The fee attaches to the **stage**, not to the sitting. `0007_exam_fees.sql`
+  makes this a unique index on `(enrollment_id, kind)`, so the free repassage
+  is a database constraint rather than a rule every caller has to remember.
+- The charged amount is **snapshotted** on the charge row, for the same reason
+  the agreed price is snapshotted on the enrolment: the administration raising
+  the code fee next year must not change what last year's candidate owes.
+- Fees are seeded at **zero**. The 3 000 DZD quoted is one school, one wilaya,
+  one year, and the amount is set by the administration, not by us — shipping
+  an invented number would be read as authoritative.
+- Charging happens as a side-effect of entering a candidate for a sitting, in
+  the same transaction. There is deliberately no "charge this candidate"
+  command: a fee with no exam behind it is a line nobody can explain.
+- The exam fee is tracked **apart from the school's own revenue**
+  (`Charges::school_due`), because it is collected on behalf of the examiner
+  and was never the school's money. A discount reduces the school's price and
+  must not touch the examiner's fee.
+
+**Decided without asking, flagged to the owner, overrulable:**
+- Registration remains payable in instalments — that was already the design and
+  he did not contradict it.
+- The examiner's money is recorded as money in, tagged as an exam fee, so the
+  cash drawer is still right while revenue figures can exclude it.
+
+**Still open:**
+- Whether the school ever adds a margin on top of the examiner's fee.
+- Whether the fee differs by licence category. Currently one amount per stage
+  for the whole school.
+
+---
+
+## Q17. Group training — **PARTIALLY ANSWERED 2026-10-24** 🟠
+
+> It doesn't work with hours in here. It works like, for example, I bring three
+> people and I tell them, like if I'm the instructor, I bring three people to
+> learn to do Créneau. I give them a day and time. They come and they do it one
+> by one. And I like tell them next week and the other week until the exam
+> comes. [...] Who succeeded goes to the next step, and who didn't, the
+> instructor will reschedule him with another group or something like that. And
+> if [...] one of them couldn't come, I will have to like make it up the other
+> week or whatever day helps him or her.
+
+### What this establishes
+
+- The instructor does not sell hours. He runs a **group through a stage**: a
+  recurring slot, same people, week after week, until he judges them ready.
+- Candidates take their turn **one by one** inside the session.
+- Failing means being folded into **another group**, not starting over.
+- **Attendance has a consequence.** A candidate who misses is owed a make-up on
+  another day — an absence is not merely a mark.
+
+### What this means for the build — NOT YET DONE
+
+- `lessons.enrollment_id` is `NOT NULL`: one lesson belongs to one candidate.
+  A group session needs several candidates on one session, each present or
+  absent. Every screen built so far assumes one-per-lesson.
+- The hour counters and `6 h / 30 h` progress bars on the candidate file
+  describe a product nobody sells. They are still in the app.
+
+**Still unanswered, and blocking the group work:**
+- Whether an hours figure is needed anywhere at all — for the dossier, the
+  wilaya paperwork, or an inspection — or whether it can go entirely.
+- Whether a group is a lasting named thing the owner manages, or simply
+  whoever he called for Tuesday.

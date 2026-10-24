@@ -17,6 +17,7 @@ import {
 } from "@/lib/settings";
 import { isDesktop } from "@/lib/tauri";
 import BackupSection from "@/features/settings/BackupSection";
+import ExamFeesSection from "@/features/settings/ExamFeesSection";
 
 /** One editable row of the price list. */
 function CategoryRow({
@@ -320,6 +321,8 @@ export default function SettingsPage() {
       )}
 
       <BackupSection />
+
+      <ExamFeesSection />
 
       <section className="rounded-lg border border-line bg-surface shadow-card">
         <h2 className="border-b border-line px-4 py-3 text-xs uppercase tracking-wide text-muted">

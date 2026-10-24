@@ -56,6 +56,12 @@ export interface Charges {
   agreedPrice: Centimes;
   discount: Centimes;
   extraHours: Centimes;
+  /**
+   * Exam fees — collected for the examiner, one per stage he has been
+   * entered for. Kept apart from the school's own price because it was
+   * never the school's money.
+   */
+  examFees: Centimes;
 }
 
 export interface MinutesByKind {

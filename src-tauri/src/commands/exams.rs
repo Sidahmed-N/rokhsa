@@ -6,7 +6,7 @@
 use tauri::State;
 
 use crate::commands::AppState;
-use crate::db::exams;
+use crate::db::{exams, fees};
 use crate::domain::exams::ExamProgress;
 use crate::error::CommandResult;
 
@@ -88,4 +88,38 @@ pub async fn get_exam_progress(
 #[tauri::command]
 pub async fn get_exam_board(state: State<'_, AppState>) -> CommandResult<Vec<exams::BoardCard>> {
     Ok(exams::board(&state.pool).await?)
+}
+
+// ---------------------------------------------------------------------------
+// Exam fees.
+//
+// The amounts the school collects for the examiner. Charging happens as a
+// side-effect of entering a candidate for a sitting, so there is deliberately
+// no "charge this candidate" command: a fee with no exam behind it would be a
+// line nobody could explain.
+// ---------------------------------------------------------------------------
+
+/// What the school currently collects for each exam.
+#[tauri::command]
+pub async fn list_exam_fees(state: State<'_, AppState>) -> CommandResult<Vec<fees::ExamFee>> {
+    Ok(fees::list(&state.pool).await?)
+}
+
+/// Change one. Only affects candidates entered for an exam after this.
+#[tauri::command]
+pub async fn set_exam_fee(
+    state: State<'_, AppState>,
+    input: fees::ExamFeeInput,
+) -> CommandResult<()> {
+    fees::set(&state.pool, &input).await?;
+    Ok(())
+}
+
+/// The fees one candidate has been charged, for the breakdown on their file.
+#[tauri::command]
+pub async fn list_exam_fee_charges(
+    state: State<'_, AppState>,
+    enrollment_id: i64,
+) -> CommandResult<Vec<fees::ExamFeeCharge>> {
+    Ok(fees::list_for_enrollment(&state.pool, enrollment_id).await?)
 }

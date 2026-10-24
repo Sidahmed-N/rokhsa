@@ -13,6 +13,7 @@ use chrono::NaiveDate;
 use serde::Serialize;
 use sqlx::SqlitePool;
 
+use crate::db::fees;
 use crate::domain::money::{balance, extra_hour_charge, Centimes, Charges, Minutes};
 use crate::error::AppError;
 
@@ -103,6 +104,7 @@ pub async fn receivables(pool: &SqlitePool) -> Result<Receivables, AppError> {
     .fetch_all(pool)
     .await?;
     let paid_by: HashMap<i64, Centimes> = paid_rows.into_iter().collect();
+    let fees_by = fees::totals_by_enrollment(pool).await?;
 
     let today = chrono::Utc::now().date_naive();
     let mut rows = Vec::new();
@@ -120,6 +122,7 @@ pub async fn receivables(pool: &SqlitePool) -> Result<Receivables, AppError> {
                 e.practical_hours_target,
                 e.extra_hour_price_centimes,
             ),
+            exam_fees: fees_by.get(&e.id).copied().unwrap_or(0),
         };
         let owed = balance(&charges, paid);
 

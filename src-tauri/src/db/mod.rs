@@ -14,6 +14,7 @@ pub mod candidates;
 pub mod enrollments;
 pub mod exams;
 pub mod expenses;
+pub mod fees;
 pub mod health;
 pub mod lessons;
 pub mod payments;
