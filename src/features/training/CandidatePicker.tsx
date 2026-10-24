@@ -118,7 +118,6 @@ export default function CandidatePicker({
                   <span className="min-w-0 flex-1 truncate font-medium">
                     {personName(row, locale)}
                   </span>
-                  <span className="shrink-0 text-xs text-muted">{row.categoryCode}</span>
                   {/* A candidate who is not simply "in training" is worth
                       flagging here — booking for someone who abandoned is
                       allowed, but it should be a deliberate choice. */}

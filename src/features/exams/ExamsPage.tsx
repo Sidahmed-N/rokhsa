@@ -241,7 +241,6 @@ export default function ExamsPage() {
                       >
                         {personName(entry, locale)}
                       </Link>
-                      <span className="text-xs text-muted">{entry.categoryCode}</span>
                       {/* A second go is worth seeing at a glance. */}
                       {entry.attempt > 1 && (
                         <Badge tone="warn">

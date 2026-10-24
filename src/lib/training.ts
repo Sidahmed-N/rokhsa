@@ -9,16 +9,6 @@
 import { call } from "@/lib/tauri";
 import type { Centimes } from "@/lib/money";
 
-export interface LicenceCategory {
-  code: string;
-  codeAr: string;
-  nameFr: string;
-  nameAr: string;
-  theoryHoursTarget: number;
-  practicalHoursTarget: number;
-  defaultPriceCentimes: Centimes;
-}
-
 export interface PaymentMethod {
   code: string;
   nameFr: string;
@@ -207,7 +197,6 @@ export interface PaymentInput {
   notes: string;
 }
 
-export const listCategories = () => call<LicenceCategory[]>("list_categories");
 export const listPaymentMethods = () => call<PaymentMethod[]>("list_payment_methods");
 export const getSchool = () => call<School>("get_school");
 

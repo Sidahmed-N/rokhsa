@@ -41,19 +41,3 @@ pub async fn update_school(
 ) -> CommandResult<school::School> {
     Ok(school::update(&state.pool, &input).await?)
 }
-
-#[tauri::command]
-pub async fn list_all_categories(
-    state: State<'_, AppState>,
-) -> CommandResult<Vec<school::Category>> {
-    Ok(school::all_categories(&state.pool).await?)
-}
-
-#[tauri::command]
-pub async fn update_category(
-    state: State<'_, AppState>,
-    code: String,
-    input: school::CategoryInput,
-) -> CommandResult<school::Category> {
-    Ok(school::update_category(&state.pool, &code, &input).await?)
-}

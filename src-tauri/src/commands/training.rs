@@ -7,33 +7,6 @@ use crate::commands::AppState;
 use crate::db::{enrollments, lessons, payments};
 use crate::error::CommandResult;
 
-/* ----------------------------- categories ----------------------------- */
-
-#[derive(Serialize, sqlx::FromRow)]
-#[serde(rename_all = "camelCase")]
-pub struct LicenceCategory {
-    pub code: String,
-    pub code_ar: String,
-    pub name_fr: String,
-    pub name_ar: String,
-    pub theory_hours_target: i64,
-    pub practical_hours_target: i64,
-    pub default_price_centimes: i64,
-}
-
-#[tauri::command]
-pub async fn list_categories(
-    state: State<'_, AppState>,
-) -> CommandResult<Vec<LicenceCategory>> {
-    Ok(sqlx::query_as::<_, LicenceCategory>(
-        "SELECT code, code_ar, name_fr, name_ar, theory_hours_target,
-                practical_hours_target, default_price_centimes
-         FROM licence_categories WHERE is_offered = 1 ORDER BY sort_order",
-    )
-    .fetch_all(&state.pool)
-    .await?)
-}
-
 #[tauri::command]
 pub async fn list_payment_methods(
     state: State<'_, AppState>,

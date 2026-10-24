@@ -113,7 +113,6 @@ export default function ReceivablesPage() {
             <tr>
               <th>{t("candidates.colName")}</th>
               <th>{t("candidates.colPhone")}</th>
-              <th>{t("enrollments.category")}</th>
               <th className="text-end">{t("enrollments.totalDue")}</th>
               <th className="text-end">{t("enrollments.paid")}</th>
               <th className="text-end">{t("enrollments.balance")}</th>
@@ -138,7 +137,6 @@ export default function ReceivablesPage() {
                   <td>
                     {row.phone ? <Num>{row.phone}</Num> : <span className="text-faint">—</span>}
                   </td>
-                  <td>{row.categoryCode}</td>
                   <td className="text-end">
                     <Money centimes={row.totalDueCentimes} whole />
                   </td>

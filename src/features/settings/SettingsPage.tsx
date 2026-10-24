@@ -1,142 +1,28 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-
 import { SelectField, TextField } from "@/components/FormField";
-import { currentLanguage } from "@/i18n";
 import { isAppError } from "@/lib/candidates";
-import { formatDZD, parseDZD } from "@/lib/money";
 import {
   getSchoolSettings,
-  listAllCategories,
-  updateCategory,
   updateSchool,
-  type Category,
   type SchoolSettings,
 } from "@/lib/settings";
 import { isDesktop } from "@/lib/tauri";
 import BackupSection from "@/features/settings/BackupSection";
 
-/** One editable row of the price list. */
-function CategoryRow({
-  category,
-  onSaved,
-  onError,
-}: {
-  category: Category;
-  onSaved: () => void;
-  onError: (message: string) => void;
-}) {
-  const { t } = useTranslation();
-  const locale = currentLanguage();
-
-  const [theory, setTheory] = useState(String(category.theoryHoursTarget));
-  const [practical, setPractical] = useState(String(category.practicalHoursTarget));
-  const [price, setPrice] = useState(
-    category.defaultPriceCentimes > 0
-      ? formatDZD(category.defaultPriceCentimes, { withSuffix: false })
-      : "",
-  );
-  const [offered, setOffered] = useState(category.isOffered === 1);
-  const [saving, setSaving] = useState(false);
-
-  const dirty =
-    theory !== String(category.theoryHoursTarget) ||
-    practical !== String(category.practicalHoursTarget) ||
-    offered !== (category.isOffered === 1) ||
-    (parseDZD(price) ?? 0) !== category.defaultPriceCentimes;
-
-  async function save() {
-    setSaving(true);
-    try {
-      await updateCategory(category.code, {
-        codeAr: category.codeAr,
-        nameFr: category.nameFr,
-        nameAr: category.nameAr,
-        theoryHoursTarget: Number(theory) || 0,
-        practicalHoursTarget: Number(practical) || 0,
-        defaultPriceCentimes: parseDZD(price) ?? 0,
-        isOffered: offered,
-      });
-      onSaved();
-    } catch (raw: unknown) {
-      onError(isAppError(raw) ? t(raw.code, { defaultValue: raw.message }) : String(raw));
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <tr className="border-b border-line last:border-b-0">
-      <td className="px-3 py-2">
-        <span className="font-medium">{category.code}</span>
-        <span className="ms-2 text-xs text-muted">
-          {locale === "ar" ? category.nameAr : category.nameFr}
-        </span>
-      </td>
-      <td className="px-3 py-2">
-        <input
-          type="checkbox"
-          checked={offered}
-          onChange={(e) => setOffered(e.target.checked)}
-          aria-label={t("settings.offered")}
-        />
-      </td>
-      <td className="px-3 py-2">
-        <input
-          type="number"
-          value={theory}
-          onChange={(e) => setTheory(e.target.value)}
-          dir="ltr"
-          className="w-20 rounded-md border border-line-strong bg-surface px-2 py-1 text-sm outline-none transition-colors focus:border-brand focus:ring-2 focus:ring-brand-soft"
-        />
-      </td>
-      <td className="px-3 py-2">
-        <input
-          type="number"
-          value={practical}
-          onChange={(e) => setPractical(e.target.value)}
-          dir="ltr"
-          className="w-20 rounded-md border border-line-strong bg-surface px-2 py-1 text-sm outline-none transition-colors focus:border-brand focus:ring-2 focus:ring-brand-soft"
-        />
-      </td>
-      <td className="px-3 py-2">
-        <input
-          type="text"
-          value={price}
-          onChange={(e) => setPrice(e.target.value)}
-          dir="ltr"
-          placeholder="35000"
-          className="w-28 rounded-md border border-line-strong bg-surface px-2 py-1 text-sm outline-none transition-colors focus:border-brand focus:ring-2 focus:ring-brand-soft"
-        />
-      </td>
-      <td className="px-3 py-2 text-end">
-        {dirty && (
-          <button
-            type="button"
-            onClick={() => void save()}
-            disabled={saving}
-            className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-md bg-brand px-2.5 text-xs font-medium text-white shadow-card transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:bg-faint"
-          >
-            {saving ? t("common.loading") : t("common.save")}
-          </button>
-        )}
-      </td>
-    </tr>
-  );
-}
-
 /**
  * School settings.
  *
- * Identity, backups and prices. Nothing else: a school that has to choose
- * how the software behaves is a school being asked to do our job.
+ * Identity and backups. Nothing else: a school that has to choose how the
+ * software behaves is a school being asked to do our job. The price list went
+ * when the school turned out to teach one licence — the price is agreed per
+ * candidate and typed on the enrolment.
  */
 export default function SettingsPage() {
   const { t } = useTranslation();
 
   const [school, setSchool] = useState<SchoolSettings | null>(null);
-  const [categories, setCategories] = useState<Category[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -147,9 +33,7 @@ export default function SettingsPage() {
       return;
     }
     try {
-      const [s, c] = await Promise.all([getSchoolSettings(), listAllCategories()]);
-      setSchool(s);
-      setCategories(c);
+      setSchool(await getSchoolSettings());
       setError(null);
     } catch (raw: unknown) {
       setError(isAppError(raw) ? t(raw.code, { defaultValue: raw.message }) : String(raw));
@@ -280,38 +164,6 @@ export default function SettingsPage() {
 
       <BackupSection />
 
-      <section className="rounded-lg border border-line bg-surface shadow-card">
-        <h2 className="border-b border-line px-4 py-3 text-xs uppercase tracking-wide text-muted">
-          {t("settings.priceListSection")}
-        </h2>
-        <p className="border-b border-line px-4 py-2 text-xs text-muted">
-          {t("settings.priceListNote")}
-        </p>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-line text-xs uppercase tracking-wide text-muted">
-              <th className="px-3 py-2 text-start font-medium">{t("settings.category")}</th>
-              <th className="px-3 py-2 text-start font-medium">{t("settings.offered")}</th>
-              <th className="px-3 py-2 text-start font-medium">{t("settings.theoryHours")}</th>
-              <th className="px-3 py-2 text-start font-medium">
-                {t("settings.practicalHours")}
-              </th>
-              <th className="px-3 py-2 text-start font-medium">{t("settings.price")}</th>
-              <th className="px-3 py-2 text-end font-medium" />
-            </tr>
-          </thead>
-          <tbody>
-            {categories.map((category) => (
-              <CategoryRow
-                key={category.code}
-                category={category}
-                onSaved={() => void refresh()}
-                onError={setError}
-              />
-            ))}
-          </tbody>
-        </table>
-      </section>
     </div>
   );
 }

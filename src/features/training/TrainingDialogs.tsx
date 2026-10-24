@@ -8,20 +8,28 @@ import Modal from "@/components/Modal";
 import { Money } from "@/components/Num";
 import { currentLanguage } from "@/i18n";
 import { isAppError } from "@/lib/candidates";
-import { formatDZD, parseDZD } from "@/lib/money";
+import { parseDZD } from "@/lib/money";
 import {
   LESSON_KINDS,
   createEnrollment,
   createLesson,
   createPayment,
-  listCategories,
   listPaymentMethods,
   nextUp,
   scheduleLesson,
-  type LicenceCategory,
   type Payment,
   type PaymentMethod,
 } from "@/lib/training";
+
+/**
+ * The only licence this school teaches.
+ *
+ * A category picker with one option is a bug (CLAUDE.md), and a price list
+ * for one price is a settings page nobody opens. The column stays in the
+ * database so a school that also teaches moto is a screen to add back rather
+ * than a migration to unpick.
+ */
+const CATEGORY = "B";
 
 function today(): string {
   const now = new Date();
@@ -49,11 +57,8 @@ export function NewEnrollmentDialog({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
-  const locale = currentLanguage();
   const errorText = useErrorText();
 
-  const [categories, setCategories] = useState<LicenceCategory[]>([]);
-  const [code, setCode] = useState("");
   const [price, setPrice] = useState("");
   const [extraHourPrice, setExtraHourPrice] = useState("");
   const [theoryTarget, setTheoryTarget] = useState("");
@@ -61,36 +66,12 @@ export function NewEnrollmentDialog({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    listCategories()
-      .then((list) => {
-        setCategories(list);
-        const first = list[0];
-        if (first) applyCategory(first);
-      })
-      .catch((e: unknown) => setError(errorText(e)));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  function applyCategory(category: LicenceCategory) {
-    setCode(category.code);
-    // Prefill from the price list. These become a SNAPSHOT on save — editing
-    // the price list later never changes an existing enrolment.
-    setPrice(
-      category.defaultPriceCentimes > 0
-        ? formatDZD(category.defaultPriceCentimes, { withSuffix: false })
-        : "",
-    );
-    setTheoryTarget(String(category.theoryHoursTarget || ""));
-    setPracticalTarget(String(category.practicalHoursTarget || ""));
-  }
-
   async function save() {
     setSaving(true);
     setError(null);
     try {
       await createEnrollment(candidateId, {
-        categoryCode: code,
+        categoryCode: CATEGORY,
         enrolledOn: today(),
         agreedPriceCentimes: parseDZD(price) ?? 0,
         extraHourPriceCentimes: parseDZD(extraHourPrice) ?? 0,
@@ -118,20 +99,6 @@ export function NewEnrollmentDialog({
       error={error}
     >
       <div className="grid gap-3">
-        <SelectField
-          label={t("enrollments.category")}
-          value={code}
-          onChange={(next) => {
-            const found = categories.find((c) => c.code === next);
-            if (found) applyCategory(found);
-          }}
-        >
-          {categories.map((c) => (
-            <option key={c.code} value={c.code}>
-              {c.code} — {locale === "ar" ? c.nameAr : c.nameFr}
-            </option>
-          ))}
-        </SelectField>
 
         <TextField
           label={t("enrollments.agreedPrice")}

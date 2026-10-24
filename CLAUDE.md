@@ -53,6 +53,12 @@ These are not style preferences. Breaking them causes data loss, legal problems,
 - **Nothing regulatory is hardcoded.** Required theory hours, required practical hours,
   minimum age, licence categories, exam types, fee amounts, document checklists — all of it
   lives in seeded, editable database tables.
+- **One exception, and it is a product decision, not a regulatory one:** the school teaches
+  category **B only**, so `CATEGORY` is a constant in `TrainingDialogs.tsx` and no category
+  appears anywhere in the interface. The `licence_categories` table and
+  `enrollments.category_code` stay exactly as they were, still seeded with every category.
+  A school that also teaches moto is therefore a screen to put back, not a migration to
+  unpick — which is why the column was kept rather than dropped.
 - Rationale: the official hour counts could not be verified against a published *arrêté*,
   and a new traffic law is in discussion. Assume every number changes within two years.
 - **A common practice is not a rule, and must never become a constraint.** Migration 0007

@@ -136,7 +136,6 @@ export default function ProgressBoard() {
                     </Link>
 
                     <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <span className="text-xs text-muted">{card.categoryCode}</span>
                       {/* A second go at the exam they are due. */}
                       {column === "maneuvers" && card.progress.maneuversAttempts > 0 && (
                         <Badge tone="warn">

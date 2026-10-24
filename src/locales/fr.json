@@ -65,13 +65,6 @@
     "agrement": "N° d'agrément",
     "agrementHint": "Apparaît sur l'en-tête des reçus.",
     "defaultLanguage": "Langue par défaut",
-    "priceListSection": "Catégories et tarifs",
-    "priceListNote": "Vos propres tarifs. Les modifier ne change aucune inscription existante : le prix et les heures sont figés au moment de l'inscription.",
-    "category": "Catégorie",
-    "offered": "Proposée",
-    "theoryHours": "Heures code",
-    "practicalHours": "Heures conduite",
-    "price": "Prix (DA)",
     "error": {
       "nameRequired": "Indiquez le nom de l'auto-école.",
       "languageInvalid": "Langue invalide.",
@@ -246,7 +239,6 @@
     "new": "Nouvelle inscription",
     "newTitle": "Nouvelle inscription",
     "none": "Ce candidat n'est inscrit à aucune catégorie.",
-    "category": "Catégorie",
     "agreedPrice": "Prix convenu (DA)",
     "priceHint": "Ce prix est figé pour ce candidat. Modifier le tarif plus tard ne le changera pas.",
     "theoryTarget": "Heures de code",
@@ -275,7 +267,8 @@
       "statusInvalid": "Statut invalide.",
       "alreadyEnrolled": "Ce candidat est déjà inscrit à cette catégorie."
     },
-    "includesExamFees": "dont examens :"
+    "includesExamFees": "dont examens :",
+    "heading": "Inscription"
   },
   "lessons": {
     "add": "Ajouter des heures",
