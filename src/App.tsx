@@ -17,8 +17,6 @@ import CandidateDetailPage from "@/features/candidates/CandidateDetailPage";
 import CandidatesPage from "@/features/candidates/CandidatesPage";
 import ExamsPage from "@/features/exams/ExamsPage";
 import HomePage from "@/features/home/HomePage";
-import PrintProofPage from "@/features/print/PrintProofPage";
-import ReceiptPage from "@/features/print/ReceiptPage";
 import CashFlowPage from "@/features/reports/CashFlowPage";
 import ReceivablesPage from "@/features/reports/ReceivablesPage";
 import SettingsPage from "@/features/settings/SettingsPage";
@@ -144,8 +142,6 @@ export default function App() {
             <Route path="/receivables" element={<ReceivablesPage />} />
             <Route path="/cash-flow" element={<CashFlowPage />} />
             <Route path="/settings" element={<SettingsPage />} />
-            <Route path="/receipt/:paymentId" element={<ReceiptPage />} />
-            <Route path="/print-proof" element={<PrintProofPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>

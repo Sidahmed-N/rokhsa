@@ -65,12 +65,6 @@
     "agrement": "N° d'agrément",
     "agrementHint": "Apparaît sur l'en-tête des reçus.",
     "defaultLanguage": "Langue par défaut",
-    "receiptSection": "Numérotation des reçus",
-    "receiptPrefix": "Préfixe",
-    "receiptPrefixHint": "Prochain reçu : {{example}}",
-    "nextReceiptNumber": "Prochain numéro",
-    "receiptCounterHint": "Réglez-le avant le premier versement si vous continuez un carnet papier.",
-    "receiptCounterLocked": "Verrouillé : des versements existent déjà. Le modifier créerait deux reçus portant le même numéro.",
     "priceListSection": "Catégories et tarifs",
     "priceListNote": "Vos propres tarifs. Les modifier ne change aucune inscription existante : le prix et les heures sont figés au moment de l'inscription.",
     "category": "Catégorie",
@@ -322,7 +316,6 @@
     "reference": "Référence",
     "notes": "Remarque",
     "currentBalance": "Reste à payer actuellement",
-    "receiptNo": "N° reçu",
     "none": "Aucun versement enregistré.",
     "reversal": "annulation",
     "reverse": "Annuler",
@@ -338,12 +331,6 @@
       "cannotReverseReversal": "Une annulation ne peut pas être annulée.",
       "alreadyReversed": "Ce versement a déjà été annulé."
     }
-  },
-  "printProof": {
-    "title": "Test d'impression",
-    "explain": "Cet écran existe pour vérifier une seule chose : que l'arabe s'imprime correctement, avec les lettres liées et dans le bon sens. C'est le principal risque technique du projet.",
-    "instruction": "Changez la langue en arabe, puis cliquez sur Imprimer et regardez l'aperçu.",
-    "sheetLabel": "Aperçu du document"
   },
   "receipt": {
     "title": "REÇU DE VERSEMENT",
@@ -456,12 +443,10 @@
     "retake": "{{n}}e tentative"
   },
   "fees": {
-    "section": "Frais d’examen",
-    "note": "Perçus pour l’examinateur, une seule fois par examen — un repassage est gratuit. Un montant modifié ne s’applique qu’aux candidats présentés ensuite.",
-    "exam": "Examen",
     "amount": "Montant",
     "error": {
       "negative": "Le montant ne peut pas être négatif."
-    }
+    },
+    "entryHint": "Laissez vide s’il ne paie rien cette fois."
   }
 }

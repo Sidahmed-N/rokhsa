@@ -45,8 +45,9 @@ pub async fn add_to_exam_session(
     state: State<'_, AppState>,
     session_id: i64,
     enrollment_id: i64,
+    fee_centimes: i64,
 ) -> CommandResult<exams::ExamEntry> {
-    Ok(exams::add_to_session(&state.pool, session_id, enrollment_id).await?)
+    Ok(exams::add_to_session(&state.pool, session_id, enrollment_id, fee_centimes).await?)
 }
 
 #[tauri::command]
@@ -93,27 +94,9 @@ pub async fn get_exam_board(state: State<'_, AppState>) -> CommandResult<Vec<exa
 // ---------------------------------------------------------------------------
 // Exam fees.
 //
-// The amounts the school collects for the examiner. Charging happens as a
-// side-effect of entering a candidate for a sitting, so there is deliberately
-// no "charge this candidate" command: a fee with no exam behind it would be a
-// line nobody could explain.
+// No list/set pair: there is no school-wide amount any more. The fee is typed
+// when a candidate is entered for a sitting, so it arrives with that call.
 // ---------------------------------------------------------------------------
-
-/// What the school currently collects for each exam.
-#[tauri::command]
-pub async fn list_exam_fees(state: State<'_, AppState>) -> CommandResult<Vec<fees::ExamFee>> {
-    Ok(fees::list(&state.pool).await?)
-}
-
-/// Change one. Only affects candidates entered for an exam after this.
-#[tauri::command]
-pub async fn set_exam_fee(
-    state: State<'_, AppState>,
-    input: fees::ExamFeeInput,
-) -> CommandResult<()> {
-    fees::set(&state.pool, &input).await?;
-    Ok(())
-}
 
 /// The fees one candidate has been charged, for the breakdown on their file.
 #[tauri::command]

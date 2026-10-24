@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   BadgeCheck,
@@ -11,7 +11,6 @@ import {
   IdCard,
   Phone,
   Plus,
-  Printer,
   Trash2,
   Undo2,
 } from "lucide-react";
@@ -139,7 +138,6 @@ export default function CandidateDetailPage() {
   const { t } = useTranslation();
   const locale = currentLanguage();
   const params = useParams();
-  const navigate = useNavigate();
   const candidateId = Number(params.id);
 
   const [candidate, setCandidate] = useState<Candidate | null>(null);
@@ -206,14 +204,15 @@ export default function CandidateDetailPage() {
   }, [refresh]);
 
   /**
-   * Take payment, then go straight to the receipt and print it.
+   * Take payment and stay put.
    *
-   * The receipt lives at its own route, so this is the same code path a
-   * reprint uses — there is no second copy of the receipt logic to drift.
+   * No receipt is printed: schools write the candidate's own card by hand and
+   * do not want the app duplicating it. The payment still carries a hidden
+   * sequential number so a deleted one leaves a gap in the books.
    */
-  function onPaymentTaken(payment: Payment) {
+  function onPaymentTaken(_payment: Payment) {
     setPayingFor(null);
-    navigate(`/receipt/${payment.id}?autoprint=1`);
+    void refresh();
   }
 
   async function doReverse(payment: Payment) {
@@ -506,9 +505,6 @@ export default function CandidateDetailPage() {
                           <thead>
                             <tr className="text-muted">
                               <th className="py-1 text-start font-medium">
-                                {t("payments.receiptNo")}
-                              </th>
-                              <th className="py-1 text-start font-medium">
                                 {t("payments.date")}
                               </th>
                               <th className="py-1 text-start font-medium">
@@ -525,11 +521,6 @@ export default function CandidateDetailPage() {
                               const isReversal = payment.reversesPaymentId !== null;
                               return (
                                 <tr key={payment.id} className="group border-t border-line">
-                                  <td className="py-2">
-                                    <Num className="font-medium text-ink">
-                                      {payment.receiptNumber}
-                                    </Num>
-                                  </td>
                                   <td className="py-2 text-ink-soft">
                                     <Num>{payment.paidOn}</Num>
                                   </td>
@@ -553,13 +544,6 @@ export default function CandidateDetailPage() {
                                   </td>
                                   <td className="py-2">
                                     <div className="flex items-center justify-end gap-1">
-                                      <Link
-                                        to={`/receipt/${payment.id}`}
-                                        aria-label={t("common.print")}
-                                        className="inline-flex size-8 items-center justify-center rounded-md text-ink-soft transition-colors hover:bg-sunken hover:text-ink"
-                                      >
-                                        <Printer className="size-3.5" aria-hidden="true" />
-                                      </Link>
                                       {!isReversal && (
                                         <IconButton
                                           aria-label={t("payments.reverse")}

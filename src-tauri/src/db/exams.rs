@@ -197,10 +197,16 @@ pub async fn delete_session(pool: &SqlitePool, id: i64) -> Result<(), AppError> 
 /* ------------------------------- results ------------------------------- */
 
 /// Put a candidate into a sitting. They start as `presented`.
+/// Enter a candidate for a sitting, and record what he is paying for it.
+///
+/// `fee_centimes` is whatever the owner typed — zero when the candidate pays
+/// nothing this time, which is how a free repassage is said. Nothing here
+/// decides that for him; see 0008.
 pub async fn add_to_session(
     pool: &SqlitePool,
     session_id: i64,
     enrollment_id: i64,
+    fee_centimes: i64,
 ) -> Result<ExamEntry, AppError> {
     let session = get_session(pool, session_id).await?;
     let now = Utc::now().to_rfc3339();
@@ -230,8 +236,16 @@ pub async fn add_to_session(
         other => other.into(),
     })?;
 
-    // No-op on a repassage: he paid for this stage the first time.
-    fees::charge(&mut tx, enrollment_id, &session.kind, &session.held_on, &now).await?;
+    fees::charge(
+        &mut tx,
+        enrollment_id,
+        row.0,
+        &session.kind,
+        fee_centimes,
+        &session.held_on,
+        &now,
+    )
+    .await?;
 
     tx.commit().await?;
 
@@ -272,23 +286,9 @@ pub async fn set_outcome(
 pub async fn remove_result(pool: &SqlitePool, result_id: i64) -> Result<(), AppError> {
     let now = Utc::now().to_rfc3339();
 
-    // Who this was, before it is gone — the fee hangs off the enrolment and
-    // the stage, not off the row being removed.
-    let owner: Option<(i64, String)> = sqlx::query_as(
-        "SELECT enrollment_id, kind FROM exam_results
-         WHERE id = ?1 AND deleted_at IS NULL",
-    )
-    .bind(result_id)
-    .fetch_optional(pool)
-    .await?;
-
-    let Some((enrollment_id, kind)) = owner else {
-        return Err(AppError::NotFound);
-    };
-
     let mut tx = pool.begin().await?;
 
-    sqlx::query(
+    let affected = sqlx::query(
         "UPDATE exam_results SET deleted_at = ?1, updated_at = ?1
          WHERE id = ?2 AND deleted_at IS NULL",
     )
@@ -297,9 +297,12 @@ pub async fn remove_result(pool: &SqlitePool, result_id: i64) -> Result<(), AppE
     .execute(&mut *tx)
     .await?;
 
-    // Taking back the charge only if he is no longer entered for that stage
-    // at all. Removing one of two sittings leaves the fee standing.
-    fees::release_if_unused(&mut tx, enrollment_id, &kind, &now).await?;
+    if affected.rows_affected() == 0 {
+        return Err(AppError::NotFound);
+    }
+
+    // The fee belongs to this entry, so it leaves with it.
+    fees::release_for_result(&mut tx, result_id, &now).await?;
 
     tx.commit().await?;
     Ok(())
@@ -439,7 +442,7 @@ mod tests {
 
         let s = create_session(&pool, &sitting("theory", "2026-11-12")).await.unwrap();
         for e in [a, b, c] {
-            add_to_session(&pool, s.id, e).await.unwrap();
+            add_to_session(&pool, s.id, e, 0).await.unwrap();
         }
 
         let entries = entries_for_session(&pool, s.id).await.unwrap();
@@ -456,8 +459,8 @@ mod tests {
         let e = enrol(&pool, "BENALI").await;
         let s = create_session(&pool, &sitting("theory", "2026-11-12")).await.unwrap();
 
-        add_to_session(&pool, s.id, e).await.unwrap();
-        assert!(add_to_session(&pool, s.id, e).await.is_err());
+        add_to_session(&pool, s.id, e, 0).await.unwrap();
+        assert!(add_to_session(&pool, s.id, e, 0).await.is_err());
         assert_eq!(entries_for_session(&pool, s.id).await.unwrap().len(), 1);
     }
 
@@ -467,7 +470,7 @@ mod tests {
         let pool = test_pool().await;
         let e = enrol(&pool, "BENALI").await;
         let s = create_session(&pool, &sitting("theory", "2026-11-12")).await.unwrap();
-        let entry = add_to_session(&pool, s.id, e).await.unwrap();
+        let entry = add_to_session(&pool, s.id, e, 0).await.unwrap();
 
         // Before the result is back, still waiting.
         assert_eq!(progress_for_enrollment(&pool, e).await.unwrap().theory, Standing::Awaiting);
@@ -486,11 +489,11 @@ mod tests {
         let e = enrol(&pool, "BENALI").await;
 
         let first = create_session(&pool, &sitting("maneuvers", "2026-11-12")).await.unwrap();
-        let a1 = add_to_session(&pool, first.id, e).await.unwrap();
+        let a1 = add_to_session(&pool, first.id, e, 0).await.unwrap();
         set_outcome(&pool, a1.id, "failed", "").await.unwrap();
 
         let second = create_session(&pool, &sitting("maneuvers", "2026-12-03")).await.unwrap();
-        let a2 = add_to_session(&pool, second.id, e).await.unwrap();
+        let a2 = add_to_session(&pool, second.id, e, 0).await.unwrap();
         set_outcome(&pool, a2.id, "passed", "").await.unwrap();
 
         let history = results_for_enrollment(&pool, e).await.unwrap();
@@ -510,7 +513,7 @@ mod tests {
         let pool = test_pool().await;
         let e = enrol(&pool, "BENALI").await;
         let s = create_session(&pool, &sitting("theory", "2026-11-12")).await.unwrap();
-        let entry = add_to_session(&pool, s.id, e).await.unwrap();
+        let entry = add_to_session(&pool, s.id, e, 0).await.unwrap();
         set_outcome(&pool, entry.id, "passed", "").await.unwrap();
 
         delete_session(&pool, s.id).await.unwrap();
@@ -528,14 +531,14 @@ mod tests {
         let pool = test_pool().await;
         let e = enrol(&pool, "BENALI").await;
         let s = create_session(&pool, &sitting("theory", "2026-11-12")).await.unwrap();
-        let entry = add_to_session(&pool, s.id, e).await.unwrap();
+        let entry = add_to_session(&pool, s.id, e, 0).await.unwrap();
 
         remove_result(&pool, entry.id).await.unwrap();
 
         assert!(entries_for_session(&pool, s.id).await.unwrap().is_empty());
         assert_eq!(progress_for_enrollment(&pool, e).await.unwrap().theory, Standing::NotSat);
         // And the slot is free again.
-        assert!(add_to_session(&pool, s.id, e).await.is_ok());
+        assert!(add_to_session(&pool, s.id, e, 0).await.is_ok());
     }
 
     /// The app records what the school does: presenting someone for an exam
@@ -546,7 +549,7 @@ mod tests {
         let e = enrol(&pool, "BENALI").await;
         let s = create_session(&pool, &sitting("road", "2026-11-12")).await.unwrap();
 
-        let entry = add_to_session(&pool, s.id, e).await.unwrap();
+        let entry = add_to_session(&pool, s.id, e, 0).await.unwrap();
         set_outcome(&pool, entry.id, "passed", "").await.unwrap();
 
         let p = progress_for_enrollment(&pool, e).await.unwrap();

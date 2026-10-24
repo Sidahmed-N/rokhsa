@@ -357,24 +357,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     println!("  {booked} session(s) booked this week");
 
-    // -------------------------------------------------------- exam fees
-    // Set BEFORE any sitting exists, because the charge is raised when a
-    // candidate is entered for one and snapshots the amount of that moment.
-    // A demo with zero fees would show none of the money this school handles
-    // on behalf of the examiner.
-    for (kind, dinars) in [("theory", 3_000i64), ("maneuvers", 3_500), ("road", 4_000)] {
-        db::fees::set(
-            &pool,
-            &db::fees::ExamFeeInput {
-                kind: kind.into(),
-                amount_centimes: dinars * DA,
-            },
-        )
-        .await?;
-    }
-    println!("  exam fees set");
-
     // ------------------------------------------------------------- exams
+    // What this school charges per exam. Typed per entry now, so the demo
+    // passes it in rather than reading a setting.
+    let exam_fee = |kind: &str| -> i64 {
+        match kind {
+            "theory" => 3_000 * DA,
+            "maneuvers" => 3_500 * DA,
+            _ => 4_000 * DA,
+        }
+    };
+
     // Past sittings with results, and one coming up that is still being
     // assembled — so the screen shows both halves of its job.
     let mut presented = Vec::new();
@@ -399,7 +392,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Six candidates sat the code; most passed, a couple did not.
     if let Some((session_id, _)) = presented.first() {
         for (n, (enrollment_id, _, _, _, _)) in enrollments.iter().take(6).enumerate() {
-            let entry = db::exams::add_to_session(&pool, *session_id, *enrollment_id).await?;
+            let entry =
+                db::exams::add_to_session(&pool, *session_id, *enrollment_id, exam_fee("theory"))
+                    .await?;
             let outcome = if n % 4 == 3 { "failed" } else { "passed" };
             db::exams::set_outcome(&pool, entry.id, outcome, "").await?;
         }
@@ -408,7 +403,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Four went on to the créneau; one of them is a repassage.
     if let Some((session_id, _)) = presented.get(1) {
         for (n, (enrollment_id, _, _, _, _)) in enrollments.iter().take(4).enumerate() {
-            let entry = db::exams::add_to_session(&pool, *session_id, *enrollment_id).await?;
+            // The repassage pays again here, which is one school's practice and
+            // exactly what the fixed-amount version could not express.
+            let entry = db::exams::add_to_session(
+                &pool,
+                *session_id,
+                *enrollment_id,
+                exam_fee("maneuvers"),
+            )
+            .await?;
             let outcome = if n == 2 { "failed" } else { "passed" };
             db::exams::set_outcome(&pool, entry.id, outcome, "").await?;
         }
@@ -427,7 +430,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     )
     .await?;
     for (enrollment_id, _, _, _, _) in enrollments.iter().take(3) {
-        db::exams::add_to_session(&pool, upcoming.id, *enrollment_id).await?;
+        db::exams::add_to_session(&pool, upcoming.id, *enrollment_id, exam_fee("road")).await?;
     }
     println!("  3 exam sitting(s)");
 

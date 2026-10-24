@@ -366,7 +366,7 @@ candidate is in is derivable from which exams they have passed.
 
 ---
 
-## Q16. How the money actually works — **ANSWERED 2026-10-24** 🟢
+## Q16. How the money actually works — **ANSWERED, THEN CORRECTED 2026-10-24** 🟢
 
 Asked because the app had been built on an hour-based *forfait*: a price per
 category, a target of N hours, and a progress bar counting them down. The owner
@@ -462,3 +462,48 @@ we don't know"** — i.e. the amount must be editable, not shipped as a constant
   wilaya paperwork, or an inspection — or whether it can go entirely.
 - Whether a group is a lasting named thing the owner manages, or simply
   whoever he called for Tuesday.
+
+---
+
+## Q16b. The correction — **2026-10-24** 🟢
+
+Q16 was recorded as "the fee is paid once per stage, a repassage is free", and 0007
+enforced it with a unique index. Shown the result, the owner corrected it:
+
+> For the fees, for each time they go and do the exam, I said we let it be flexible.
+> It's not a one-time thing. Maybe one-time thing for some people, and for other
+> schools, it's not a one-time thing. [...] we can just have it somewhere else where
+> the owner is entering a candidate for an exam instead of putting this in the settings
+> as a fixed number thing.
+
+**What was wrong:** the free repassage is one school's practice, and it was written into
+the schema as a law. CLAUDE.md's first rule about regulatory values says the app records
+what the school does and never refuses an action — 0007 refused one.
+
+**The model now:** there is no school-wide amount. The owner types what the candidate is
+paying as he enters him for the sitting; empty means nothing is owed, which is how a free
+retake is said. A charge belongs to that entry, so removing the entry removes the fee.
+0008 drops the index, drops the settings table, and links each charge to its result.
+
+**Settled when asked:** whether to remember a default to save typing — no, typed every
+time.
+
+---
+
+## Q18. Receipts — **ANSWERED 2026-10-24** 🟢
+
+> I don't think we need the receipts, the receipt system. They have their own cards,
+> they can write it down. This software is not for that.
+
+The printed receipt, its route, the Arabic print proof that used it as a specimen, and the
+receipt-numbering section in Réglages are all removed.
+
+**Kept, deliberately, and invisible:** the gapless sequential number on every payment. It
+is not for the candidate — it is the only thing that makes a *deleted* payment detectable,
+since a missing number is a hole that survives the row being gone. It is also what the
+power-cut test checks, and that test is the proof that allocating a number and inserting a
+payment cannot be torn apart. The owner never sees it.
+
+**Consequence to watch:** the app now prints nothing at all, so the "does Arabic print
+correctly" risk is unproven again. It returns with the first real printout — most likely
+the exam batch list, since the school has to hand the examiner a list of who is coming.

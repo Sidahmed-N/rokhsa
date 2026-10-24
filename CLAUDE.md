@@ -25,8 +25,8 @@ server in v1.
 | **Bilingual French + Arabic at launch, both complete** | French is the administrative language of auto-écoles; Arabic is the official language and many staff prefer it. |
 | **Full RTL layout for Arabic** | Not a mirrored hack — correct logical layout, correct Arabic text shaping in print output. |
 | **Runs on a weak office PC** | Assume 4 GB RAM, HDD, Windows 10. Installer must be small enough to pass over a slow link or a USB stick. |
-| **Cash is the primary payment method** | Partial payments (*versements*), paper receipts, and a daily cash-register reconciliation are core features, not afterthoughts. |
-| **Paper is the output** | The school's legal obligations are discharged on paper. Printing is a first-class subsystem, not a report module. |
+| **Cash is the primary payment method** | Partial payments (*versements*) and a daily cash-register reconciliation are core features, not afterthoughts. The app does **not** print a receipt — schools write the candidate's own card by hand and did not want it duplicated. |
+| **Paper is the output** | The school's legal obligations are discharged on paper. Printing is a first-class subsystem, not a report module. Nothing is printed *yet*: the receipt was removed, and the Arabic print proof goes with it until the first real printout (the exam batch list) brings it back. |
 
 ---
 
@@ -39,7 +39,11 @@ These are not style preferences. Breaking them causes data loss, legal problems,
   `type Centimes = number` in TS. **Never** use `f32`/`f64`/JS floats for money.
 - Every mutation that touches money writes an **audit log row** (who, when, before, after).
 - Money rows are **append-only**. A wrong payment is corrected with a reversing entry,
-  never by editing or deleting the original. Receipt numbers must never be reused.
+  never by editing or deleting the original.
+- Every payment carries a **gapless sequential number that no screen shows**. The printed
+  receipt was removed at the owner's request, but the number stays: it is the only thing
+  that makes a deleted payment visible, because a missing number is a hole an owner can
+  see even when the row is gone. Never reuse one, and do not put it back on screen.
 
 ### Regulatory values
 - **The app records what the school does; it does not enforce the law.** It is a bookkeeping
@@ -51,6 +55,11 @@ These are not style preferences. Breaking them causes data loss, legal problems,
   lives in seeded, editable database tables.
 - Rationale: the official hour counts could not be verified against a published *arrêté*,
   and a new traffic law is in discussion. Assume every number changes within two years.
+- **A common practice is not a rule, and must never become a constraint.** Migration 0007
+  made "the exam fee is paid once, a repassage is free" a unique index, so a school that
+  charges the retake again could not say so. That is one school's habit, not a law, and
+  the owner caught it. Before enforcing anything in the schema, ask whether a school could
+  reasonably do the opposite — if it could, the app records both. 0008 undid it.
 - Seed data ships as a **migration + seed file** per wilaya/configuration, so a school can be
   corrected in the field without shipping a new binary.
 

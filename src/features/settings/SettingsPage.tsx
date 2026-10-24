@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 
 
 import { SelectField, TextField } from "@/components/FormField";
-import { Num } from "@/components/Num";
 import { currentLanguage } from "@/i18n";
 import { isAppError } from "@/lib/candidates";
 import { formatDZD, parseDZD } from "@/lib/money";
@@ -17,7 +16,6 @@ import {
 } from "@/lib/settings";
 import { isDesktop } from "@/lib/tauri";
 import BackupSection from "@/features/settings/BackupSection";
-import ExamFeesSection from "@/features/settings/ExamFeesSection";
 
 /** One editable row of the price list. */
 function CategoryRow({
@@ -131,8 +129,8 @@ function CategoryRow({
 /**
  * School settings.
  *
- * Without this screen a school prints somebody else's name on every receipt,
- * so it is the last thing standing between the app and a real school using it.
+ * Identity, backups and prices. Nothing else: a school that has to choose
+ * how the software behaves is a school being asked to do our job.
  */
 export default function SettingsPage() {
   const { t } = useTranslation();
@@ -269,46 +267,6 @@ export default function SettingsPage() {
             </div>
           </section>
 
-          <section className="mb-6 rounded-lg border border-line bg-surface shadow-card">
-            <h2 className="border-b border-line px-4 py-3 text-xs uppercase tracking-wide text-muted">
-              {t("settings.receiptSection")}
-            </h2>
-            <div className="grid gap-3 px-4 py-4 sm:grid-cols-2">
-              <TextField
-                label={t("settings.receiptPrefix")}
-                value={school.receiptPrefix}
-                onChange={(v) => set("receiptPrefix", v)}
-                dir="ltr"
-                placeholder="2026-"
-                hint={t("settings.receiptPrefixHint", {
-                  example: `${school.receiptPrefix}${String(school.nextReceiptNumber).padStart(4, "0")}`,
-                })}
-              />
-              {school.receiptCounterLocked ? (
-                <div>
-                  <span className="mb-1 block text-xs text-muted">
-                    {t("settings.nextReceiptNumber")}
-                  </span>
-                  <p className="rounded-md border border-line bg-brand-soft px-3 py-2 text-sm">
-                    <Num>{school.nextReceiptNumber}</Num>
-                  </p>
-                  <span className="mt-1 block text-xs text-muted">
-                    {t("settings.receiptCounterLocked")}
-                  </span>
-                </div>
-              ) : (
-                <TextField
-                  label={t("settings.nextReceiptNumber")}
-                  value={String(school.nextReceiptNumber)}
-                  onChange={(v) => set("nextReceiptNumber", Number(v) || 1)}
-                  type="number"
-                  dir="ltr"
-                  hint={t("settings.receiptCounterHint")}
-                />
-              )}
-            </div>
-          </section>
-
           <button
             type="button"
             onClick={() => void save()}
@@ -321,8 +279,6 @@ export default function SettingsPage() {
       )}
 
       <BackupSection />
-
-      <ExamFeesSection />
 
       <section className="rounded-lg border border-line bg-surface shadow-card">
         <h2 className="border-b border-line px-4 py-3 text-xs uppercase tracking-wide text-muted">

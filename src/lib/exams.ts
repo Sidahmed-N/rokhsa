@@ -108,8 +108,12 @@ export const deleteExamSession = (id: number) => call<void>("delete_exam_session
 export const listExamEntries = (sessionId: number) =>
   call<ExamEntry[]>("list_exam_entries", { sessionId });
 
-export const addToExamSession = (sessionId: number, enrollmentId: number) =>
-  call<ExamEntry>("add_to_exam_session", { sessionId, enrollmentId });
+/** `feeCentimes` is what the owner typed; 0 means he pays nothing this time. */
+export const addToExamSession = (
+  sessionId: number,
+  enrollmentId: number,
+  feeCentimes: number,
+) => call<ExamEntry>("add_to_exam_session", { sessionId, enrollmentId, feeCentimes });
 
 export const setExamOutcome = (resultId: number, outcome: string, notes: string) =>
   call<void>("set_exam_outcome", { resultId, outcome, notes });
@@ -126,29 +130,19 @@ export const getExamProgress = (enrollmentId: number) =>
 /**
  * Exam fees.
  *
- * Charged once per STAGE, which is why there is no "charge this candidate"
- * call: the fee arises in Rust when he is entered for a sitting, and a
- * repassage finds the stage already charged. See docs/05-OPEN-QUESTIONS.md Q16.
+ * Typed when the candidate is entered for a sitting — there is no school-wide
+ * amount, because there is no school-wide practice. Some schools charge the
+ * repassage again and some do not. See docs/05-OPEN-QUESTIONS.md Q16.
  */
-export interface ExamFee {
-  kind: string;
-  amountCentimes: number;
-  updatedAt: string;
-}
-
-/** What one candidate was actually charged, at the price of that day. */
 export interface ExamFeeCharge {
   id: number;
   enrollmentId: number;
+  /** The entry this fee was raised for. */
+  resultId: number | null;
   kind: string;
   amountCentimes: number;
   chargedOn: string;
 }
-
-export const listExamFees = () => call<ExamFee[]>("list_exam_fees");
-
-export const setExamFee = (kind: string, amountCentimes: number) =>
-  call<void>("set_exam_fee", { input: { kind, amountCentimes } });
 
 export const listExamFeeCharges = (enrollmentId: number) =>
   call<ExamFeeCharge[]>("list_exam_fee_charges", { enrollmentId });

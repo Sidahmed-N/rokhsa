@@ -1,138 +1,63 @@
 //! Exam fees — the money the school collects for the examiner.
 //!
-//! A candidate pays for the training once at registration, and then a
-//! separate fee before each exam. Fail, and he sits it again for nothing: he
-//! has already paid for that exam. So the fee belongs to the STAGE, not to
-//! the sitting, and the unique index in 0007 makes a second charge for the
-//! same stage impossible — the free repassage is enforced by the schema, not
-//! by every caller remembering to check.
+//! The amount is TYPED when the candidate is entered for a sitting. There is
+//! no school-wide figure, because there is no school-wide practice: some
+//! schools charge the repassage again and some do not, and the app is not
+//! here to decide which. The owner types what this candidate is paying this
+//! time, and zero means he is not paying anything — the free retake, said by
+//! leaving the box empty rather than by a rule in the schema.
 //!
-//! The amount is snapshotted onto the charge. The administration raising the
-//! code fee next year must not change what a candidate who sat it last year
-//! owes.
+//! A charge belongs to the ENTRY it was raised for, so taking a candidate out
+//! of a sitting takes his fee with him.
 
-use std::collections::HashMap;
-
-use chrono::Utc;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use sqlx::{FromRow, SqliteConnection, SqlitePool};
 
 use crate::domain::money::Centimes;
 use crate::error::AppError;
 
-use super::exams::KINDS;
-
 #[derive(Debug, Clone, FromRow, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ExamFee {
+pub struct ExamFeeCharge {
+    pub id: i64,
+    pub enrollment_id: i64,
+    pub result_id: Option<i64>,
     pub kind: String,
     pub amount_centimes: i64,
-    pub updated_at: String,
+    pub charged_on: String,
 }
 
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ExamFeeInput {
-    pub kind: String,
-    pub amount_centimes: i64,
-}
-
-fn check_kind(kind: &str) -> Result<(), AppError> {
-    if KINDS.contains(&kind) {
-        Ok(())
-    } else {
-        Err(AppError::validation("exams.error.unknownKind"))
-    }
-}
-
-/// The school's fee list, in the order of the journey.
-pub async fn list(pool: &SqlitePool) -> Result<Vec<ExamFee>, AppError> {
-    let rows: Vec<ExamFee> = sqlx::query_as(
-        "SELECT kind, amount_centimes, updated_at FROM exam_fees",
-    )
-    .fetch_all(pool)
-    .await?;
-
-    // Ordered by the journey rather than alphabetically: code, créneau, road.
-    let mut out = Vec::with_capacity(rows.len());
-    for kind in KINDS {
-        if let Some(row) = rows.iter().find(|r| r.kind == kind) {
-            out.push(row.clone());
-        }
-    }
-    Ok(out)
-}
-
-/// Change what the school collects for one exam.
-///
-/// Only affects candidates entered for an exam AFTER this, because existing
-/// charges hold their own snapshot.
-pub async fn set(pool: &SqlitePool, input: &ExamFeeInput) -> Result<(), AppError> {
-    check_kind(&input.kind)?;
-    if input.amount_centimes < 0 {
-        return Err(AppError::validation("fees.error.negative"));
-    }
-
-    let now = Utc::now().to_rfc3339();
-    sqlx::query(
-        "UPDATE exam_fees SET amount_centimes = ?1, updated_at = ?2 WHERE kind = ?3",
-    )
-    .bind(input.amount_centimes)
-    .bind(&now)
-    .bind(&input.kind)
-    .execute(pool)
-    .await?;
-
-    Ok(())
-}
-
-/// Charge an enrolment for one stage, unless it already has been.
+/// Record what this candidate is paying for this sitting.
 ///
 /// Takes a connection rather than the pool so it runs inside the same
-/// transaction as the row that caused it: entering a candidate for an exam
+/// transaction as the entry that caused it: entering a candidate for an exam
 /// and charging him for it must not be able to come apart.
 ///
-/// Silent no-op when the fee is zero (not configured) or when the stage has
-/// already been charged — both are normal, neither is an error.
+/// Zero is a silent no-op, not an error — it is the ordinary way to say the
+/// candidate is paying nothing this time.
 pub async fn charge(
     conn: &mut SqliteConnection,
     enrollment_id: i64,
+    result_id: i64,
     kind: &str,
+    amount: Centimes,
     charged_on: &str,
     now: &str,
 ) -> Result<(), AppError> {
-    let amount: Option<(i64,)> =
-        sqlx::query_as("SELECT amount_centimes FROM exam_fees WHERE kind = ?1")
-            .bind(kind)
-            .fetch_optional(&mut *conn)
-            .await?;
-
-    let Some((amount,)) = amount else { return Ok(()) };
-    if amount <= 0 {
+    if amount == 0 {
         return Ok(());
     }
-
-    // The repassage case. The index would reject it anyway; checking first
-    // keeps a normal retake from looking like an error.
-    let existing: Option<(i64,)> = sqlx::query_as(
-        "SELECT id FROM exam_fee_charges
-         WHERE enrollment_id = ?1 AND kind = ?2 AND deleted_at IS NULL",
-    )
-    .bind(enrollment_id)
-    .bind(kind)
-    .fetch_optional(&mut *conn)
-    .await?;
-
-    if existing.is_some() {
-        return Ok(());
+    if amount < 0 {
+        return Err(AppError::validation("fees.error.negative"));
     }
 
     sqlx::query(
         "INSERT INTO exam_fee_charges
-            (enrollment_id, kind, amount_centimes, charged_on, created_at)
-         VALUES (?1, ?2, ?3, ?4, ?5)",
+            (enrollment_id, result_id, kind, amount_centimes, charged_on, created_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
     )
     .bind(enrollment_id)
+    .bind(result_id)
     .bind(kind)
     .bind(amount)
     .bind(charged_on)
@@ -143,37 +68,18 @@ pub async fn charge(
     Ok(())
 }
 
-/// Undo the charge for a stage, but only if he is no longer entered for it.
-///
-/// Entering the wrong candidate is a slip that has to be undoable. Having
-/// actually sat the exam is not: as long as one live result for that stage
-/// remains, the fee stands.
-pub async fn release_if_unused(
+/// Drop the fee raised for one entry, when that entry is removed.
+pub async fn release_for_result(
     conn: &mut SqliteConnection,
-    enrollment_id: i64,
-    kind: &str,
+    result_id: i64,
     now: &str,
 ) -> Result<(), AppError> {
-    let remaining: (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM exam_results
-         WHERE enrollment_id = ?1 AND kind = ?2 AND deleted_at IS NULL",
-    )
-    .bind(enrollment_id)
-    .bind(kind)
-    .fetch_one(&mut *conn)
-    .await?;
-
-    if remaining.0 > 0 {
-        return Ok(());
-    }
-
     sqlx::query(
         "UPDATE exam_fee_charges SET deleted_at = ?1
-         WHERE enrollment_id = ?2 AND kind = ?3 AND deleted_at IS NULL",
+         WHERE result_id = ?2 AND deleted_at IS NULL",
     )
     .bind(now)
-    .bind(enrollment_id)
-    .bind(kind)
+    .bind(result_id)
     .execute(&mut *conn)
     .await?;
 
@@ -202,7 +108,7 @@ pub async fn total_for_enrollment(
 /// be one query per candidate in the school.
 pub async fn totals_by_enrollment(
     pool: &SqlitePool,
-) -> Result<HashMap<i64, Centimes>, AppError> {
+) -> Result<std::collections::HashMap<i64, Centimes>, AppError> {
     let rows: Vec<(i64, i64)> = sqlx::query_as(
         "SELECT enrollment_id, COALESCE(SUM(amount_centimes), 0)
          FROM exam_fee_charges
@@ -221,7 +127,7 @@ pub async fn list_for_enrollment(
     enrollment_id: i64,
 ) -> Result<Vec<ExamFeeCharge>, AppError> {
     let rows: Vec<ExamFeeCharge> = sqlx::query_as(
-        "SELECT id, enrollment_id, kind, amount_centimes, charged_on
+        "SELECT id, enrollment_id, result_id, kind, amount_centimes, charged_on
          FROM exam_fee_charges
          WHERE enrollment_id = ?1 AND deleted_at IS NULL
          ORDER BY charged_on, id",
@@ -231,16 +137,6 @@ pub async fn list_for_enrollment(
     .await?;
 
     Ok(rows)
-}
-
-#[derive(Debug, Clone, FromRow, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ExamFeeCharge {
-    pub id: i64,
-    pub enrollment_id: i64,
-    pub kind: String,
-    pub amount_centimes: i64,
-    pub charged_on: String,
 }
 
 #[cfg(test)]
@@ -293,44 +189,15 @@ mod tests {
         .id
     }
 
-    async fn set_fee(pool: &SqlitePool, kind: &str, dinars: i64) {
-        set(
-            pool,
-            &ExamFeeInput {
-                kind: kind.into(),
-                amount_centimes: dinars * DA,
-            },
-        )
-        .await
-        .unwrap();
-    }
-
     #[tokio::test]
-    async fn the_fee_list_starts_at_zero_so_the_app_invents_no_price() {
+    async fn entering_a_candidate_charges_what_the_owner_typed() {
         let pool = test_pool().await;
-        let list = list(&pool).await.unwrap();
-
-        assert_eq!(list.len(), 3);
-        assert!(list.iter().all(|f| f.amount_centimes == 0));
-    }
-
-    #[tokio::test]
-    async fn the_fee_list_is_in_the_order_of_the_journey() {
-        let pool = test_pool().await;
-        let kinds: Vec<String> =
-            list(&pool).await.unwrap().into_iter().map(|f| f.kind).collect();
-
-        assert_eq!(kinds, vec!["theory", "maneuvers", "road"]);
-    }
-
-    #[tokio::test]
-    async fn entering_a_candidate_for_an_exam_charges_him_the_fee() {
-        let pool = test_pool().await;
-        set_fee(&pool, "theory", 3_000).await;
-
         let enrollment = enrol(&pool, "Benaissa").await;
         let session = sitting(&pool, "theory", "2026-11-10").await;
-        exams::add_to_session(&pool, session, enrollment).await.unwrap();
+
+        exams::add_to_session(&pool, session, enrollment, 3_000 * DA)
+            .await
+            .unwrap();
 
         assert_eq!(
             total_for_enrollment(&pool, enrollment).await.unwrap(),
@@ -338,42 +205,88 @@ mod tests {
         );
     }
 
-    /// The rule the owner stated: fail, and the next sitting costs nothing.
+    /// The school that gives the retake free says so by leaving it empty.
     #[tokio::test]
-    async fn a_repassage_is_free() {
+    async fn a_repassage_can_be_free() {
         let pool = test_pool().await;
-        set_fee(&pool, "theory", 3_000).await;
-
         let enrollment = enrol(&pool, "Benaissa").await;
 
         let first = sitting(&pool, "theory", "2026-11-10").await;
-        let entry = exams::add_to_session(&pool, first, enrollment).await.unwrap();
+        let entry = exams::add_to_session(&pool, first, enrollment, 3_000 * DA)
+            .await
+            .unwrap();
         exams::set_outcome(&pool, entry.id, "failed", "").await.unwrap();
 
-        // Entered again for the next code sitting.
         let second = sitting(&pool, "theory", "2026-12-08").await;
-        exams::add_to_session(&pool, second, enrollment).await.unwrap();
+        exams::add_to_session(&pool, second, enrollment, 0).await.unwrap();
 
         assert_eq!(
             total_for_enrollment(&pool, enrollment).await.unwrap(),
-            3_000 * DA,
-            "he already paid for the code; sitting it again must not charge him twice"
+            3_000 * DA
+        );
+    }
+
+    /// And the school that charges again can say THAT. This is the case the
+    /// fixed-amount version made impossible, which is why it was wrong.
+    #[tokio::test]
+    async fn a_repassage_can_also_be_charged_again() {
+        let pool = test_pool().await;
+        let enrollment = enrol(&pool, "Benaissa").await;
+
+        let first = sitting(&pool, "theory", "2026-11-10").await;
+        let entry = exams::add_to_session(&pool, first, enrollment, 3_000 * DA)
+            .await
+            .unwrap();
+        exams::set_outcome(&pool, entry.id, "failed", "").await.unwrap();
+
+        let second = sitting(&pool, "theory", "2026-12-08").await;
+        exams::add_to_session(&pool, second, enrollment, 3_000 * DA)
+            .await
+            .unwrap();
+
+        assert_eq!(
+            total_for_enrollment(&pool, enrollment).await.unwrap(),
+            6_000 * DA,
+            "a school that charges the retake again must be able to record it"
+        );
+    }
+
+    /// Nor is the amount obliged to be the same twice — a reduced retake.
+    #[tokio::test]
+    async fn the_second_time_can_cost_something_different() {
+        let pool = test_pool().await;
+        let enrollment = enrol(&pool, "Benaissa").await;
+
+        let first = sitting(&pool, "theory", "2026-11-10").await;
+        exams::add_to_session(&pool, first, enrollment, 3_000 * DA)
+            .await
+            .unwrap();
+
+        let second = sitting(&pool, "theory", "2026-12-08").await;
+        exams::add_to_session(&pool, second, enrollment, 1_500 * DA)
+            .await
+            .unwrap();
+
+        assert_eq!(
+            total_for_enrollment(&pool, enrollment).await.unwrap(),
+            4_500 * DA
         );
     }
 
     #[tokio::test]
     async fn each_stage_is_charged_on_its_own() {
         let pool = test_pool().await;
-        set_fee(&pool, "theory", 3_000).await;
-        set_fee(&pool, "maneuvers", 3_500).await;
-
         let enrollment = enrol(&pool, "Benaissa").await;
 
         let code = sitting(&pool, "theory", "2026-11-10").await;
-        exams::add_to_session(&pool, code, enrollment).await.unwrap();
+        exams::add_to_session(&pool, code, enrollment, 3_000 * DA)
+            .await
+            .unwrap();
 
         let creneau = sitting(&pool, "maneuvers", "2026-12-15").await;
-        exams::add_to_session(&pool, creneau, enrollment).await.unwrap();
+        exams::add_to_session(&pool, creneau, enrollment, 3_500 * DA)
+            .await
+            .unwrap();
 
         assert_eq!(
             total_for_enrollment(&pool, enrollment).await.unwrap(),
@@ -382,89 +295,76 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn a_fee_of_zero_charges_nothing_at_all() {
-        // A school that has not configured fees must not see phantom lines.
+    async fn zero_charges_nothing_at_all() {
+        // A school that does not collect the fee through the app must not see
+        // phantom lines on a candidate's file.
         let pool = test_pool().await;
-
         let enrollment = enrol(&pool, "Benaissa").await;
         let session = sitting(&pool, "theory", "2026-11-10").await;
-        exams::add_to_session(&pool, session, enrollment).await.unwrap();
+
+        exams::add_to_session(&pool, session, enrollment, 0).await.unwrap();
 
         assert_eq!(total_for_enrollment(&pool, enrollment).await.unwrap(), 0);
         assert!(list_for_enrollment(&pool, enrollment).await.unwrap().is_empty());
     }
 
-    /// Raising the fee must not rewrite what an earlier candidate owes.
     #[tokio::test]
-    async fn the_charge_keeps_the_price_of_the_day_it_was_made() {
+    async fn a_negative_fee_is_refused() {
         let pool = test_pool().await;
-        set_fee(&pool, "theory", 3_000).await;
-
-        let old = enrol(&pool, "Ancien").await;
+        let enrollment = enrol(&pool, "Benaissa").await;
         let session = sitting(&pool, "theory", "2026-11-10").await;
-        exams::add_to_session(&pool, session, old).await.unwrap();
 
-        set_fee(&pool, "theory", 4_000).await;
+        let err = exams::add_to_session(&pool, session, enrollment, -1).await;
 
-        let new = enrol(&pool, "Nouveau").await;
-        let later = sitting(&pool, "theory", "2027-01-12").await;
-        exams::add_to_session(&pool, later, new).await.unwrap();
+        assert!(err.is_err());
+    }
 
-        assert_eq!(total_for_enrollment(&pool, old).await.unwrap(), 3_000 * DA);
-        assert_eq!(total_for_enrollment(&pool, new).await.unwrap(), 4_000 * DA);
+    /// A refused fee must not leave the candidate entered for the exam: the
+    /// entry and its charge are one act.
+    #[tokio::test]
+    async fn a_refused_fee_rolls_back_the_entry() {
+        let pool = test_pool().await;
+        let enrollment = enrol(&pool, "Benaissa").await;
+        let session = sitting(&pool, "theory", "2026-11-10").await;
+
+        let _ = exams::add_to_session(&pool, session, enrollment, -1).await;
+
+        let entries = exams::entries_for_session(&pool, session).await.unwrap();
+        assert!(entries.is_empty(), "the entry must not survive a refused fee");
     }
 
     #[tokio::test]
     async fn taking_a_candidate_out_of_a_sitting_takes_back_the_charge() {
         // Entering the wrong person is a slip, and it must not leave a debt.
         let pool = test_pool().await;
-        set_fee(&pool, "theory", 3_000).await;
-
         let enrollment = enrol(&pool, "Benaissa").await;
         let session = sitting(&pool, "theory", "2026-11-10").await;
-        let entry = exams::add_to_session(&pool, session, enrollment).await.unwrap();
 
+        let entry = exams::add_to_session(&pool, session, enrollment, 3_000 * DA)
+            .await
+            .unwrap();
         exams::remove_result(&pool, entry.id).await.unwrap();
 
         assert_eq!(total_for_enrollment(&pool, enrollment).await.unwrap(), 0);
     }
 
+    /// Removing ONE of two entries takes only that one's fee.
     #[tokio::test]
-    async fn the_charge_stands_while_he_is_still_entered_somewhere() {
-        // Removed from one code sitting but still in another: he has not
-        // stopped owing for the code.
+    async fn removing_one_entry_leaves_the_other_charge_standing() {
         let pool = test_pool().await;
-        set_fee(&pool, "theory", 3_000).await;
-
         let enrollment = enrol(&pool, "Benaissa").await;
 
         let first = sitting(&pool, "theory", "2026-11-10").await;
-        let entry = exams::add_to_session(&pool, first, enrollment).await.unwrap();
+        let entry = exams::add_to_session(&pool, first, enrollment, 3_000 * DA)
+            .await
+            .unwrap();
 
         let second = sitting(&pool, "theory", "2026-12-08").await;
-        exams::add_to_session(&pool, second, enrollment).await.unwrap();
+        exams::add_to_session(&pool, second, enrollment, 3_000 * DA)
+            .await
+            .unwrap();
 
         exams::remove_result(&pool, entry.id).await.unwrap();
-
-        assert_eq!(
-            total_for_enrollment(&pool, enrollment).await.unwrap(),
-            3_000 * DA
-        );
-    }
-
-    #[tokio::test]
-    async fn re_entering_after_a_removal_charges_again() {
-        // The charge was released, so this is a fresh entry, not a retake.
-        let pool = test_pool().await;
-        set_fee(&pool, "theory", 3_000).await;
-
-        let enrollment = enrol(&pool, "Benaissa").await;
-        let first = sitting(&pool, "theory", "2026-11-10").await;
-        let entry = exams::add_to_session(&pool, first, enrollment).await.unwrap();
-        exams::remove_result(&pool, entry.id).await.unwrap();
-
-        let second = sitting(&pool, "theory", "2026-12-08").await;
-        exams::add_to_session(&pool, second, enrollment).await.unwrap();
 
         assert_eq!(
             total_for_enrollment(&pool, enrollment).await.unwrap(),
@@ -475,11 +375,12 @@ mod tests {
     #[tokio::test]
     async fn the_fee_lands_on_the_candidates_balance() {
         let pool = test_pool().await;
-        set_fee(&pool, "theory", 3_000).await;
-
         let enrollment = enrol(&pool, "Benaissa").await;
         let session = sitting(&pool, "theory", "2026-11-10").await;
-        exams::add_to_session(&pool, session, enrollment).await.unwrap();
+
+        exams::add_to_session(&pool, session, enrollment, 3_000 * DA)
+            .await
+            .unwrap();
 
         let summary = enrollments::summary(&pool, enrollment).await.unwrap();
 
@@ -489,32 +390,18 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn a_negative_fee_is_refused() {
+    async fn the_charge_says_which_entry_it_was_for() {
         let pool = test_pool().await;
-        let err = set(
-            &pool,
-            &ExamFeeInput {
-                kind: "theory".into(),
-                amount_centimes: -1,
-            },
-        )
-        .await;
+        let enrollment = enrol(&pool, "Benaissa").await;
+        let session = sitting(&pool, "theory", "2026-11-10").await;
 
-        assert!(err.is_err());
-    }
+        let entry = exams::add_to_session(&pool, session, enrollment, 3_000 * DA)
+            .await
+            .unwrap();
 
-    #[tokio::test]
-    async fn an_unknown_exam_kind_is_refused() {
-        let pool = test_pool().await;
-        let err = set(
-            &pool,
-            &ExamFeeInput {
-                kind: "parking".into(),
-                amount_centimes: 1_000,
-            },
-        )
-        .await;
-
-        assert!(err.is_err());
+        let charges = list_for_enrollment(&pool, enrollment).await.unwrap();
+        assert_eq!(charges.len(), 1);
+        assert_eq!(charges[0].result_id, Some(entry.id));
+        assert_eq!(charges[0].kind, "theory");
     }
 }

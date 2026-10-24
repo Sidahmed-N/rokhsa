@@ -25,6 +25,7 @@ import {
   type ExamSession,
 } from "@/lib/exams";
 import { kindStyle } from "@/lib/kinds";
+import { parseDZD } from "@/lib/money";
 import { personName } from "@/lib/names";
 import { isDesktop } from "@/lib/tauri";
 import { todayIso } from "@/lib/training";
@@ -397,6 +398,15 @@ function AddToSessionDialog({
   const { t } = useTranslation();
 
   const [chosen, setChosen] = useState<number | null>(null);
+  /**
+   * What this candidate is paying for this sitting.
+   *
+   * Starts empty, and empty means nothing — which is how a school that gives
+   * the repassage free says so. Nothing is remembered between candidates and
+   * nothing is pre-filled: the amount is the owner's to state every time,
+   * because some schools charge the retake again and some do not.
+   */
+  const [fee, setFee] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pickError, setPickError] = useState<string | undefined>(undefined);
@@ -409,7 +419,7 @@ function AddToSessionDialog({
     setSaving(true);
     setError(null);
     try {
-      await addToExamSession(sessionId, chosen);
+      await addToExamSession(sessionId, chosen, parseDZD(fee) ?? 0);
       onDone();
     } catch (e: unknown) {
       setError(isAppError(e) ? t(e.code, { defaultValue: e.message }) : String(e));
@@ -434,6 +444,26 @@ function AddToSessionDialog({
           setPickError(undefined);
         }}
       />
+
+      <div className="mt-4">
+        <label
+          htmlFor="exam-fee"
+          className="mb-1 block text-xs font-medium text-ink-soft"
+        >
+          {t("fees.amount")}
+        </label>
+        <input
+          id="exam-fee"
+          type="text"
+          inputMode="numeric"
+          value={fee}
+          onChange={(e) => setFee(e.target.value)}
+          dir="ltr"
+          placeholder="0"
+          className="w-36 rounded-md border border-line-strong bg-surface px-2.5 py-1.5 text-sm outline-none transition-colors focus:border-brand focus:ring-2 focus:ring-brand-soft"
+        />
+        <p className="mt-1 text-xs text-muted">{t("fees.entryHint")}</p>
+      </div>
     </Modal>
   );
 }
