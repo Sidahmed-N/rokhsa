@@ -277,7 +277,7 @@ substitutes for concepts that have an established Algerian name.
   /components/ui     shadcn primitives
   /lib               Shared helpers, formatters, generated bindings
   /locales           fr.json, ar.json
-  /print             Print-only layouts
+  /print             Print-only layouts (none yet — see "Paper is the output")
 /src-tauri
   /src
     /commands        Tauri command handlers — one module per feature

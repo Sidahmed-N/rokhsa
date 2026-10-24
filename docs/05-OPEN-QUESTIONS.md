@@ -507,3 +507,35 @@ payment cannot be torn apart. The owner never sees it.
 **Consequence to watch:** the app now prints nothing at all, so the "does Arabic print
 correctly" risk is unproven again. It returns with the first real printout — most likely
 the exam batch list, since the school has to hand the examiner a list of who is coming.
+
+---
+
+## Q19. Settings — **ANSWERED 2026-10-24** 🟢
+
+> Do we really need the drive and school information in the settings too? The
+> entire software is about just managing and stuff.
+
+Checked before answering, and the owner was right on the evidence: **nothing read
+the school information except the page that edited it.** No screen showed the
+name, address, phone or agrément. The printed receipt was their only consumer and
+it had been removed the same day.
+
+Worse, `defaultLanguage` was a **dead control**. The app takes its language from
+`localStorage`, written by the switcher in the sidebar (`src/i18n/index.ts`); the
+settings value was saved to the database and never read. Changing it did nothing,
+and it had looked functional the whole time.
+
+So Réglages is gone. The nav item is now **Sauvegarde**, named for the one thing
+left on it.
+
+**Deliberately kept:** `db/school.rs` and the `school` row. `db::payments`
+allocates every receipt number from `next_receipt_number`, and the tests there
+encode why the counter freezes once money has moved.
+
+**What brings the fields back:** the first real printout. An exam batch list is a
+document *from* the school and wants its name and agrément at the top — two or
+three fields, added when we know which, rather than seven kept on speculation.
+
+**Blocking that, and still unanswered since the start:** Q8 — do schools have a
+working printer at the counter, and is the examiner's list handed over on paper or
+read out? Until that is known, building any printing is speculative.

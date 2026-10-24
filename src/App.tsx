@@ -3,9 +3,9 @@ import { useTranslation } from "react-i18next";
 import {
   CalendarDays,
   GraduationCap,
+  HardDrive,
   LayoutDashboard,
   Receipt,
-  Settings,
   Users,
   Wallet,
 } from "lucide-react";
@@ -19,7 +19,7 @@ import ExamsPage from "@/features/exams/ExamsPage";
 import HomePage from "@/features/home/HomePage";
 import CashFlowPage from "@/features/reports/CashFlowPage";
 import ReceivablesPage from "@/features/reports/ReceivablesPage";
-import SettingsPage from "@/features/settings/SettingsPage";
+import BackupPage from "@/features/backup/BackupPage";
 
 /**
  * Application shell.
@@ -61,7 +61,7 @@ export default function App() {
     },
     {
       labelKey: "nav.groupSystem",
-      items: [{ to: "/settings", labelKey: "nav.settings", Icon: Settings }],
+      items: [{ to: "/backup", labelKey: "nav.backup", Icon: HardDrive }],
     },
   ] as const;
 
@@ -141,7 +141,7 @@ export default function App() {
           <Route path="/exams" element={<ExamsPage />} />
             <Route path="/receivables" element={<ReceivablesPage />} />
             <Route path="/cash-flow" element={<CashFlowPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/backup" element={<BackupPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>

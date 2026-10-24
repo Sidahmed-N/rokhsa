@@ -1,9 +1,19 @@
 //! The school's own details and its price list.
 //!
-//! Everything a school needs to make the app theirs: the letterhead that goes
-//! on every printed receipt, and the categories and prices they actually
-//! charge. Until this is editable in the app, a school is printing somebody
-//! else's name on its paperwork.
+//! NOTHING CALLS THIS TODAY, and that is deliberate rather than an oversight.
+//! These functions served one screen — Réglages — and that screen is gone: the
+//! receipt they were a letterhead for was removed, and the school teaches a
+//! single licence so there is no price list to keep. The commands on top of
+//! them were deleted; this layer was not.
+//!
+//! Two reasons it stays. The `school` row is still live — `db::payments`
+//! allocates every receipt number from `next_receipt_number` with its own SQL,
+//! so the table must not be mistaken for dead. And the tests below encode a
+//! rule worth keeping: the counter freezes once money has moved, because
+//! moving it would mint a second payment with a number already handed out.
+//!
+//! When the first real printout arrives — the exam batch list — it needs the
+//! school's name and agrément, and `get` is what it will call.
 
 use chrono::Utc;
 use serde::{Deserialize, Serialize};

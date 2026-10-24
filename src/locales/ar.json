@@ -9,13 +9,13 @@
     "payments": "الدفعات",
     "receivables": "المبالغ المستحقة",
     "cashFlow": "الصندوق",
-    "settings": "الإعدادات",
     "printProof": "تجربة الطباعة",
     "calendar": "جدول الحصص",
     "groupDaily": "العمل اليومي",
     "groupMoney": "المال",
     "groupSystem": "النظام",
-    "exams": "الامتحانات"
+    "exams": "الامتحانات",
+    "backup": "النسخ الاحتياطي"
   },
   "backup": {
     "section": "النسخ الاحتياطي",
@@ -47,31 +47,6 @@
       "newerVersion": "هذه النسخة الاحتياطية من إصدار أحدث من التطبيق. حدّث طريقي قبل استعادتها.",
       "writeFailed": "تعذّرت الكتابة. هل أُزيل مفتاح USB أم أن القرص ممتلئ؟ لم يُترك أي ملف ناقص.",
       "destinationUnreachable": "هذا المجلد غير موجود. تأكد من أن مفتاح USB موصول."
-    }
-  },
-  "settings": {
-    "title": "الإعدادات",
-    "saved": "تم الحفظ.",
-    "saveSchool": "حفظ الإعدادات",
-    "schoolSection": "مدرستك",
-    "nameFr": "الاسم (بالحروف اللاتينية)",
-    "nameAr": "الاسم (بالعربية)",
-    "addressFr": "العنوان (بالحروف اللاتينية)",
-    "addressAr": "العنوان (بالعربية)",
-    "commune": "البلدية",
-    "wilayaCode": "رمز الولاية",
-    "phone": "الهاتف",
-    "email": "البريد الإلكتروني",
-    "agrement": "رقم الاعتماد",
-    "agrementHint": "يظهر في ترويسة الوصولات.",
-    "defaultLanguage": "اللغة الافتراضية",
-    "error": {
-      "nameRequired": "أدخل اسم مدرسة تعليم السياقة.",
-      "languageInvalid": "لغة غير صالحة.",
-      "receiptNumberPositive": "الرقم يجب أن يكون أكبر من الصفر.",
-      "receiptNumberLocked": "لا يمكن تغيير عداد الوصولات: توجد دفعات مسجلة.",
-      "hoursNegative": "الساعات لا يمكن أن تكون سالبة.",
-      "priceNegative": "السعر لا يمكن أن يكون سالبا."
     }
   },
   "receivables": {

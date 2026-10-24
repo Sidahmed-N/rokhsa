@@ -9,13 +9,13 @@
     "payments": "Versements",
     "receivables": "Créances",
     "cashFlow": "Caisse",
-    "settings": "Réglages",
     "printProof": "Test d'impression",
     "calendar": "Calendrier",
     "groupDaily": "Au quotidien",
     "groupMoney": "Argent",
     "groupSystem": "Système",
-    "exams": "Examens"
+    "exams": "Examens",
+    "backup": "Sauvegarde"
   },
   "backup": {
     "section": "Sauvegarde",
@@ -47,31 +47,6 @@
       "newerVersion": "Cette sauvegarde vient d'une version plus récente de l'application. Mettez Tariqi à jour avant de la restaurer.",
       "writeFailed": "Écriture impossible. La clé USB a-t-elle été retirée, ou le disque est-il plein ? Aucun fichier incomplet n'a été laissé.",
       "destinationUnreachable": "Ce dossier est introuvable. Vérifiez que la clé USB est bien branchée."
-    }
-  },
-  "settings": {
-    "title": "Réglages",
-    "saved": "Enregistré.",
-    "saveSchool": "Enregistrer les réglages",
-    "schoolSection": "Votre auto-école",
-    "nameFr": "Nom (latin)",
-    "nameAr": "الاسم (arabe)",
-    "addressFr": "Adresse (latin)",
-    "addressAr": "العنوان (arabe)",
-    "commune": "Commune",
-    "wilayaCode": "Code wilaya",
-    "phone": "Téléphone",
-    "email": "E-mail",
-    "agrement": "N° d'agrément",
-    "agrementHint": "Apparaît sur l'en-tête des reçus.",
-    "defaultLanguage": "Langue par défaut",
-    "error": {
-      "nameRequired": "Indiquez le nom de l'auto-école.",
-      "languageInvalid": "Langue invalide.",
-      "receiptNumberPositive": "Le numéro doit être supérieur à zéro.",
-      "receiptNumberLocked": "Le compteur de reçus ne peut plus être modifié : des versements existent.",
-      "hoursNegative": "Les heures ne peuvent pas être négatives.",
-      "priceNegative": "Le prix ne peut pas être négatif."
     }
   },
   "receivables": {
