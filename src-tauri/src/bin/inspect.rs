@@ -41,8 +41,45 @@ async fn count(pool: &SqlitePool, table: &str) {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let path = std::env::args()
-        .nth(1)
+    let args: Vec<String> = std::env::args().skip(1).collect();
+
+    // `--backups` asks the same question the restore screen asks, through the
+    // same code, so a backup the screen refuses to show says why here.
+    if args.first().map(String::as_str) == Some("--backups") {
+        let data_dir = default_db_path().parent().unwrap().to_path_buf();
+        let dir = data_dir.join("backups");
+        println!("{}", dir.display());
+
+        // The exact call the restore screen makes.
+        match tariqi_lib::backup::list(&data_dir).await {
+            Ok(list) => {
+                println!("  backup::list returned {}", list.len());
+                for info in &list {
+                    println!("    {} candidates={}", info.file_name, info.candidates);
+                }
+            }
+            Err(e) => println!("  backup::list FAILED {e}"),
+        }
+        println!("  --- per file ---");
+        for entry in std::fs::read_dir(&dir)?.flatten() {
+            let path = entry.path();
+            if path.extension().and_then(|e| e.to_str()) != Some("db") {
+                continue;
+            }
+            let name = path.file_name().unwrap().to_string_lossy().to_string();
+            match tariqi_lib::backup::inspect(&path).await {
+                Ok(info) => println!(
+                    "  {name:<26} ok   candidates={} payments={} schema={}",
+                    info.candidates, info.payments, info.schema_version
+                ),
+                Err(e) => println!("  {name:<26} REJECTED  {e}"),
+            }
+        }
+        return Ok(());
+    }
+
+    let path = args
+        .first()
         .map(PathBuf::from)
         .unwrap_or_else(default_db_path);
 

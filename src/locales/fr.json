@@ -18,7 +18,6 @@
     "backup": "Sauvegarde"
   },
   "backup": {
-    "section": "Sauvegarde",
     "explain": "Une sauvegarde est faite automatiquement au démarrage et à la fermeture. Gardez-en aussi une sur clé USB : si l'ordinateur tombe en panne, c'est la seule copie qui reste.",
     "now": "Sauvegarder maintenant",
     "toUsb": "Sauvegarder sur clé USB",

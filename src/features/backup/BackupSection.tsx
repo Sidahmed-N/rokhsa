@@ -116,10 +116,6 @@ export default function BackupSection() {
 
   return (
     <section className="mb-6 rounded-lg border border-line bg-surface shadow-card">
-      <h2 className="border-b border-line px-4 py-3 text-xs uppercase tracking-wide text-muted">
-        {t("backup.section")}
-      </h2>
-
       <div className="px-4 py-4">
         {error && (
           <p className="mb-3 rounded-md border border-owed/30 bg-owed-soft px-3 py-2 text-sm text-owed">
