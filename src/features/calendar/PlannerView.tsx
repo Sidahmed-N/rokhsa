@@ -122,33 +122,52 @@ export default function PlannerView({
 
   const visible = kinds.length === 0 ? rows : rows.filter((r) => kinds.includes(r.kind));
 
-  const events: EventInput[] = useMemo(
-    () =>
-      visible.map((entry) => {
-        const event: EventInput = {
-          id: String(entry.id),
-          title: personName(entry, locale),
-          start: startOf(entry),
-          allDay: !entry.scheduledTime,
-          // Only a booking can be dragged; one already taught is a record.
-          editable: entry.status === "planned",
-          classNames: [`fc-kind-${entry.kind}`, `fc-status-${entry.status}`],
-          extendedProps: {
-            candidateId: entry.candidateId,
-            planNote: entry.planNote,
-            kindLabel: t(`lessons.kind_${entry.kind}`),
-            statusLabel: t(`calendar.status_${entry.status}`),
-          },
-        };
-        // Assigned only when there is one: under exactOptionalPropertyTypes an
-        // optional field may be absent but not explicitly undefined, and a
-        // session booked without a time has no end.
-        const end = endOf(entry);
-        if (end) event.end = end;
-        return event;
-      }),
-    [visible, locale, t],
-  );
+  /**
+   * One block per SESSION, not per candidate.
+   *
+   * A créneau taught to three people is three lesson rows sharing a session
+   * id (migration 0009). Drawn one block each they land on the same slot and
+   * collapse into "+2", which is the cramping this view was rebuilt to fix —
+   * and it would misread as three separate lessons rather than one with three
+   * people in it.
+   */
+  const events: EventInput[] = useMemo(() => {
+    const bySession = new Map<string, DayEntry[]>();
+    for (const entry of visible) {
+      // A lesson with no session id is its own session.
+      const key = entry.sessionId === null ? `l${entry.id}` : `s${entry.sessionId}`;
+      const found = bySession.get(key);
+      if (found) found.push(entry);
+      else bySession.set(key, [entry]);
+    }
+
+    return [...bySession.values()].flatMap((group) => {
+      const first = group[0];
+      if (!first) return [];
+
+      const event: EventInput = {
+        // The first row carries the block: dragging it reschedules the whole
+        // session, because db::lessons::reschedule moves every row sharing
+        // the session id.
+        id: String(first.id),
+        title: group.map((e) => personName(e, locale)).join(" · "),
+        start: startOf(first),
+        allDay: !first.scheduledTime,
+        editable: first.status === "planned",
+        classNames: [`fc-kind-${first.kind}`, `fc-status-${first.status}`],
+        extendedProps: {
+          candidateId: first.candidateId,
+          planNote: first.planNote,
+          kindLabel: t(`lessons.kind_${first.kind}`),
+          statusLabel: t(`calendar.status_${first.status}`),
+          names: group.map((e) => personName(e, locale)),
+        },
+      };
+      const end = endOf(first);
+      if (end) event.end = end;
+      return [event];
+    });
+  }, [visible, locale, t]);
 
   async function move(id: string, start: Date | null, end: Date | null, revert: () => void) {
     if (!start) return revert();
@@ -280,17 +299,26 @@ export default function PlannerView({
             const shown = localParts(arg.view.currentStart).day;
             if (shown !== date) setDate(shown);
           }}
-          eventContent={(arg) => (
-            <div className="fc-tariqi-event">
-              <span className="fc-tariqi-time">{arg.timeText}</span>
-              <span className="fc-tariqi-title">{arg.event.title}</span>
-              {arg.event.extendedProps["planNote"] ? (
-                <span className="fc-tariqi-note" dir="auto">
-                  {String(arg.event.extendedProps["planNote"])}
-                </span>
-              ) : null}
-            </div>
-          )}
+          eventContent={(arg) => {
+            const names = (arg.event.extendedProps["names"] as string[]) ?? [
+              arg.event.title,
+            ];
+            return (
+              <div className="fc-tariqi-event">
+                <span className="fc-tariqi-time">{arg.timeText}</span>
+                {names.map((n, i) => (
+                  <span key={i} className="fc-tariqi-title">
+                    {n}
+                  </span>
+                ))}
+                {arg.event.extendedProps["planNote"] ? (
+                  <span className="fc-tariqi-note" dir="auto">
+                    {String(arg.event.extendedProps["planNote"])}
+                  </span>
+                ) : null}
+              </div>
+            );
+          }}
           eventClick={(arg) => {
             const start = arg.event.start;
             if (start) openDay(localParts(start).day);

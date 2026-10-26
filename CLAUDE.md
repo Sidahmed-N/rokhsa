@@ -123,6 +123,26 @@ These are not style preferences. Breaking them causes data loss, legal problems,
 - A *lesson* has both a **scheduled** window and an **actual** window. They are different
   columns and both matter for billing and for instructor payroll.
 
+### Group sessions
+- **A session can hold several candidates**, because the *créneau* is taught in groups:
+  three or four told to come Tuesday at eight, taking their turn one by one.
+- **There is no group object, deliberately.** The instructor moves a failed candidate into
+  another group or teaches him alone "depending on what the instructor wants", so a group
+  is not a thing he manages — it is only "who did I tell to come on Tuesday".
+- **One lesson row per candidate, linked by `session_id`** (migration 0009). Rows booked
+  together share an id; `NULL` means the candidate is on their own. This was chosen over
+  one session row with an attendee list so that hours, balances and the candidate's file —
+  the money path — keep reading exactly what they always read. A UI change must not put
+  the highest-risk code in its path.
+- **The cost, and the rule that pays it:** the slot's facts (day, time, duration) are
+  repeated on every row of a group and can drift. So every operation on a booked session
+  is keyed by `session_id` and writes all its rows at once — `reschedule` already does.
+  Never move, cancel or re-time one row of a group on its own.
+- **Attendance is per candidate and already exists**: `lessons.status` is `done` or
+  `missed` for *that person*, so one absentee in a group of three needs no new concept.
+- `schedule_many` is the ONLY insert path for a booking; `schedule` is a wrapper over it.
+  A second insert path is a second chance for a group's rows to disagree.
+
 ### Data integrity
 - Migrations are **forward-only**. Never edit a migration that has shipped; add a new one.
 - **Soft-delete** anything with legal or financial significance (candidates, enrolments,

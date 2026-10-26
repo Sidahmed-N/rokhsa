@@ -268,7 +268,9 @@
       "dateTooOld": "هذا التاريخ قديم جدا. تحقق من السنة.",
       "notPlanned": "هذه الحصة ليست حصة مبرمجة.",
       "alreadyDone": "هذه الحصة تمت من قبل.",
-      "statusInvalid": "الحالة غير صالحة."
+      "statusInvalid": "الحالة غير صالحة.",
+      "noCandidates": "اختر مترشحًا واحدًا على الأقل.",
+      "duplicateCandidate": "هذا المترشح موجود في هذه الحصة بالفعل."
     }
   },
   "payments": {
@@ -371,7 +373,8 @@
     "allKinds": "الكل",
     "tabMonth": "الشهر",
     "forCandidate": "لأي مترشح",
-    "pickCandidate": "اختر مترشحا."
+    "pickCandidate": "اختر مترشحا.",
+    "chosenCount": "{{n}} مترشحين في هذه الحصة."
   },
   "exams": {
     "title": "الامتحانات",

@@ -34,6 +34,9 @@ pub struct Lesson {
     pub plan_note: String,
     pub notes: String,
     pub created_at: String,
+    /// The booking this was made in, when several candidates were booked
+    /// together. NULL means the lesson is its own session.
+    pub session_id: Option<i64>,
 }
 
 /// Booking a session that has not happened yet.
@@ -95,6 +98,9 @@ pub struct DayEntry {
     pub minutes: i64,
     pub plan_note: String,
     pub notes: String,
+    /// Rows sharing one of these were booked together and are one session on
+    /// the calendar. NULL means this candidate is on their own.
+    pub session_id: Option<i64>,
 }
 
 #[derive(Debug, Clone, Copy, Default, Serialize)]
@@ -118,7 +124,7 @@ pub const KINDS: [&str; 3] = ["theory", "maneuvers", "road"];
 pub const STATUSES: [&str; 4] = ["planned", "done", "missed", "cancelled"];
 
 const COLUMNS: &str = "id, enrollment_id, instructor_staff_id, kind, status, \
-     scheduled_on, scheduled_time, occurred_on, minutes, plan_note, notes, created_at";
+     scheduled_on, scheduled_time, occurred_on, minutes, plan_note, notes, created_at,      session_id";
 
 fn check_kind(kind: &str) -> Result<(), AppError> {
     if !KINDS.contains(&kind) {
@@ -208,7 +214,7 @@ const DAY_COLUMNS: &str = "l.id, COALESCE(l.scheduled_on, l.occurred_on) AS day,
                 l.enrollment_id, e.candidate_id,
                 c.last_name_fr, c.first_name_fr, c.last_name_ar, c.first_name_ar, c.phone,
                 e.category_code, l.kind, l.status, l.scheduled_time, l.minutes,
-                l.plan_note, l.notes";
+                l.plan_note, l.notes, l.session_id";
 
 const DAY_JOINS: &str = "FROM lessons l
          JOIN enrollments e ON e.id = l.enrollment_id
@@ -296,11 +302,24 @@ pub async fn last_note(pool: &SqlitePool, enrollment_id: i64) -> Result<String, 
 /* ------------------------------ writing ------------------------------- */
 
 /// Book a session for a future (or past) date.
-pub async fn schedule(
+/// Book one slot for several candidates at once.
+///
+/// This is how the school teaches the créneau: three or four people told to
+/// come Tuesday at eight, taking their turn one by one. One candidate is not
+/// a special case — it is this with a list of one, and it gets no session id
+/// because there is nothing to group it with.
+///
+/// One transaction: a half-written group would leave two candidates booked
+/// and the third not, with nothing on screen to say which.
+pub async fn schedule_many(
     pool: &SqlitePool,
-    enrollment_id: i64,
+    enrollment_ids: &[i64],
     input: &ScheduleInput,
-) -> Result<Lesson, AppError> {
+) -> Result<Vec<Lesson>, AppError> {
+    if enrollment_ids.is_empty() {
+        return Err(AppError::validation("lessons.error.noCandidates"));
+    }
+
     check_kind(input.kind.trim())?;
     check_minutes(input.minutes)?;
 
@@ -311,28 +330,78 @@ pub async fn schedule(
     let time = parse_optional_time(&input.scheduled_time)
         .map_err(|p| date_error(p, "scheduledTime"))?;
 
+    // The same candidate twice in one booking is a slip of the picker.
+    let mut seen = std::collections::HashSet::new();
+    for id in enrollment_ids {
+        if !seen.insert(*id) {
+            return Err(AppError::validation("lessons.error.duplicateCandidate"));
+        }
+    }
+
     let now = Utc::now().to_rfc3339();
+    let mut tx = pool.begin().await?;
 
-    let row: (i64,) = sqlx::query_as(
-        "INSERT INTO lessons
-            (enrollment_id, instructor_staff_id, kind, status,
-             scheduled_on, scheduled_time, occurred_on, minutes, plan_note, notes,
-             created_at, updated_at)
-         VALUES (?1, ?2, ?3, 'planned', ?4, ?5, ?4, ?6, ?7, '', ?8, ?8)
-         RETURNING id",
-    )
-    .bind(enrollment_id)
-    .bind(input.instructor_staff_id)
-    .bind(input.kind.trim())
-    .bind(&on)
-    .bind(time)
-    .bind(input.minutes)
-    .bind(input.plan_note.trim())
-    .bind(&now)
-    .fetch_one(pool)
-    .await?;
+    // Only a real group gets an id. A single booking stays NULL so the
+    // calendar has nothing to group and nothing to explain.
+    let session_id: Option<i64> = if enrollment_ids.len() > 1 {
+        let row: (i64,) =
+            sqlx::query_as("INSERT INTO lesson_sessions (created_at) VALUES (?1) RETURNING id")
+                .bind(&now)
+                .fetch_one(&mut *tx)
+                .await?;
+        Some(row.0)
+    } else {
+        None
+    };
 
-    get(pool, row.0).await
+    let mut ids = Vec::with_capacity(enrollment_ids.len());
+    for enrollment_id in enrollment_ids {
+        let row: (i64,) = sqlx::query_as(
+            "INSERT INTO lessons
+                (enrollment_id, instructor_staff_id, kind, status,
+                 scheduled_on, scheduled_time, occurred_on, minutes, plan_note, notes,
+                 created_at, updated_at, session_id)
+             VALUES (?1, ?2, ?3, 'planned', ?4, ?5, ?4, ?6, ?7, '', ?8, ?8, ?9)
+             RETURNING id",
+        )
+        .bind(enrollment_id)
+        .bind(input.instructor_staff_id)
+        .bind(input.kind.trim())
+        .bind(&on)
+        .bind(time.clone())
+        .bind(input.minutes)
+        .bind(input.plan_note.trim())
+        .bind(&now)
+        .bind(session_id)
+        .fetch_one(&mut *tx)
+        .await?;
+        ids.push(row.0);
+    }
+
+    tx.commit().await?;
+
+    let mut out = Vec::with_capacity(ids.len());
+    for id in ids {
+        out.push(get(pool, id).await?);
+    }
+    Ok(out)
+}
+
+/// Book a slot for one candidate.
+///
+/// A thin wrapper so there is exactly ONE place that writes a booking. The
+/// facts of a slot are repeated across a group’s rows (0009), so a second
+/// insert path is a second chance for them to disagree.
+pub async fn schedule(
+    pool: &SqlitePool,
+    enrollment_id: i64,
+    input: &ScheduleInput,
+) -> Result<Lesson, AppError> {
+    schedule_many(pool, &[enrollment_id], input)
+        .await?
+        .into_iter()
+        .next()
+        .ok_or(AppError::NotFound)
 }
 
 /// Record a session that already happened, without booking it first.
@@ -450,18 +519,40 @@ pub async fn reschedule(
         .map_err(|p| date_error(p, "scheduledTime"))?;
 
     let now = Utc::now().to_rfc3339();
-    sqlx::query(
-        "UPDATE lessons SET scheduled_on = ?1, scheduled_time = ?2,
-                            occurred_on = ?1, minutes = ?3, updated_at = ?4
-         WHERE id = ?5 AND deleted_at IS NULL",
-    )
-    .bind(&on)
-    .bind(time)
-    .bind(minutes)
-    .bind(&now)
-    .bind(id)
-    .execute(pool)
-    .await?;
+
+    // Move every candidate booked in the same slot, not just the row that was
+    // clicked. The slot facts are repeated per row (see 0009), so touching one
+    // of a group would leave the others behind at the old time.
+    match lesson.session_id {
+        Some(session_id) => {
+            sqlx::query(
+                "UPDATE lessons SET scheduled_on = ?1, scheduled_time = ?2,
+                                    occurred_on = ?1, minutes = ?3, updated_at = ?4
+                 WHERE session_id = ?5 AND status = 'planned' AND deleted_at IS NULL",
+            )
+            .bind(&on)
+            .bind(time)
+            .bind(minutes)
+            .bind(&now)
+            .bind(session_id)
+            .execute(pool)
+            .await?;
+        }
+        None => {
+            sqlx::query(
+                "UPDATE lessons SET scheduled_on = ?1, scheduled_time = ?2,
+                                    occurred_on = ?1, minutes = ?3, updated_at = ?4
+                 WHERE id = ?5 AND deleted_at IS NULL",
+            )
+            .bind(&on)
+            .bind(time)
+            .bind(minutes)
+            .bind(&now)
+            .bind(id)
+            .execute(pool)
+            .await?;
+        }
+    }
 
     get(pool, id).await
 }
@@ -811,5 +902,166 @@ mod tests {
 
         assert_eq!(road_minutes(&pool, enrollment).await, 0);
         assert!(list_for_day(&pool, &today()).await.unwrap().is_empty());
+    }
+
+    // ----- group sessions -------------------------------------------------
+
+    /// A second candidate, so a group has somebody to be a group with.
+    async fn another(pool: &SqlitePool, last: &str) -> i64 {
+        let candidate = candidates::create(
+            pool,
+            &CandidateInput {
+                last_name_fr: last.into(),
+                first_name_fr: "Test".into(),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+
+        enrollments::create(
+            pool,
+            candidate.id,
+            &enrollments::EnrollmentInput {
+                category_code: "B".into(),
+                agreed_price_centimes: 35_000_00,
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap()
+        .id
+    }
+
+    #[tokio::test]
+    async fn three_candidates_booked_together_share_one_session() {
+        let pool = test_pool().await;
+        let a = setup(&pool).await;
+        let b = another(&pool, "KADRI").await;
+        let c = another(&pool, "MEZIANE").await;
+
+        let booked = schedule_many(&pool, &[a, b, c], &booking(90)).await.unwrap();
+
+        assert_eq!(booked.len(), 3);
+        let session = booked[0].session_id;
+        assert!(session.is_some(), "a group must be grouped");
+        assert!(booked.iter().all(|l| l.session_id == session));
+    }
+
+    /// Teaching one candidate alone is the same path, not a special case —
+    /// and it gets no session id, because there is nothing to group it with.
+    #[tokio::test]
+    async fn one_candidate_gets_no_session_id() {
+        let pool = test_pool().await;
+        let a = setup(&pool).await;
+
+        let booked = schedule_many(&pool, &[a], &booking(90)).await.unwrap();
+
+        assert_eq!(booked.len(), 1);
+        assert_eq!(booked[0].session_id, None);
+    }
+
+    #[tokio::test]
+    async fn every_candidate_in_a_group_gets_their_own_lesson() {
+        // The hours and the balance hang off one row per candidate, so each
+        // of them must have one.
+        let pool = test_pool().await;
+        let a = setup(&pool).await;
+        let b = another(&pool, "KADRI").await;
+
+        schedule_many(&pool, &[a, b], &booking(90)).await.unwrap();
+
+        assert_eq!(list_for_enrollment(&pool, a).await.unwrap().len(), 1);
+        assert_eq!(list_for_enrollment(&pool, b).await.unwrap().len(), 1);
+    }
+
+    #[tokio::test]
+    async fn booking_nobody_is_refused() {
+        let pool = test_pool().await;
+        assert!(schedule_many(&pool, &[], &booking(90)).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn the_same_candidate_twice_is_refused() {
+        let pool = test_pool().await;
+        let a = setup(&pool).await;
+
+        assert!(schedule_many(&pool, &[a, a], &booking(90)).await.is_err());
+    }
+
+    /// A bad booking must leave nothing behind, or the calendar shows two of
+    /// three candidates with no sign the third was meant to be there.
+    #[tokio::test]
+    async fn a_refused_group_books_nobody() {
+        let pool = test_pool().await;
+        let a = setup(&pool).await;
+        let b = another(&pool, "KADRI").await;
+
+        let mut bad = booking(90);
+        bad.minutes = 0; // refused by check_minutes
+
+        let _ = schedule_many(&pool, &[a, b], &bad).await;
+
+        assert!(list_for_enrollment(&pool, a).await.unwrap().is_empty());
+        assert!(list_for_enrollment(&pool, b).await.unwrap().is_empty());
+    }
+
+    /// The slot's facts are repeated on each row, so moving one must move all
+    /// of them — otherwise the group splits across two times on the calendar.
+    #[tokio::test]
+    async fn moving_a_group_moves_every_candidate_in_it() {
+        let pool = test_pool().await;
+        let a = setup(&pool).await;
+        let b = another(&pool, "KADRI").await;
+
+        let booked = schedule_many(&pool, &[a, b], &booking(90)).await.unwrap();
+        let first = booked[0].id;
+
+        let day = (Utc::now().date_naive() + chrono::Duration::days(3))
+            .format("%Y-%m-%d")
+            .to_string();
+        reschedule(&pool, first, &day, "14:30", 120).await.unwrap();
+
+        for lesson in [
+            list_for_enrollment(&pool, a).await.unwrap().remove(0),
+            list_for_enrollment(&pool, b).await.unwrap().remove(0),
+        ] {
+            assert_eq!(lesson.scheduled_on.as_deref(), Some(day.as_str()));
+            assert_eq!(lesson.scheduled_time.as_deref(), Some("14:30"));
+            assert_eq!(lesson.minutes, 120);
+        }
+    }
+
+    /// Attendance is per candidate: one absentee in a group of two does not
+    /// touch the other one's session.
+    #[tokio::test]
+    async fn one_candidate_can_miss_a_session_the_others_attended() {
+        let pool = test_pool().await;
+        let a = setup(&pool).await;
+        let b = another(&pool, "KADRI").await;
+
+        let booked = schedule_many(&pool, &[a, b], &booking(90)).await.unwrap();
+
+        set_not_held(&pool, booked[0].id, "missed").await.unwrap();
+
+        assert_eq!(get(&pool, booked[0].id).await.unwrap().status, "missed");
+        assert_eq!(get(&pool, booked[1].id).await.unwrap().status, "planned");
+    }
+
+    /// Hours are counted per candidate, so a group session gives each of them
+    /// the full length — they were all there for it.
+    #[tokio::test]
+    async fn a_group_session_counts_its_hours_for_each_candidate() {
+        let pool = test_pool().await;
+        let a = setup(&pool).await;
+        let b = another(&pool, "KADRI").await;
+
+        let booked = schedule_many(&pool, &[a, b], &booking(90)).await.unwrap();
+        for lesson in &booked {
+            complete(&pool, lesson.id, &CompleteInput::default()).await.unwrap();
+        }
+
+        assert_eq!(road_minutes(&pool, a).await, 90);
+        assert_eq!(road_minutes(&pool, b).await, 90);
     }
 }

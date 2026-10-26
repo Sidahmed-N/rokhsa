@@ -539,3 +539,57 @@ three fields, added when we know which, rather than seven kept on speculation.
 **Blocking that, and still unanswered since the start:** Q8 — do schools have a
 working printer at the counter, and is the examiner's list handed over on paper or
 read out? Until that is known, building any printing is speculative.
+
+---
+
+## Q17b. Group sessions — **ANSWERED 2026-10-26** 🟢
+
+Q17 left two things open: whether a group is a lasting thing the owner manages,
+and whether an hours figure is needed anywhere. The first is now settled.
+
+> He can join the failed one to another group or keep teaching him by himself,
+> it depends on what the instructor wants.
+
+**That sentence decided the design.** If the instructor moves people between
+groups and out of them as he pleases, then a group is not an object he manages:
+there is nothing to create, name, or add members to. There is only *who did I
+tell to come on Tuesday*. So no group table was built.
+
+### What was built
+
+One lesson row per candidate, exactly as before, with rows booked together
+sharing a `session_id` (migration 0009). `NULL` means the candidate is on their
+own, which is both the backfill for every existing row and the normal state of
+a one-person booking — no data migration, no invented rows.
+
+- Booking takes a list of candidates. A list of one is not a special case.
+- The week grid draws **one block per session**, with every name on it. Drawn
+  one block per candidate they landed on the same slot and collapsed into
+  "+2", which is the cramping that view was rebuilt to fix.
+- The **day list still shows one row per candidate**, deliberately: it is the
+  morning to-do list, and the job there is to tick each person off.
+- Attendance needed no new concept — `lessons.status` is already `done` or
+  `missed` for that person.
+
+### Why not one session row with an attendee list
+
+That is the textbook model and it was rejected on risk. Every hour counted,
+every balance and the whole candidate file hang off one lesson row per
+candidate. Rewriting them to read through an attendee table would put the money
+logic — the highest-risk code in the product — in the path of what is really a
+scheduling change.
+
+The cost of the shape chosen is that a slot's facts are repeated across a
+group's rows and can drift apart. That is paid by a rule, now in CLAUDE.md:
+every operation on a booked session is keyed by `session_id` and writes all its
+rows at once. `reschedule` does, and there is a test that moving one candidate
+moves the whole group.
+
+### Still open
+
+- Whether an hours figure matters anywhere — the dossier, the wilaya, an
+  inspection — or whether the `6 h / 30 h` counters on the candidate file can
+  go. The owner said training "doesn't work with hours", but the counters are
+  still on screen and nothing has been removed.
+- Whether a missed session should raise a visible "owed a make-up" marker. The
+  data is there (`status = 'missed'`), nothing surfaces it yet.

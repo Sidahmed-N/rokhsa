@@ -16,7 +16,7 @@ import {
   createPayment,
   listPaymentMethods,
   nextUp,
-  scheduleLesson,
+  scheduleGroup,
   type Payment,
   type PaymentMethod,
 } from "@/lib/training";
@@ -241,7 +241,16 @@ export function ScheduleSessionDialog({
   const { t } = useTranslation();
   const errorText = useErrorText();
 
-  const [chosen, setChosen] = useState<number | null>(enrollmentId);
+  /**
+   * Everyone being booked into this slot.
+   *
+   * A list, because the créneau is taught in groups: three or four told to
+   * come Tuesday at eight, taking their turn one by one. One candidate is the
+   * same path with one entry, not a separate case.
+   */
+  const [chosenIds, setChosenIds] = useState<number[]>(
+    enrollmentId === null ? [] : [enrollmentId],
+  );
   const [kind, setKind] = useState<string>("road");
   const [scheduledOn, setScheduledOn] = useState(initialDay ?? today());
   const [scheduledTime, setScheduledTime] = useState(initialTime ?? "09:00");
@@ -254,24 +263,28 @@ export function ScheduleSessionDialog({
   // Pre-fill what to work on from the last session's note, so the instructor
   // does not have to go and find it. Re-runs when a candidate is picked from
   // the calendar, since there was nobody to look it up for until then.
+  // Only for a single candidate: with a group there is no one last note to
+  // carry, and picking one person’s would be worse than leaving it blank.
   useEffect(() => {
-    if (chosen === null) return;
-    nextUp(chosen)
+    if (chosenIds.length !== 1) return;
+    const only = chosenIds[0];
+    if (only === undefined) return;
+    nextUp(only)
       .then((info) => {
         if (info.lastNote) setPlanNote(info.lastNote);
       })
       .catch(() => {});
-  }, [chosen]);
+  }, [chosenIds]);
 
   async function save() {
-    if (chosen === null) {
+    if (chosenIds.length === 0) {
       setPickError(t("calendar.pickCandidate"));
       return;
     }
     setSaving(true);
     setError(null);
     try {
-      await scheduleLesson(chosen, {
+      await scheduleGroup(chosenIds, {
         kind,
         scheduledOn,
         scheduledTime,
@@ -298,14 +311,25 @@ export function ScheduleSessionDialog({
     >
       <div className="grid gap-3">
         {enrollmentId === null && (
-          <CandidatePicker
-            value={chosen}
-            error={pickError}
-            onChange={(id) => {
-              setChosen(id);
-              setPickError(undefined);
-            }}
-          />
+          <>
+            <CandidatePicker
+              value={null}
+              error={pickError}
+              selected={chosenIds}
+              onChange={() => {}}
+              onToggle={(id) => {
+                setChosenIds((prev) =>
+                  prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+                );
+                setPickError(undefined);
+              }}
+            />
+            {chosenIds.length > 1 && (
+              <p className="text-xs text-muted">
+                {t("calendar.chosenCount", { n: chosenIds.length })}
+              </p>
+            )}
+          </>
         )}
         <SelectField label={t("lessons.kind")} value={kind} onChange={setKind}>
           {LESSON_KINDS.map((k) => (

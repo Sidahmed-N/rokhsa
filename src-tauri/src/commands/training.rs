@@ -79,14 +79,17 @@ pub async fn delete_lesson(state: State<'_, AppState>, id: i64) -> CommandResult
     Ok(lessons::soft_delete(&state.pool, id).await?)
 }
 
-/// Book a session for a day in the future.
+/// Book one slot for several candidates — the group créneau.
+///
+/// A list of one is an ordinary booking; nothing on this path treats it as a
+/// special case.
 #[tauri::command]
-pub async fn schedule_lesson(
+pub async fn schedule_group(
     state: State<'_, AppState>,
-    enrollment_id: i64,
+    enrollment_ids: Vec<i64>,
     input: lessons::ScheduleInput,
-) -> CommandResult<lessons::Lesson> {
-    Ok(lessons::schedule(&state.pool, enrollment_id, &input).await?)
+) -> CommandResult<Vec<lessons::Lesson>> {
+    Ok(lessons::schedule_many(&state.pool, &enrollment_ids, &input).await?)
 }
 
 /// Mark a booked session as having happened. Blank fields mean "as planned".

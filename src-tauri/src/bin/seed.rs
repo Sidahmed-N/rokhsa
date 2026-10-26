@@ -337,6 +337,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
+    // A group créneau: three candidates in one slot, which is how the school
+    // actually teaches it. Without one in the demo the week grid never shows
+    // a block with several names on it.
+    if active.len() >= 3 {
+        let group: Vec<i64> = active.iter().take(3).map(|(id, _, _, _, _)| *id).collect();
+        db::lessons::schedule_many(
+            &pool,
+            &group,
+            &db::lessons::ScheduleInput {
+                kind: "maneuvers".into(),
+                scheduled_on: iso(saturday + Duration::days(2)),
+                scheduled_time: "08:00".into(),
+                minutes: 120,
+                plan_note: "créneau en groupe, chacun son tour".into(),
+                ..Default::default()
+            },
+        )
+        .await?;
+        booked += 3;
+        println!("  1 group créneau (3 candidates)");
+    }
+
     // One booked with no time at all: some schools say "Thursday" and the
     // candidate turns up when he can. The week grid has a row for these.
     if let Some((enrollment_id, _, _, _, _)) = active.first() {

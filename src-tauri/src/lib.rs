@@ -119,7 +119,7 @@ pub fn run() {
             commands::training::list_lessons,
             commands::training::create_lesson,
             commands::training::delete_lesson,
-            commands::training::schedule_lesson,
+            commands::training::schedule_group,
             commands::training::complete_lesson,
             commands::training::reschedule_lesson,
             commands::training::set_lesson_not_held,

@@ -208,3 +208,14 @@
 .tariqi-calendar .fc-event .fc-event-title {
   color: inherit;
 }
+
+/* A session can hold several candidates - the group créneau - so a block may
+   carry more than one .fc-tariqi-title. Each name is its own element rather
+   than one joined string: several Latin names separated by neutral characters
+   are reordered by the bidi algorithm inside an Arabic page, the same fault
+   the day headings and the "+N" badge had. The block is as tall as the
+   session is long, so a short one clips its last names; the time and who is
+   first are what the grid is read for, and the day list shows everyone. */
+.fc-tariqi-event > .fc-tariqi-title + .fc-tariqi-title {
+  margin-block-start: 1px;
+}

@@ -74,6 +74,8 @@ export interface EnrollmentSummary {
 }
 
 export interface Lesson {
+  /** Booked together with others when set; null means on their own. */
+  sessionId: number | null;
   id: number;
   enrollmentId: number;
   instructorStaffId: number | null;
@@ -110,6 +112,11 @@ export interface DayEntry {
   minutes: number;
   planNote: string;
   notes: string;
+  /**
+   * Set when this candidate was booked together with others. Rows sharing a
+   * value are one session on the calendar.
+   */
+  sessionId: number | null;
 }
 
 export interface ScheduleInput {
@@ -235,8 +242,14 @@ export const createLesson = (enrollmentId: number, input: LessonInput) =>
 
 export const deleteLesson = (id: number) => call<void>("delete_lesson", { id });
 
-export const scheduleLesson = (enrollmentId: number, input: ScheduleInput) =>
-  call<Lesson>("schedule_lesson", { enrollmentId, input });
+/**
+ * Book one slot for several candidates.
+ *
+ * A list of one is an ordinary booking and gets no session id — see
+ * migration 0009 for why a group is not its own object.
+ */
+export const scheduleGroup = (enrollmentIds: number[], input: ScheduleInput) =>
+  call<Lesson[]>("schedule_group", { enrollmentIds, input });
 
 export const completeLesson = (id: number, input: CompleteInput) =>
   call<Lesson>("complete_lesson", { id, input });

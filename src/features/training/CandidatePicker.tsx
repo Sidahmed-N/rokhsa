@@ -30,11 +30,23 @@ export default function CandidatePicker({
   value,
   onChange,
   error,
+  selected,
+  onToggle,
 }: {
   value: number | null;
   onChange: (enrollmentId: number, row: BookableEnrollment) => void;
   error?: string | undefined;
+  /**
+   * Multi-select mode: the enrolments chosen so far.
+   *
+   * Passing this turns the list into tick boxes, for booking one slot for
+   * several candidates. The exam screen picks one person and leaves both of
+   * these out, so it is unaffected.
+   */
+  selected?: number[];
+  onToggle?: (enrollmentId: number, row: BookableEnrollment) => void;
 }) {
+  const multi = selected !== undefined;
   const { t } = useTranslation();
   const locale = currentLanguage();
 
@@ -99,12 +111,18 @@ export default function CandidatePicker({
 
         <ul className="divide-y divide-line">
           {rows.map((row) => {
-            const chosen = row.enrollmentId === value;
+            const chosen = multi
+              ? selected.includes(row.enrollmentId)
+              : row.enrollmentId === value;
             return (
               <li key={row.enrollmentId}>
                 <button
                   type="button"
-                  onClick={() => onChange(row.enrollmentId, row)}
+                  onClick={() =>
+                    multi && onToggle
+                      ? onToggle(row.enrollmentId, row)
+                      : onChange(row.enrollmentId, row)
+                  }
                   className={[
                     "flex w-full items-center gap-2 px-3 py-2 text-start text-sm transition-colors",
                     chosen ? "bg-brand-soft text-brand" : "hover:bg-sunken",

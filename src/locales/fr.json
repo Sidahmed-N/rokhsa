@@ -268,7 +268,9 @@
       "dateTooOld": "Cette date est trop ancienne. Vérifiez l'année.",
       "notPlanned": "Cette séance n'est pas une séance prévue.",
       "alreadyDone": "Cette séance a déjà été effectuée.",
-      "statusInvalid": "Statut invalide."
+      "statusInvalid": "Statut invalide.",
+      "noCandidates": "Choisissez au moins un candidat.",
+      "duplicateCandidate": "Ce candidat est déjà dans cette séance."
     }
   },
   "payments": {
@@ -371,7 +373,8 @@
     "allKinds": "Toutes",
     "tabMonth": "Mois",
     "forCandidate": "Pour quel candidat",
-    "pickCandidate": "Choisissez un candidat."
+    "pickCandidate": "Choisissez un candidat.",
+    "chosenCount": "{{n}} candidats dans cette séance."
   },
   "exams": {
     "title": "Examens",
