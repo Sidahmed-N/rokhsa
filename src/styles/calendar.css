@@ -219,3 +219,24 @@
 .fc-tariqi-event > .fc-tariqi-title + .fc-tariqi-title {
   margin-block-start: 1px;
 }
+
+/* Time and, when a session holds more candidates than fit, the count. */
+.fc-tariqi-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+}
+
+.fc-tariqi-more {
+  font-size: 0.68rem;
+  font-weight: 600;
+  opacity: 0.75;
+}
+
+/* FullCalendar sizes a block from its time range, and our content does not
+   shrink to fit it. Without this a long name list paints over the slot below
+   and reads as a second session. */
+.fc-timegrid-event .fc-event-main,
+.fc-daygrid-event .fc-event-main {
+  overflow: hidden;
+}

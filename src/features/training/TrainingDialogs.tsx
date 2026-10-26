@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import { SelectField, TextField } from "@/components/FormField";
 import Modal from "@/components/Modal";
+import DateField from "@/components/ui/DateField";
 import { Money } from "@/components/Num";
 import { currentLanguage } from "@/i18n";
 import { isAppError } from "@/lib/candidates";
@@ -339,13 +340,18 @@ export function ScheduleSessionDialog({
           ))}
         </SelectField>
         <div className="grid gap-3 sm:grid-cols-2">
-          <TextField
-            label={t("calendar.day")}
-            value={scheduledOn}
-            onChange={setScheduledOn}
-            type="date"
-            dir="ltr"
-          />
+          {/* A native date input prints in the OS locale, not the page’s, so
+              this showed "10/26/2026" inside a French dialog and the owner
+              reads the month as the day. DateField exists for exactly this —
+              see its own comment. */}
+          <div>
+            <span className="mb-1 block text-xs text-muted">{t("calendar.day")}</span>
+            <DateField
+              value={scheduledOn}
+              onChange={setScheduledOn}
+              aria-label={t("calendar.day")}
+            />
+          </div>
           <TextField
             label={t("calendar.time")}
             value={scheduledTime}

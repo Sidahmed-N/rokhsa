@@ -303,10 +303,24 @@ export default function PlannerView({
             const names = (arg.event.extendedProps["names"] as string[]) ?? [
               arg.event.title,
             ];
+            // Two names, then a count. An hour-long block fits two lines and
+            // no more, and spilling the third over the next slot looked like
+            // a separate session. "+N" is the same idiom the "more" link
+            // uses, and like it the number sits in an isolate so the bidi
+            // algorithm cannot render "+1" as "1+" in Arabic.
+            const shown = names.slice(0, 2);
+            const rest = names.length - shown.length;
             return (
               <div className="fc-tariqi-event">
-                <span className="fc-tariqi-time">{arg.timeText}</span>
-                {names.map((n, i) => (
+                {/* The count rides on the time row: an hour-long block is
+                    three lines tall, and a fourth spilled past the block and
+                    read as a separate session below it. Both are isolates,
+                    so neither reorders against the other in Arabic. */}
+                <span className="fc-tariqi-head">
+                  <span className="fc-tariqi-time">{arg.timeText}</span>
+                  {rest > 0 && <span className="num fc-tariqi-more">+{rest}</span>}
+                </span>
+                {shown.map((n, i) => (
                   <span key={i} className="fc-tariqi-title">
                     {n}
                   </span>
