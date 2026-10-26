@@ -275,7 +275,6 @@
     "title": "Versements",
     "take": "Encaisser",
     "takeTitle": "Encaisser un versement",
-    "saveAndPrint": "Enregistrer et imprimer",
     "amount": "Montant (DA)",
     "amountHint": "En dinars. Exemple : 12000",
     "date": "Date",
@@ -297,7 +296,8 @@
       "methodRequired": "Choisissez un mode de paiement.",
       "cannotReverseReversal": "Une annulation ne peut pas être annulée.",
       "alreadyReversed": "Ce versement a déjà été annulé."
-    }
+    },
+    "settleFull": "Tout régler"
   },
   "receipt": {
     "title": "REÇU DE VERSEMENT",

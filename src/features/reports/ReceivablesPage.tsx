@@ -5,12 +5,14 @@ import { useTranslation } from "react-i18next";
 import { Wallet } from "lucide-react";
 
 import { Money, Num } from "@/components/Num";
+import Button from "@/components/ui/Button";
 import { Card, EmptyState, ErrorNote, PageHeader } from "@/components/ui/Surface";
 import { currentLanguage } from "@/i18n";
 import { isAppError } from "@/lib/candidates";
 import { personName } from "@/lib/names";
 import { getReceivables, type Receivables, type ReceivableRow } from "@/lib/reports";
 import { isDesktop } from "@/lib/tauri";
+import { TakePaymentDialog } from "@/features/training/TrainingDialogs";
 
 /** Rows quieter than this are worth chasing. */
 const STALE_DAYS = 30;
@@ -34,6 +36,14 @@ export default function ReceivablesPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [onlyStale, setOnlyStale] = useState(false);
+  /**
+   * The row being paid.
+   *
+   * This page was a report you read, which meant collecting a debt started by
+   * leaving the list of debts. An owner working down it on a Thursday went
+   * out to the candidate file and back for every single person.
+   */
+  const [payingFor, setPayingFor] = useState<ReceivableRow | null>(null);
 
   const refresh = useCallback(async () => {
     if (!isDesktop()) {
@@ -119,6 +129,7 @@ export default function ReceivablesPage() {
               <th>
                 {t("receivables.lastPayment")}
               </th>
+              <th className="text-end" />
             </tr>
           </thead>
           <tbody>
@@ -158,12 +169,36 @@ export default function ReceivablesPage() {
                       </span>
                     )}
                   </td>
+                  <td className="text-end">
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => setPayingFor(row)}
+                    >
+                      {t("payments.take")}
+                    </Button>
+                  </td>
                 </tr>
               );
             })}
           </tbody>
         </table>
       </Card>
+      )}
+
+      {/* Paying closes the dialog and reloads the list, so a settled
+          candidate disappears from it. That is the feedback: the row you
+          were chasing is gone. */}
+      {payingFor && (
+        <TakePaymentDialog
+          enrollmentId={payingFor.enrollmentId}
+          balanceCentimes={payingFor.balanceCentimes}
+          onClose={() => setPayingFor(null)}
+          onDone={() => {
+            setPayingFor(null);
+            void refresh();
+          }}
+        />
       )}
     </div>
   );

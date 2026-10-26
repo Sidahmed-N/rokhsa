@@ -8,7 +8,7 @@ import Modal from "@/components/Modal";
 import { Money } from "@/components/Num";
 import { currentLanguage } from "@/i18n";
 import { isAppError } from "@/lib/candidates";
-import { parseDZD } from "@/lib/money";
+import { formatDZD, parseDZD } from "@/lib/money";
 import {
   LESSON_KINDS,
   createEnrollment,
@@ -415,13 +415,26 @@ export function TakePaymentDialog({
       onSubmit={() => void save()}
       submitting={saving}
       error={error}
-      submitLabel={t("payments.saveAndPrint")}
+      submitLabel={t("payments.take")}
     >
       <div className="grid gap-3">
-        <p className="rounded-md border border-line bg-brand-soft px-3 py-2 text-sm">
-          {t("payments.currentBalance")}:{" "}
-          <Money centimes={balanceCentimes} className="font-bold" />
-        </p>
+        <div className="flex flex-wrap items-center gap-2 rounded-md border border-line bg-brand-soft px-3 py-2 text-sm">
+          <span>
+            {t("payments.currentBalance")}:{" "}
+            <Money centimes={balanceCentimes} className="font-bold" />
+          </span>
+          {balanceCentimes > 0 && (
+            <button
+              type="button"
+              onClick={() =>
+                setAmount(formatDZD(balanceCentimes, { withSuffix: false }))
+              }
+              className="ms-auto rounded-md border border-brand bg-surface px-2 py-1 text-xs font-medium text-brand transition-colors hover:bg-brand hover:text-white"
+            >
+              {t("payments.settleFull")}
+            </button>
+          )}
+        </div>
 
         <TextField
           label={t("payments.amount")}

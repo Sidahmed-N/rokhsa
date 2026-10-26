@@ -275,7 +275,6 @@
     "title": "الدفعات",
     "take": "تحصيل دفعة",
     "takeTitle": "تحصيل دفعة",
-    "saveAndPrint": "حفظ وطباعة",
     "amount": "المبلغ (دج)",
     "amountHint": "بالدينار. مثال: 12000",
     "date": "التاريخ",
@@ -297,7 +296,8 @@
       "methodRequired": "اختر طريقة الدفع.",
       "cannotReverseReversal": "لا يمكن إلغاء عملية إلغاء.",
       "alreadyReversed": "هذه الدفعة أُلغيت من قبل."
-    }
+    },
+    "settleFull": "تسوية الكل"
   },
   "receipt": {
     "title": "وصل دفع",
