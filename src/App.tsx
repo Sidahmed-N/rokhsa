@@ -3,8 +3,8 @@ import { NavLink, Navigate, Route, Routes } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   CalendarDays,
-  PanelLeftClose,
-  PanelLeftOpen,
+  ChevronsLeft,
+  ChevronsRight,
   GraduationCap,
   HardDrive,
   LayoutDashboard,
@@ -174,9 +174,9 @@ export default function App() {
             {/* rtl:rotate-180 so the arrow points at the window edge the rail
                 actually sits against, which is the right one in Arabic. */}
             {collapsed ? (
-              <PanelLeftOpen className="size-4 rtl:rotate-180" aria-hidden="true" />
+              <ChevronsRight className="size-4 rtl:rotate-180" aria-hidden="true" />
             ) : (
-              <PanelLeftClose className="size-4 rtl:rotate-180" aria-hidden="true" />
+              <ChevronsLeft className="size-4 rtl:rotate-180" aria-hidden="true" />
             )}
           </button>
         </div>
@@ -210,8 +210,8 @@ export default function App() {
                     title={collapsed ? t(labelKey) : undefined}
                     className={({ isActive }) =>
                       [
-                        "flex items-center gap-2.5 rounded-full py-2 text-sm transition-colors",
-                        collapsed ? "justify-center px-2" : "px-3",
+                        "flex items-center rounded-full py-2 text-sm transition-colors",
+                        collapsed ? "justify-center px-2" : "gap-2.5 px-3",
                         isActive
                           ? "bg-surface font-medium text-ink shadow-card"
                           : "text-rail-ink hover:bg-surface/60",
@@ -226,7 +226,7 @@ export default function App() {
                           )}
                           aria-hidden="true"
                         />
-                        <span className="truncate">{t(labelKey)}</span>
+                        {!collapsed && <span className="truncate">{t(labelKey)}</span>}
                       </>
                     )}
                   </NavLink>
