@@ -54,56 +54,6 @@ const STATUS_TONE: Record<string, Tone> = {
   cancelled: "neutral",
 };
 
-function ProgressBar({ percent }: { percent: number | null }) {
-  // percent can exceed 100 when a candidate has done more than the target;
-  // the bar caps but the number next to it does not.
-  const width = percent === null ? 0 : Math.min(100, Math.max(0, percent));
-  const complete = percent !== null && percent >= 100;
-  return (
-    <div className="h-1.5 w-full overflow-hidden rounded-full bg-line">
-      <div
-        className={["h-full rounded-full", complete ? "bg-ok" : "bg-brand"].join(" ")}
-        style={{ width: `${width}%` }}
-      />
-    </div>
-  );
-}
-
-function HoursRow({
-  label,
-  progress,
-}: {
-  label: string;
-  progress: { doneMinutes: number; targetMinutes: number; percent: number | null };
-}) {
-  return (
-    <div>
-      <div className="mb-1.5 flex items-baseline justify-between text-xs">
-        <span className="font-medium text-ink-soft">{label}</span>
-        <span className="text-ink">
-          <Duration minutes={progress.doneMinutes} />
-          {progress.targetMinutes > 0 && (
-            <>
-              <span className="text-faint"> / </span>
-              <Duration minutes={progress.targetMinutes} />
-            </>
-          )}
-          {progress.percent !== null && (
-            // The "%" goes INSIDE the isolate. Left outside it, the bidi
-            // algorithm puts it on the far side of the digits in Arabic and
-            // "23%" renders as "%23".
-            <span className="ms-2 text-muted">
-              <Num>{progress.percent}%</Num>
-            </span>
-          )}
-        </span>
-      </div>
-      <ProgressBar percent={progress.percent} />
-    </div>
-  );
-}
-
-/** One figure in the money strip. */
 function Figure({
   label,
   children,
@@ -365,14 +315,16 @@ export default function CandidateDetailPage() {
                       </Figure>
                     </div>
 
-                    {/* Hours */}
+                    {/* The actions. The hour bars that used to head this
+                        block are gone: they measured progress against a
+                        30-hour allowance, and this school does not sell
+                        hours. It trains a group week after week until the
+                        instructor judges them ready for the exam, so a
+                        percentage of a quota was a confident answer to a
+                        question nobody asks. What the candidate has actually
+                        done is the séance log below. */}
                     <div className="border-b border-line px-4 py-4">
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <HoursRow label={t("lessons.kind_theory")} progress={summary.theory} />
-                        <HoursRow label={t("lessons.practical")} progress={summary.practical} />
-                      </div>
-
-                      <div className="mt-4 flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-2">
                         <Button
                           variant="primary"
                           size="sm"
