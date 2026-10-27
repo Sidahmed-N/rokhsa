@@ -132,7 +132,7 @@ export default function App() {
         className={[
           "screen-only sticky top-0 flex h-screen shrink-0 flex-col overflow-hidden",
           "transition-[width] duration-200 ease-out motion-reduce:transition-none",
-          collapsed ? "w-16" : "w-60",
+          collapsed ? "w-16 2xl:w-20" : "w-60 2xl:w-72",
         ].join(" ")}
       >
         <div
@@ -148,15 +148,17 @@ export default function App() {
           {!collapsed && (
             <span
               aria-hidden="true"
-              className="flex size-8 shrink-0 items-center justify-center rounded-[0.6rem] bg-brand text-sm font-bold text-white shadow-card"
+              className="flex size-8 shrink-0 items-center justify-center rounded-[0.6rem] bg-brand text-sm font-bold text-white shadow-card 2xl:size-10 2xl:text-base"
             >
               T
             </span>
           )}
           {!collapsed && (
             <span className="flex min-w-0 flex-col leading-tight">
-              <span className="truncate text-sm font-semibold text-ink">{t("app.name")}</span>
-              <span className="truncate text-xs text-muted">{t("app.tagline")}</span>
+              <span className="truncate text-sm font-semibold text-ink 2xl:text-base">
+                {t("app.name")}
+              </span>
+              <span className="truncate text-xs text-muted 2xl:text-sm">{t("app.tagline")}</span>
             </span>
           )}
 
@@ -166,7 +168,7 @@ export default function App() {
             aria-label={collapsed ? t("nav.expandRail") : t("nav.collapseRail")}
             title={collapsed ? t("nav.expandRail") : t("nav.collapseRail")}
             className={[
-              "flex size-8 shrink-0 items-center justify-center rounded-lg text-muted",
+              "flex size-8 shrink-0 items-center justify-center rounded-lg text-muted 2xl:size-10",
               "transition-colors hover:bg-surface/70 hover:text-ink",
               collapsed ? "" : "ms-auto",
             ].join(" ")}
@@ -174,9 +176,9 @@ export default function App() {
             {/* rtl:rotate-180 so the arrow points at the window edge the rail
                 actually sits against, which is the right one in Arabic. */}
             {collapsed ? (
-              <ChevronsRight className="size-4 rtl:rotate-180" aria-hidden="true" />
+              <ChevronsRight className="size-4 rtl:rotate-180 2xl:size-5" aria-hidden="true" />
             ) : (
-              <ChevronsLeft className="size-4 rtl:rotate-180" aria-hidden="true" />
+              <ChevronsLeft className="size-4 rtl:rotate-180 2xl:size-5" aria-hidden="true" />
             )}
           </button>
         </div>
@@ -186,14 +188,14 @@ export default function App() {
             collapse animation then pushed a horizontal scrollbar across the
             foot of the rail. */}
         <nav
-          className="flex flex-1 flex-col gap-5 overflow-y-auto overflow-x-hidden px-3 pt-2"
+          className="flex flex-1 flex-col gap-5 overflow-y-auto overflow-x-hidden px-3 pt-2 2xl:gap-7 2xl:px-4"
           aria-label={t("nav.home")}
         >
           {groups.map((group) => (
             <div key={group.labelKey}>
               <p
                 className={[
-                  "mb-1.5 px-2.5 text-[0.6875rem] font-medium tracking-wide text-faint uppercase",
+                  "mb-1.5 px-2.5 text-[0.6875rem] font-medium tracking-wide text-faint uppercase 2xl:mb-2 2xl:text-xs",
                   "transition-opacity duration-150 motion-reduce:transition-none",
                   collapsed ? "opacity-0" : "opacity-100",
                 ].join(" ")}
@@ -210,7 +212,7 @@ export default function App() {
                     title={collapsed ? t(labelKey) : undefined}
                     className={({ isActive }) =>
                       [
-                        "flex items-center rounded-full py-2 text-sm transition-colors",
+                        "flex items-center rounded-full py-2 text-sm transition-colors 2xl:py-2.5 2xl:text-base",
                         collapsed ? "justify-center px-2" : "gap-2.5 px-3",
                         isActive
                           ? "bg-surface font-medium text-ink shadow-card"
@@ -221,7 +223,7 @@ export default function App() {
                     {({ isActive }) => (
                       <>
                         <Icon
-                          className={["size-4 shrink-0", isActive ? "text-brand" : "text-muted"].join(
+                          className={["size-4 shrink-0 2xl:size-5", isActive ? "text-brand" : "text-muted"].join(
                             " ",
                           )}
                           aria-hidden="true"
