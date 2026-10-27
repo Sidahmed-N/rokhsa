@@ -1059,6 +1059,10 @@ pub struct BookableEnrollment {
     /// Normalised name and phone, so the picker can filter without a round
     /// trip per keystroke on a machine with an HDD.
     pub search_text: String,
+    /// Passed all three exams. Not offered by default, but shown when
+    /// somebody searches their name.
+    #[sqlx(default)]
+    pub finished: bool,
 }
 
 /// Every live enrolment, for picking one to book a session against.
@@ -1088,5 +1092,21 @@ pub async fn bookable(
     .bind(&pattern)
     .fetch_all(pool)
     .await?;
+
+    // Somebody who has passed all three has nothing left to train for, so
+    // they are not in the list the picker opens on. Typing their name still
+    // finds them, flagged: hiding is a convenience, and the app does not
+    // refuse an action the owner means to take — a refresher before a licence
+    // is collected is his business, not ours.
+    let finished = super::exams::finished_enrollment_ids(pool).await?;
+    let rows: Vec<BookableEnrollment> = rows
+        .into_iter()
+        .map(|mut row| {
+            row.finished = finished.contains(&row.enrollment_id);
+            row
+        })
+        .filter(|row| !row.finished || !folded.is_empty())
+        .collect();
+
     Ok(rows)
 }

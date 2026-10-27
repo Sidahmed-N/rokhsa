@@ -600,6 +600,43 @@ struct BoardRow {
 /// pass and are grouped here. At thirty candidates N+1 would be survivable
 /// and at three hundred it would not, and this screen is the one that gets
 /// opened when a school has grown.
+/// Enrolments that have passed all three exams.
+///
+/// One query for every result, with the decision left to
+/// domain::exams::progress rather than written a second time in SQL. A
+/// "has passed everything" test in a WHERE clause would be a second
+/// definition of finished, and the two would disagree the first time the
+/// rules move - the same reason a balance is never recomputed in SQL.
+pub async fn finished_enrollment_ids(
+    pool: &SqlitePool,
+) -> Result<std::collections::HashSet<i64>, AppError> {
+    let rows: Vec<(i64, String, String)> = sqlx::query_as(
+        "SELECT enrollment_id, kind, outcome FROM exam_results WHERE deleted_at IS NULL",
+    )
+    .fetch_all(pool)
+    .await?;
+
+    let mut by_enrollment: std::collections::HashMap<i64, Vec<(String, String)>> =
+        std::collections::HashMap::new();
+    for (id, kind, outcome) in rows {
+        by_enrollment.entry(id).or_default().push((kind, outcome));
+    }
+
+    Ok(by_enrollment
+        .into_iter()
+        .filter_map(|(id, mine)| {
+            let attempts: Vec<Attempt> = mine
+                .iter()
+                .map(|(kind, outcome)| Attempt {
+                    kind: kind.as_str(),
+                    outcome: outcome.as_str(),
+                })
+                .collect();
+            progress(&attempts).finished.then_some(id)
+        })
+        .collect())
+}
+
 pub async fn board(pool: &SqlitePool) -> Result<Vec<BoardCard>, AppError> {
     let rows = sqlx::query_as::<_, BoardRow>(
         "SELECT e.id AS enrollment_id, c.id AS candidate_id,
