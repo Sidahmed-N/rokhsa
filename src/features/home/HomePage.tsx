@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { motion } from "motion/react";
 import {
+  AlertTriangle,
   ArrowDownLeft,
   ArrowUpRight,
   Check,
@@ -32,6 +33,7 @@ import { isDesktop } from "@/lib/tauri";
 import {
   completeLesson,
   listDay,
+  listOverdue,
   setLessonNotHeld,
   todayIso,
   type DayEntry,
@@ -143,22 +145,25 @@ export default function HomePage() {
   const [flow, setFlow] = useState<CashFlow | null>(null);
   const [candidateCount, setCandidateCount] = useState<number | null>(null);
   const [today, setToday] = useState<DayEntry[]>([]);
+  const [overdue, setOverdue] = useState<DayEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!isDesktop()) return;
     const range = thisMonth();
     try {
-      const [r, f, page, day] = await Promise.all([
+      const [r, f, page, day, late] = await Promise.all([
         getReceivables(),
         getCashFlow(range.from, range.to),
         listCandidates("", 1, 0),
         listDay(todayIso()),
+        listOverdue(todayIso()),
       ]);
       setReceivables(r);
       setFlow(f);
       setCandidateCount(page.total);
       setToday(day);
+      setOverdue(late);
       setError(null);
     } catch (raw: unknown) {
       setError(isAppError(raw) ? t(raw.code, { defaultValue: raw.message }) : String(raw));
@@ -239,6 +244,85 @@ export default function HomePage() {
           <Num>{candidateCount ?? 0}</Num>
         </Stat>
       </section>
+
+      {/* Sessions whose day has gone that nobody marked.
+          Rendered ONLY when there are some: a dashboard that congratulates
+          you for an empty backlog every morning teaches you to skip the
+          dashboard. Placed above the two standing panels because it is the
+          only thing here that is actively wrong - every one of these rows is
+          a candidate whose hours, and therefore whose balance, is understated
+          until somebody decides what happened.
+
+          Marked from here rather than linked away: the owner who skipped
+          Thursday will not go hunting through dates for it. */}
+      {overdue.length > 0 && (
+        <div className="mt-4">
+          <Card flush className="border-warn/40">
+            <header className="flex items-center gap-2 border-b border-line bg-warn-soft px-4 py-2.5">
+              <AlertTriangle className="size-4 shrink-0 text-warn" aria-hidden="true" />
+              <h2 className="text-sm font-semibold text-ink">{t("home.overdueTitle")}</h2>
+              <span className="rounded-full bg-surface px-2 py-0.5 text-xs font-medium text-muted">
+                <Num>{overdue.length}</Num>
+              </span>
+              <p className="ms-auto text-xs text-muted">{t("home.overdueHint")}</p>
+            </header>
+
+            <ul className="divide-y divide-line">
+              {overdue.slice(0, PANEL_ROWS).map((row) => (
+                <li
+                  key={row.id}
+                  className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5"
+                >
+                  {/* The date, because unlike every other panel these rows
+                      come from different days. */}
+                  <Num className="text-xs font-medium text-warn">{row.day}</Num>
+                  <span
+                    className={[
+                      "rounded px-1.5 py-0.5 text-xs font-semibold",
+                      kindStyle(row.kind).chip,
+                    ].join(" ")}
+                  >
+                    <Num>{row.scheduledTime ?? "—"}</Num>
+                  </span>
+                  <Link
+                    to={`/candidates/${row.candidateId}`}
+                    className="text-sm font-medium text-ink hover:text-brand hover:underline"
+                  >
+                    {personName(row, locale)}
+                  </Link>
+
+                  <span className="ms-auto flex gap-1.5">
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      icon={<Check className="size-3.5" aria-hidden="true" />}
+                      onClick={() =>
+                        void run(() =>
+                          completeLesson(row.id, { occurredOn: "", minutes: 0, notes: "" }),
+                        )
+                      }
+                    >
+                      {t("calendar.markDone")}
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => void run(() => setLessonNotHeld(row.id, "missed"))}
+                    >
+                      {t("calendar.markMissed")}
+                    </Button>
+                  </span>
+                </li>
+              ))}
+            </ul>
+
+            {overdue.length > PANEL_ROWS && (
+              <p className="border-t border-line px-4 py-2 text-xs text-muted">
+                {t("home.overdueMore", { n: overdue.length - PANEL_ROWS })}
+              </p>
+            )}
+          </Card>
+        </div>
+      )}
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         {/* Who is coming in */}

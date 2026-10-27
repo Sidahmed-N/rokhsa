@@ -593,3 +593,35 @@ moves the whole group.
   still on screen and nothing has been removed.
 - Whether a missed session should raise a visible "owed a make-up" marker. The
   data is there (`status = 'missed'`), nothing surfaces it yet.
+
+---
+
+## Q20. Unmarked sessions — **BUILT 2026-10-27**
+
+Q17b listed "whether a missed session should raise a visible marker" as open.
+Looking for where to mark a session done turned up something worse: **a session
+nobody marked does not follow you anywhere.**
+
+The day list shows one date. A session booked for Thursday that nobody touched
+keeps `status = 'planned'` for ever, sits only on Thursday, and is invisible
+from Friday onwards. Its hours are never counted, and the balance that depends
+on those hours stays understated. That makes the day view — whose whole job is
+keeping the hours current (migration 0005) — quietly skippable, which is exactly
+what happens in a busy week.
+
+The demo database had **54** of them, the oldest ten days back. Nothing in the
+app said so.
+
+**Built:** `lessons::list_overdue` and a dashboard card, with Fait / Absent on
+each row so the backlog is cleared where it is seen rather than by hunting
+through dates. Rendered only when the count is above zero — a dashboard that
+congratulates you every morning for an empty backlog teaches you to stop
+reading it.
+
+**Deliberately not overdue:** today's sessions (the day is not finished),
+future bookings, and anything already marked done, missed or cancelled. Each
+has a test, because a card that nags about settled work would be worse than no
+card.
+
+**Still open:** the make-up. A candidate marked Absent is recorded as having
+missed, and nothing offers to rebook him — the owner still carries that.

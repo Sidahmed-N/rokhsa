@@ -79,6 +79,15 @@ pub async fn delete_lesson(state: State<'_, AppState>, id: i64) -> CommandResult
     Ok(lessons::soft_delete(&state.pool, id).await?)
 }
 
+/// Sessions past their day that were never marked done, missed or cancelled.
+#[tauri::command]
+pub async fn list_overdue_lessons(
+    state: State<'_, AppState>,
+    today: String,
+) -> CommandResult<Vec<lessons::DayEntry>> {
+    Ok(lessons::list_overdue(&state.pool, &today).await?)
+}
+
 /// Book one slot for several candidates — the group créneau.
 ///
 /// A list of one is an ordinary booking; nothing on this path treats it as a

@@ -268,6 +268,32 @@ pub async fn list_for_range(
     Ok(rows)
 }
 
+/// Sessions whose day has passed and that nobody ever marked.
+///
+/// The day list only shows one date, so a session nobody touched on Thursday
+/// is invisible from Friday onwards: it keeps its `planned` status forever,
+/// its hours are never counted, and the balance that depends on those hours
+/// stays wrong. Nothing surfaced them, which made the day view - whose whole
+/// job is keeping the hours current (0005) - quietly skippable.
+///
+/// Oldest first: the one that has been wrong longest is the one to fix.
+pub async fn list_overdue(pool: &SqlitePool, today: &str) -> Result<Vec<DayEntry>, AppError> {
+    let sql = format!(
+        "SELECT {DAY_COLUMNS} {DAY_JOINS}
+           AND l.status = 'planned'
+           AND COALESCE(l.scheduled_on, l.occurred_on) < ?1
+         ORDER BY
+            day ASC,
+            COALESCE(l.scheduled_time, '99:99') ASC,
+            l.id ASC"
+    );
+    let rows = sqlx::query_as::<_, DayEntry>(&sql)
+        .bind(today)
+        .fetch_all(pool)
+        .await?;
+    Ok(rows)
+}
+
 /// The next booked session for an enrolment, if there is one.
 pub async fn next_planned(
     pool: &SqlitePool,
@@ -1063,5 +1089,128 @@ mod tests {
 
         assert_eq!(road_minutes(&pool, a).await, 90);
         assert_eq!(road_minutes(&pool, b).await, 90);
+    }
+
+    // ----- overdue, unmarked sessions -------------------------------------
+
+    fn day_offset(days: i64) -> String {
+        (Utc::now().date_naive() + chrono::Duration::days(days))
+            .format("%Y-%m-%d")
+            .to_string()
+    }
+
+    /// Booked for a past day and never touched: this is the whole point.
+    #[tokio::test]
+    async fn a_session_nobody_marked_shows_as_overdue() {
+        let pool = test_pool().await;
+        let enrollment = setup(&pool).await;
+
+        let mut past = booking(90);
+        past.scheduled_on = day_offset(-3);
+        schedule_many(&pool, &[enrollment], &past).await.unwrap();
+
+        let overdue = list_overdue(&pool, &today()).await.unwrap();
+        assert_eq!(overdue.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn todays_session_is_not_overdue_yet() {
+        // The day is not finished. Nagging about it at nine in the morning
+        // would train the owner to ignore the card.
+        let pool = test_pool().await;
+        let enrollment = setup(&pool).await;
+
+        schedule_many(&pool, &[enrollment], &booking(90)).await.unwrap();
+
+        assert!(list_overdue(&pool, &today()).await.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn a_future_booking_is_not_overdue() {
+        let pool = test_pool().await;
+        let enrollment = setup(&pool).await;
+
+        let mut later = booking(90);
+        later.scheduled_on = day_offset(4);
+        schedule_many(&pool, &[enrollment], &later).await.unwrap();
+
+        assert!(list_overdue(&pool, &today()).await.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn a_session_already_marked_done_is_not_overdue() {
+        let pool = test_pool().await;
+        let enrollment = setup(&pool).await;
+
+        let mut past = booking(90);
+        past.scheduled_on = day_offset(-3);
+        let booked = schedule_many(&pool, &[enrollment], &past).await.unwrap();
+        complete(&pool, booked[0].id, &CompleteInput::default()).await.unwrap();
+
+        assert!(list_overdue(&pool, &today()).await.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn a_missed_or_cancelled_session_is_not_overdue() {
+        // Both are dealt with. The card is for sessions nobody decided about.
+        let pool = test_pool().await;
+        let a = setup(&pool).await;
+        let b = another(&pool, "KADRI").await;
+
+        let mut past = booking(90);
+        past.scheduled_on = day_offset(-2);
+        let booked = schedule_many(&pool, &[a, b], &past).await.unwrap();
+
+        set_not_held(&pool, booked[0].id, "missed").await.unwrap();
+        set_not_held(&pool, booked[1].id, "cancelled").await.unwrap();
+
+        assert!(list_overdue(&pool, &today()).await.unwrap().is_empty());
+    }
+
+    /// Each candidate of a group is their own row, so a group nobody marked
+    /// owes three decisions, not one.
+    #[tokio::test]
+    async fn every_candidate_of_an_unmarked_group_is_listed() {
+        let pool = test_pool().await;
+        let a = setup(&pool).await;
+        let b = another(&pool, "KADRI").await;
+        let c = another(&pool, "MEZIANE").await;
+
+        let mut past = booking(90);
+        past.scheduled_on = day_offset(-1);
+        schedule_many(&pool, &[a, b, c], &past).await.unwrap();
+
+        assert_eq!(list_overdue(&pool, &today()).await.unwrap().len(), 3);
+    }
+
+    /// Oldest first: the hours that have been wrong longest come first.
+    #[tokio::test]
+    async fn the_longest_overdue_comes_first() {
+        let pool = test_pool().await;
+        let enrollment = setup(&pool).await;
+
+        for days in [-2i64, -9, -5] {
+            let mut past = booking(60);
+            past.scheduled_on = day_offset(days);
+            schedule_many(&pool, &[enrollment], &past).await.unwrap();
+        }
+
+        let overdue = list_overdue(&pool, &today()).await.unwrap();
+        let days: Vec<String> = overdue.into_iter().map(|e| e.day).collect();
+
+        assert_eq!(days, vec![day_offset(-9), day_offset(-5), day_offset(-2)]);
+    }
+
+    #[tokio::test]
+    async fn a_deleted_session_is_not_overdue() {
+        let pool = test_pool().await;
+        let enrollment = setup(&pool).await;
+
+        let mut past = booking(90);
+        past.scheduled_on = day_offset(-3);
+        let booked = schedule_many(&pool, &[enrollment], &past).await.unwrap();
+        soft_delete(&pool, booked[0].id).await.unwrap();
+
+        assert!(list_overdue(&pool, &today()).await.unwrap().is_empty());
     }
 }

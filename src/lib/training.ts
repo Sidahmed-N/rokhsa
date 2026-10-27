@@ -264,6 +264,15 @@ export const rescheduleLesson = (
 export const setLessonNotHeld = (id: number, status: "missed" | "cancelled") =>
   call<Lesson>("set_lesson_not_held", { id, status });
 
+/**
+ * Sessions whose day has passed that nobody ever marked.
+ *
+ * Oldest first. These are the ones quietly holding a candidate’s hours - and
+ * so their balance - at the wrong number.
+ */
+export const listOverdue = (today: string) =>
+  call<DayEntry[]>("list_overdue_lessons", { today });
+
 export const listDay = (date: string) => call<DayEntry[]>("list_day", { date });
 
 export const listRange = (from: string, to: string) =>

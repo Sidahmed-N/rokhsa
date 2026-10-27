@@ -139,7 +139,10 @@
     "runtimeBrowser": "Navigateur (développement) — la partie Rust n'est pas disponible",
     "version": "version",
     "todayTitle": "Aujourd'hui",
-    "chaseTitle": "À relancer"
+    "chaseTitle": "À relancer",
+    "overdueTitle": "Séances non pointées",
+    "overdueHint": "Leur jour est passé et personne n’a dit ce qui s’est passé.",
+    "overdueMore": "et {{n}} autres."
   },
   "candidates": {
     "title": "Candidats",

@@ -139,7 +139,10 @@
     "runtimeBrowser": "متصفح (تطوير) — الجزء البرمجي بلغة Rust غير متوفر",
     "version": "الإصدار",
     "todayTitle": "اليوم",
-    "chaseTitle": "للمتابعة"
+    "chaseTitle": "للمتابعة",
+    "overdueTitle": "حصص لم تُسجَّل",
+    "overdueHint": "مضى يومها ولم يُحدَّد ما جرى فيها.",
+    "overdueMore": "و{{n}} أخرى."
   },
   "candidates": {
     "title": "المترشحون",
