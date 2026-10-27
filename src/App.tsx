@@ -132,7 +132,16 @@ export default function App() {
           logical corner utilities rather than rounded-l-*. */}
       <div className="flex min-w-0 flex-1 flex-col rounded-ss-2xl rounded-es-2xl border-s border-rail-edge bg-surface shadow-raised">
         <ClockWarning />
-        <main className="mx-auto w-full max-w-5xl px-8 py-7">
+        {/* No reading-width cap. This is a dense business app — a week grid
+            of seven columns, a table of thirty candidates, a list of debts —
+            and almost no prose, so the measure argument that justifies a
+            narrow column does not apply. Capped at 5xl the content sat in a
+            1024px strip with the rest of a maximised window empty beside it.
+
+            A page that genuinely wants a narrow column states it itself: a
+            form is still max-w-3xl, because a name field 1900px wide is not
+            an improvement. The shell fills the window; the page decides. */}
+        <main className="w-full px-8 py-7">
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/calendar" element={<CalendarPage />} />
