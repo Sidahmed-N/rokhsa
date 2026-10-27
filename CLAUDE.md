@@ -237,6 +237,10 @@ Decided in `docs/03-STACK.md` (read it for the reasoning and the rejected altern
   overridden in `PlannerView.tsx` and rendered inside an isolate.
 - **Motion**: `motion` (MIT). Transforms only — a card lifting under the pointer. Never
   animate layout, filters or shadows in a list: this runs on 4 GB and an HDD.
+  **One deliberate exception:** the sidebar's width, for 200ms, when it collapses. A rail
+  cannot slide shut without animating layout, and it is one element rather than a list.
+  It is CSS, not `motion`, and it honours `prefers-reduced-motion`. Do not take this as
+  licence for a second one.
 - **Icons**: `lucide-react`. **Fonts**: Inter (Latin) + Cairo (Arabic), both OFL and variable, declared in
   `src/styles/fonts.css` against bundled woff2 files. Never add a font or icon CDN — the app
   must render identically with no internet, on screen and on paper.

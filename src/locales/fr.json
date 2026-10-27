@@ -15,7 +15,9 @@
     "groupMoney": "Argent",
     "groupSystem": "Système",
     "exams": "Examens",
-    "backup": "Sauvegarde"
+    "backup": "Sauvegarde",
+    "collapseRail": "Réduire le menu",
+    "expandRail": "Agrandir le menu"
   },
   "backup": {
     "explain": "Une sauvegarde est faite automatiquement au démarrage et à la fermeture. Gardez-en aussi une sur clé USB : si l'ordinateur tombe en panne, c'est la seule copie qui reste.",
