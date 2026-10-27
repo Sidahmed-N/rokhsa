@@ -379,7 +379,8 @@
     "tabMonth": "الشهر",
     "forCandidate": "لأي مترشح",
     "pickCandidate": "اختر مترشحا.",
-    "chosenCount": "{{n}} مترشحين في هذه الحصة."
+    "chosenCount": "{{n}} مترشحين في هذه الحصة.",
+    "rebook": "إعادة برمجة"
   },
   "exams": {
     "title": "الامتحانات",

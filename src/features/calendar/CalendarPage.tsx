@@ -35,7 +35,16 @@ export default function CalendarPage() {
   });
   const [date, setDate] = useState(todayIso());
   // The slot a click landed on, and therefore whether the dialog is open.
-  const [booking, setBooking] = useState<{ day: string; time: string | null } | null>(null);
+  /**
+   * The slot being booked. `makeUp` carries the candidate and the kind when this
+   * was opened from a session somebody missed, so the dialog opens already
+   * filled in rather than asking again for what the app knows.
+   */
+  const [booking, setBooking] = useState<{
+    day: string;
+    time: string | null;
+    makeUp?: { enrollmentId: number; kind: string };
+  } | null>(null);
   // Bumped after a booking so the open view reloads its sessions.
   const [version, setVersion] = useState(0);
 
@@ -71,7 +80,9 @@ export default function CalendarPage() {
           key={version}
           date={date}
           setDate={setDate}
-          onBook={(day) => setBooking({ day, time: null })}
+          onBook={(day, makeUp) =>
+            setBooking({ day, time: null, ...(makeUp ? { makeUp } : {}) })
+          }
         />
       ) : (
         <PlannerView
@@ -91,9 +102,10 @@ export default function CalendarPage() {
 
       {booking && (
         <ScheduleSessionDialog
-          enrollmentId={null}
+          enrollmentId={booking.makeUp?.enrollmentId ?? null}
           initialDay={booking.day}
           {...(booking.time === null ? {} : { initialTime: booking.time })}
+          {...(booking.makeUp ? { initialKind: booking.makeUp.kind } : {})}
           onClose={() => setBooking(null)}
           onDone={() => {
             setBooking(null);

@@ -229,6 +229,7 @@ export function ScheduleSessionDialog({
   enrollmentId,
   initialDay,
   initialTime,
+  initialKind,
   onDone,
   onClose,
 }: {
@@ -236,6 +237,12 @@ export function ScheduleSessionDialog({
   enrollmentId: number | null;
   initialDay?: string | undefined;
   initialTime?: string | undefined;
+  /**
+   * Set when rebooking a session somebody missed: a make-up is the same kind
+   * of session as the one that was missed, and picking it again by hand is a
+   * chance to pick it wrong.
+   */
+  initialKind?: string | undefined;
   onDone: () => void;
   onClose: () => void;
 }) {
@@ -252,7 +259,7 @@ export function ScheduleSessionDialog({
   const [chosenIds, setChosenIds] = useState<number[]>(
     enrollmentId === null ? [] : [enrollmentId],
   );
-  const [kind, setKind] = useState<string>("road");
+  const [kind, setKind] = useState<string>(initialKind ?? "road");
   const [scheduledOn, setScheduledOn] = useState(initialDay ?? today());
   const [scheduledTime, setScheduledTime] = useState(initialTime ?? "09:00");
   const [minutes, setMinutes] = useState("60");

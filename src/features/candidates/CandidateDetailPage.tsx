@@ -152,6 +152,8 @@ export default function CandidateDetailPage() {
   const [newEnrollment, setNewEnrollment] = useState(false);
   const [addingHoursTo, setAddingHoursTo] = useState<number | null>(null);
   const [bookingFor, setBookingFor] = useState<number | null>(null);
+  /** The kind of a missed session being made up, so the dialog opens on it. */
+  const [makeUpKind, setMakeUpKind] = useState<string | null>(null);
   const [payingFor, setPayingFor] = useState<EnrollmentSummary | null>(null);
 
   const errorText = useCallback(
@@ -451,6 +453,32 @@ export default function CandidateDetailPage() {
                                   </td>
                                   <td className="py-2">
                                     <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                                      {/* A make-up, for somebody who did not
+                                          turn up. Offered here as well as on
+                                          the day view because a session
+                                          missed last week is only reachable
+                                          there by walking the calendar back
+                                          to the day it was missed - which is
+                                          the same reason the dashboard card
+                                          exists. */}
+                                      {lesson.status === "missed" && (
+                                        <Button
+                                          size="sm"
+                                          icon={
+                                            <CalendarPlus
+                                              className="size-3.5"
+                                              aria-hidden="true"
+                                            />
+                                          }
+                                          onClick={() => {
+                                            setMakeUpKind(lesson.kind);
+                                            setBookingFor(summary.enrollment.id);
+                                          }}
+                                        >
+                                          {t("calendar.rebook")}
+                                        </Button>
+                                      )}
+
                                       {upcoming && (
                                         <Button
                                           size="sm"
@@ -583,9 +611,14 @@ export default function CandidateDetailPage() {
       {bookingFor !== null && (
         <ScheduleSessionDialog
           enrollmentId={bookingFor}
-          onClose={() => setBookingFor(null)}
+          {...(makeUpKind ? { initialKind: makeUpKind } : {})}
+          onClose={() => {
+            setBookingFor(null);
+            setMakeUpKind(null);
+          }}
           onDone={() => {
             setBookingFor(null);
+            setMakeUpKind(null);
             void refresh();
           }}
         />

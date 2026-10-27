@@ -1,7 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Check, ChevronLeft, ChevronRight, Phone, Plus, X } from "lucide-react";
+import {
+  CalendarPlus,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Phone,
+  Plus,
+  X,
+} from "lucide-react";
 
 import FreeText from "@/components/FreeText";
 import { Duration, Num } from "@/components/Num";
@@ -51,7 +59,13 @@ export default function DayView({
 }: {
   date: string;
   setDate: (iso: string) => void;
-  onBook: (day: string) => void;
+  /**
+   * The second argument is set when rebooking for somebody who missed: the
+   * owner said he has to make it up another week, and the app knowing who and
+   * which kind is the difference between one click and finding the candidate
+   * again.
+   */
+  onBook: (day: string, makeUp?: { enrollmentId: number; kind: string }) => void;
 }) {
   const { t } = useTranslation();
   const locale = currentLanguage();
@@ -224,6 +238,27 @@ export default function DayView({
                         <Phone className="size-3.5 text-faint" aria-hidden="true" />
                         <Num>{row.phone}</Num>
                       </span>
+                    )}
+
+                    {/* A missed session is history and cannot be moved, so a
+                        make-up is a NEW booking. The absence stays on the
+                        record: a candidate who misses often is something an
+                        owner wants to see. */}
+                    {row.status === "missed" && (
+                      <div className="ms-auto">
+                        <Button
+                          size="sm"
+                          icon={<CalendarPlus className="size-3.5" aria-hidden="true" />}
+                          onClick={() =>
+                            onBook(date, {
+                              enrollmentId: row.enrollmentId,
+                              kind: row.kind,
+                            })
+                          }
+                        >
+                          {t("calendar.rebook")}
+                        </Button>
+                      </div>
                     )}
 
                     {row.status === "planned" && (

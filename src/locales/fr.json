@@ -379,7 +379,8 @@
     "tabMonth": "Mois",
     "forCandidate": "Pour quel candidat",
     "pickCandidate": "Choisissez un candidat.",
-    "chosenCount": "{{n}} candidats dans cette séance."
+    "chosenCount": "{{n}} candidats dans cette séance.",
+    "rebook": "Reprogrammer"
   },
   "exams": {
     "title": "Examens",
