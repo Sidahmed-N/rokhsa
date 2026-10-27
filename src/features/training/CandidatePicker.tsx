@@ -136,10 +136,16 @@ export default function CandidatePicker({
                   <span className="min-w-0 flex-1 truncate font-medium">
                     {personName(row, locale)}
                   </span>
+                  {/* Somebody who has passed everything is not in the list
+                      until his name is typed, so when he does appear it has
+                      to be obvious why — otherwise booking him looks like an
+                      ordinary choice rather than a deliberate one. */}
+                  {row.finished && <Badge tone="ok">{t("board.col_finished")}</Badge>}
+
                   {/* A candidate who is not simply "in training" is worth
                       flagging here — booking for someone who abandoned is
                       allowed, but it should be a deliberate choice. */}
-                  {row.status !== "forming" && (
+                  {!row.finished && row.status !== "forming" && (
                     <Badge tone={row.status === "withdrawn" ? "warn" : "neutral"}>
                       {t(`enrollments.status_${row.status}`)}
                     </Badge>

@@ -1110,3 +1110,161 @@ pub async fn bookable(
 
     Ok(rows)
 }
+
+/// Who the booking picker offers.
+///
+/// Its own module because the tests above sit in the middle of this file and
+/// these need the exam tables, which none of those touch.
+#[cfg(test)]
+mod bookable_tests {
+    use super::*;
+    use crate::db::{candidates, exams, test_pool};
+    use crate::domain::candidate::CandidateInput;
+
+    async fn enrol(pool: &SqlitePool, last: &str) -> i64 {
+        let candidate = candidates::create(
+            pool,
+            &CandidateInput {
+                last_name_fr: last.into(),
+                first_name_fr: "Test".into(),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+
+        create(
+            pool,
+            candidate.id,
+            &EnrollmentInput {
+                category_code: "B".into(),
+                agreed_price_centimes: 35_000_00,
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap()
+        .id
+    }
+
+    /// Sit an exam and pass it.
+    async fn pass(pool: &SqlitePool, enrollment_id: i64, kind: &str, day: &str) {
+        let session = exams::create_session(
+            pool,
+            &exams::ExamSessionInput {
+                kind: kind.into(),
+                held_on: day.into(),
+                held_at: "08:00".into(),
+                place: "Centre".into(),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+
+        let entry = exams::add_to_session(pool, session.id, enrollment_id, 0)
+            .await
+            .unwrap();
+        exams::set_outcome(pool, entry.id, "passed", "").await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn somebody_still_training_is_offered() {
+        let pool = test_pool().await;
+        enrol(&pool, "BENALI").await;
+
+        assert_eq!(bookable(&pool, "").await.unwrap().len(), 1);
+    }
+
+    /// Passing one exam is not finishing. He still has two to train for.
+    #[tokio::test]
+    async fn passing_one_exam_does_not_remove_him() {
+        let pool = test_pool().await;
+        let enrollment = enrol(&pool, "BENALI").await;
+        pass(&pool, enrollment, "theory", "2026-09-08").await;
+
+        assert_eq!(bookable(&pool, "").await.unwrap().len(), 1);
+    }
+
+    #[tokio::test]
+    async fn passing_two_of_three_does_not_remove_him_either() {
+        let pool = test_pool().await;
+        let enrollment = enrol(&pool, "BENALI").await;
+        pass(&pool, enrollment, "theory", "2026-09-08").await;
+        pass(&pool, enrollment, "maneuvers", "2026-10-05").await;
+
+        assert_eq!(bookable(&pool, "").await.unwrap().len(), 1);
+    }
+
+    /// All three passed: there is nothing left to book him for.
+    #[tokio::test]
+    async fn somebody_who_passed_everything_is_not_offered() {
+        let pool = test_pool().await;
+        let enrollment = enrol(&pool, "BENALI").await;
+        pass(&pool, enrollment, "theory", "2026-09-08").await;
+        pass(&pool, enrollment, "maneuvers", "2026-10-05").await;
+        pass(&pool, enrollment, "road", "2026-11-01").await;
+
+        assert!(bookable(&pool, "").await.unwrap().is_empty());
+    }
+
+    /// Hiding is a convenience, not a refusal: searching his name finds him,
+    /// so a refresher before the licence is collected is still possible.
+    #[tokio::test]
+    async fn searching_still_finds_somebody_who_finished() {
+        let pool = test_pool().await;
+        let enrollment = enrol(&pool, "BENALI").await;
+        pass(&pool, enrollment, "theory", "2026-09-08").await;
+        pass(&pool, enrollment, "maneuvers", "2026-10-05").await;
+        pass(&pool, enrollment, "road", "2026-11-01").await;
+
+        let found = bookable(&pool, "benali").await.unwrap();
+        assert_eq!(found.len(), 1);
+        assert!(found[0].finished, "the picker has to be able to say so");
+    }
+
+    /// One candidate finishing must not take the others out of the list.
+    #[tokio::test]
+    async fn only_the_finished_one_is_hidden() {
+        let pool = test_pool().await;
+        let done = enrol(&pool, "BENALI").await;
+        enrol(&pool, "KADRI").await;
+
+        pass(&pool, done, "theory", "2026-09-08").await;
+        pass(&pool, done, "maneuvers", "2026-10-05").await;
+        pass(&pool, done, "road", "2026-11-01").await;
+
+        let offered = bookable(&pool, "").await.unwrap();
+        assert_eq!(offered.len(), 1);
+        assert_eq!(offered[0].last_name_fr, "KADRI");
+    }
+
+    /// Failing the last one puts him back: he needs hours before a repassage,
+    /// which is exactly a session somebody has to book.
+    #[tokio::test]
+    async fn failing_the_last_exam_keeps_him_in_the_list() {
+        let pool = test_pool().await;
+        let enrollment = enrol(&pool, "BENALI").await;
+        pass(&pool, enrollment, "theory", "2026-09-08").await;
+        pass(&pool, enrollment, "maneuvers", "2026-10-05").await;
+
+        let session = exams::create_session(
+            &pool,
+            &exams::ExamSessionInput {
+                kind: "road".into(),
+                held_on: "2026-11-01".into(),
+                held_at: "08:00".into(),
+                place: "Centre".into(),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+        let entry = exams::add_to_session(&pool, session.id, enrollment, 0)
+            .await
+            .unwrap();
+        exams::set_outcome(&pool, entry.id, "failed", "").await.unwrap();
+
+        assert_eq!(bookable(&pool, "").await.unwrap().len(), 1);
+    }
+}

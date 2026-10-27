@@ -218,6 +218,12 @@ export interface BookableEnrollment {
   status: string;
   /** Normalised name and phone — filter against this, never the display name. */
   searchText: string;
+  /**
+   * Passed all three exams. These are left out of the list the picker opens
+   * on and only appear when their name is searched, so when one does appear
+   * it has to say why.
+   */
+  finished: boolean;
 }
 
 export const listBookableEnrollments = (query: string) =>
