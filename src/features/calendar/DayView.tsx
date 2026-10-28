@@ -18,6 +18,7 @@ import DateField from "@/components/ui/DateField";
 import { Badge, Card, EmptyState, ErrorNote, type Tone } from "@/components/ui/Surface";
 import { currentLanguage } from "@/i18n";
 import { isAppError } from "@/lib/candidates";
+import { personName } from "@/lib/names";
 import { isDesktop } from "@/lib/tauri";
 import {
   completeLesson,
@@ -29,7 +30,6 @@ import {
 } from "@/lib/training";
 
 import { kindStyle } from "@/lib/kinds";
-import { candidateName } from "./shared";
 
 const STATUS_TONE: Record<string, Tone> = {
   planned: "brand",
@@ -209,7 +209,7 @@ export default function DayView({
                       to={`/candidates/${row.candidateId}`}
                       className="text-sm font-semibold text-ink hover:text-brand hover:underline"
                     >
-                      {candidateName(row, locale)}
+                      {personName(row, locale)}
                     </Link>
                     <span className="text-xs font-medium text-muted">
                       {t(`lessons.kind_${row.kind}`)}

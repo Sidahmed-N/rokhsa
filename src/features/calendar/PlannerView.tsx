@@ -17,7 +17,6 @@ import { personName } from "@/lib/names";
 import { isDesktop } from "@/lib/tauri";
 import { listRange, rescheduleLesson, type DayEntry } from "@/lib/training";
 
-import { GRID_END_HOUR, GRID_START_HOUR } from "./grid";
 
 /**
  * The planning calendar — week and month.
@@ -63,6 +62,18 @@ function localParts(date: Date): { day: string; time: string } {
     time: `${pad(date.getHours())}:${pad(date.getMinutes())}`,
   };
 }
+
+/**
+ * The hours the grid shows: an auto-école’s day with an hour either side.
+ *
+ * These are the whole of what survived grid.ts. That module hand-rolled the
+ * week layout — placing blocks, cascading overlaps, drawing the now line —
+ * and FullCalendar replaced all of it; only the opening and closing hours
+ * were still read, so they live with their one caller rather than in a file
+ * of unreachable arithmetic.
+ */
+const GRID_START_HOUR = 7;
+const GRID_END_HOUR = 20;
 
 export default function PlannerView({
   view,
