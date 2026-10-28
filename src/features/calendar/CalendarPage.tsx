@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CalendarDays, CalendarRange, Grid3x3 } from "lucide-react";
 
 import Segmented from "@/components/ui/Segmented";
 import { PageHeader } from "@/components/ui/Surface";
-import { todayIso } from "@/lib/training";
 import { ScheduleSessionDialog } from "@/features/training/TrainingDialogs";
+import { useToday } from "@/lib/today";
 
 import DayView from "./DayView";
 import PlannerView from "./PlannerView";
@@ -33,7 +33,23 @@ export default function CalendarPage() {
     const asked = new URLSearchParams(window.location.search).get("tab");
     return asked === "week" || asked === "month" ? asked : "day";
   });
-  const [date, setDate] = useState(todayIso());
+  /**
+   * The day on screen.
+   *
+   * It starts on today and FOLLOWS the clock past midnight, but only while
+   * the owner is still sitting on today. Somebody who navigated back to look
+   * at last Tuesday keeps looking at last Tuesday — moving the page under
+   * them at midnight would be worse than the staleness this fixes.
+   */
+  const today = useToday();
+  const [date, setDate] = useState(today);
+  const lastToday = useRef(today);
+
+  useEffect(() => {
+    if (lastToday.current === today) return;
+    setDate((shown) => (shown === lastToday.current ? today : shown));
+    lastToday.current = today;
+  }, [today]);
   // The slot a click landed on, and therefore whether the dialog is open.
   /**
    * The slot being booked. `makeUp` carries the candidate and the kind when this

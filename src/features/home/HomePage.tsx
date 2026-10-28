@@ -19,6 +19,7 @@ import { Card, ErrorNote, Hero, PageHeader } from "@/components/ui/Surface";
 import { currentLanguage } from "@/i18n";
 import RuntimeBadge from "@/features/home/RuntimeBadge";
 import { isAppError, listCandidates } from "@/lib/candidates";
+import { useToday } from "@/lib/today";
 import { kindStyle } from "@/lib/kinds";
 import { personName } from "@/lib/names";
 import {
@@ -35,7 +36,6 @@ import {
   listDay,
   listOverdue,
   setLessonNotHeld,
-  todayIso,
   type DayEntry,
 } from "@/lib/training";
 
@@ -146,6 +146,13 @@ export default function HomePage() {
   const [candidateCount, setCandidateCount] = useState<number | null>(null);
   const [today, setToday] = useState<DayEntry[]>([]);
   const [overdue, setOverdue] = useState<DayEntry[]>([]);
+  /**
+   * Today, kept true while the app stays open. Both lists below are asked
+   * FOR a date, so pinning it at mount meant that after midnight the panel
+   * showed yesterday’s sessions and the overdue card asked what was unmarked
+   * before yesterday — missing the day it exists to catch.
+   */
+  const today$ = useToday();
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -156,8 +163,8 @@ export default function HomePage() {
         getReceivables(),
         getCashFlow(range.from, range.to),
         listCandidates("", 1, 0),
-        listDay(todayIso()),
-        listOverdue(todayIso()),
+        listDay(today$),
+        listOverdue(today$),
       ]);
       setReceivables(r);
       setFlow(f);
@@ -168,7 +175,7 @@ export default function HomePage() {
     } catch (raw: unknown) {
       setError(isAppError(raw) ? t(raw.code, { defaultValue: raw.message }) : String(raw));
     }
-  }, [t]);
+  }, [t, today$]);
 
   useEffect(() => {
     void load();

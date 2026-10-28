@@ -120,6 +120,14 @@ These are not style preferences. Breaking them causes data loss, legal problems,
 ### Dates and time
 - Store all timestamps as **UTC ISO-8601 strings**. Algeria is UTC+01:00 with **no DST**,
   but do not rely on that in storage — only in display.
+- **A screen that needs "today" uses `useToday()`, never `todayIso()` at mount.**
+  A school does not close this app — it is the till, on at eight and on all day. A date
+  read once pins the screen to whichever day the app was started: the calendar opened on
+  yesterday, and the overdue card asked "what was unmarked before *yesterday*", so a
+  session forgotten yesterday never appeared on the morning it was meant to be caught.
+  `useToday` re-checks on a timer aimed at the next local midnight **and** on window focus,
+  because a timer does not fire reliably across a machine that was suspended overnight.
+  `todayIso()` is still correct for a one-off read inside an event handler.
 - A *lesson* has both a **scheduled** window and an **actual** window. They are different
   columns and both matter for billing and for instructor payroll.
 
