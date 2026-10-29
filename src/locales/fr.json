@@ -151,7 +151,6 @@
     "editTitle": "Modifier le candidat",
     "searchPlaceholder": "Nom, téléphone ou NIN…",
     "count": "{{n}} candidat(s)",
-    "showingRange": "{{from}}–{{to}} sur {{total}}",
     "empty": "Aucun candidat pour l'instant. Cliquez sur « Nouveau candidat » pour commencer.",
     "noMatches": "Aucun résultat pour cette recherche.",
     "needsDesktop": "Cet écran nécessite l'application de bureau.",
@@ -424,5 +423,8 @@
       "negative": "Le montant ne peut pas être négatif."
     },
     "entryHint": "Laissez vide s’il ne paie rien cette fois."
+  },
+  "pager": {
+    "of": "sur"
   }
 }

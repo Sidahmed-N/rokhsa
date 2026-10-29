@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 
 import FreeText from "@/components/FreeText";
+import { Paged } from "@/components/ui/Pager";
 import ExamHistory from "@/features/candidates/ExamHistory";
 import { Duration, Money, Num } from "@/components/Num";
 import Button, { IconButton } from "@/components/ui/Button";
@@ -83,6 +84,11 @@ function Figure({
     </div>
   );
 }
+
+/** Séances per page on a candidate file. */
+const LESSON_PAGE_SIZE = 15;
+/** Versements per page on a candidate file. */
+const PAYMENT_PAGE_SIZE = 10;
 
 export default function CandidateDetailPage() {
   const { t } = useTranslation();
@@ -359,10 +365,16 @@ export default function CandidateDetailPage() {
                         />
                       </div>
 
+                      {/* A candidate trained over months has dozens of
+                          séances; past a page they push the payments off
+                          the screen. Upcoming ones sort first, so page one
+                          is always what is next. */}
                       {lessons.length > 0 && (
+                        <Paged items={lessons} pageSize={LESSON_PAGE_SIZE}>
+                          {(pageLessons) => (
                         <table className="mt-4 w-full text-xs">
                           <tbody>
-                            {lessons.map((lesson) => {
+                            {pageLessons.map((lesson) => {
                               const upcoming = lesson.status === "planned";
                               return (
                                 <tr
@@ -466,6 +478,8 @@ export default function CandidateDetailPage() {
                             })}
                           </tbody>
                         </table>
+                          )}
+                        </Paged>
                       )}
                     </div>
 
@@ -479,6 +493,8 @@ export default function CandidateDetailPage() {
                       {payments.length === 0 ? (
                         <p className="text-xs text-muted">{t("payments.none")}</p>
                       ) : (
+                        <Paged items={payments} pageSize={PAYMENT_PAGE_SIZE}>
+                          {(pagePayments) => (
                         <table className="w-full text-xs">
                           <thead>
                             <tr className="text-muted">
@@ -495,7 +511,7 @@ export default function CandidateDetailPage() {
                             </tr>
                           </thead>
                           <tbody>
-                            {payments.map((payment) => {
+                            {pagePayments.map((payment) => {
                               const isReversal = payment.reversesPaymentId !== null;
                               return (
                                 <tr key={payment.id} className="group border-t border-line">
@@ -538,6 +554,8 @@ export default function CandidateDetailPage() {
                             })}
                           </tbody>
                         </table>
+                          )}
+                        </Paged>
                       )}
                       <p className="mt-2.5 text-xs text-faint">{t("payments.appendOnlyNote")}</p>
                     </div>

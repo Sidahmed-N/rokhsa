@@ -6,6 +6,7 @@ import { Wallet } from "lucide-react";
 
 import { Money, Num } from "@/components/Num";
 import Button from "@/components/ui/Button";
+import { Pager, usePaged } from "@/components/ui/Pager";
 import { Card, EmptyState, ErrorNote, PageHeader } from "@/components/ui/Surface";
 import { currentLanguage } from "@/i18n";
 import { isAppError } from "@/lib/candidates";
@@ -16,6 +17,9 @@ import { TakePaymentDialog } from "@/features/training/TrainingDialogs";
 
 /** Rows quieter than this are worth chasing. */
 const STALE_DAYS = 30;
+
+/** Rows per page. Same as the candidate list, so the two feel alike. */
+const PAGE_SIZE = 50;
 
 function name(row: ReceivableRow, locale: "fr" | "ar"): string {
   return personName(row, locale);
@@ -69,6 +73,9 @@ export default function ReceivablesPage() {
   const rows = (data?.rows ?? []).filter(
     (row) => !onlyStale || (row.daysSincePayment ?? 0) >= STALE_DAYS,
   );
+  // The total owed above stays a sum over EVERY debtor; only the table pages.
+  // Switching the "only stale" filter is a different list, so it starts over.
+  const { pageItems, pager } = usePaged(rows, PAGE_SIZE, onlyStale);
 
   return (
     <div>
@@ -133,7 +140,7 @@ export default function ReceivablesPage() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => {
+            {pageItems.map((row) => {
               const stale = (row.daysSincePayment ?? 0) >= STALE_DAYS;
               return (
                 <tr key={row.enrollmentId}>
@@ -185,6 +192,8 @@ export default function ReceivablesPage() {
         </table>
       </Card>
       )}
+
+      <Pager {...pager} />
 
       {/* Paying closes the dialog and reloads the list, so a settled
           candidate disappears from it. That is the feedback: the row you

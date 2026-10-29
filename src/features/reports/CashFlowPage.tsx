@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { SelectField, TextField } from "@/components/FormField";
 import Modal from "@/components/Modal";
+import { Pager, usePaged } from "@/components/ui/Pager";
 import { Money, Num } from "@/components/Num";
 import { currentLanguage } from "@/i18n";
 import { isAppError } from "@/lib/candidates";
@@ -163,6 +164,9 @@ function AddExpenseDialog({
  * Kept on one screen on purpose: an owner wants to see the total and then
  * immediately record the fuel he just paid for, without navigating.
  */
+/** Expenses per page. A busy month can hold more than fit on one screen. */
+const EXPENSE_PAGE_SIZE = 50;
+
 export default function CashFlowPage() {
   const { t } = useTranslation();
   const locale = currentLanguage();
@@ -170,6 +174,13 @@ export default function CashFlowPage() {
   const [range, setRange] = useState(thisMonth());
   const [flow, setFlow] = useState<CashFlow | null>(null);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  // A new period is a different list, so it opens on its first page. The
+  // totals above are sums over the whole period and do not page.
+  const { pageItems: expensePage, pager: expensePager } = usePaged(
+    expenses,
+    EXPENSE_PAGE_SIZE,
+    `${range.from}|${range.to}`,
+  );
   const [categories, setCategories] = useState<ExpenseCategory[]>([]);
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -329,7 +340,7 @@ export default function CashFlowPage() {
                 </td>
               </tr>
             )}
-            {expenses.map((expense) => (
+            {expensePage.map((expense) => (
               <tr key={expense.id} className="border-b border-line last:border-b-0">
                 <td className="px-4 py-2">
                   <Num>{expense.spentOn}</Num>
@@ -366,6 +377,7 @@ export default function CashFlowPage() {
           </tbody>
         </table>
       </div>
+      <Pager {...expensePager} />
 
       {adding && (
         <AddExpenseDialog

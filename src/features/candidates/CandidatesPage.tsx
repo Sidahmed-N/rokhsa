@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, ChevronRight, Columns3, List, Pencil, Plus, Search, Trash2, Users } from "lucide-react";
+import { Columns3, List, Pencil, Plus, Search, Trash2, Users } from "lucide-react";
 
 import { Num } from "@/components/Num";
+import { Pager } from "@/components/ui/Pager";
 import Button, { IconButton } from "@/components/ui/Button";
 import { Badge, Card, EmptyState, ErrorNote, PageHeader, type Tone } from "@/components/ui/Surface";
 import { currentLanguage } from "@/i18n";
@@ -266,31 +267,13 @@ export default function CandidatesPage() {
         </Card>
       )}
 
-      {total > PAGE_SIZE && (
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Button
-            onClick={() => setPage((p) => Math.max(0, p - 1))}
-            disabled={page === 0 || loading}
-            icon={<ChevronLeft className="size-4 rtl:rotate-180" aria-hidden="true" />}
-          >
-            {t("common.previous")}
-          </Button>
-          <Button
-            onClick={() => setPage((p) => p + 1)}
-            disabled={(page + 1) * PAGE_SIZE >= total || loading}
-          >
-            {t("common.next")}
-            <ChevronRight className="size-4 rtl:rotate-180" aria-hidden="true" />
-          </Button>
-          <span className="text-xs text-muted">
-            {t("candidates.showingRange", {
-              from: page * PAGE_SIZE + 1,
-              to: Math.min((page + 1) * PAGE_SIZE, total),
-              total,
-            })}
-          </span>
-        </div>
-      )}
+      <Pager
+        page={page}
+        pageSize={PAGE_SIZE}
+        total={total}
+        onPage={setPage}
+        busy={loading}
+      />
 
       </>
       )}

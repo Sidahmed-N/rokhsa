@@ -5,6 +5,7 @@ import { Check, GraduationCap, Plus, Trash2, UserMinus, UserPlus, X } from "luci
 
 import FreeText from "@/components/FreeText";
 import Modal from "@/components/Modal";
+import { Pager, usePaged } from "@/components/ui/Pager";
 import { Num } from "@/components/Num";
 import { SelectField, TextField } from "@/components/FormField";
 import Button, { IconButton } from "@/components/ui/Button";
@@ -49,11 +50,17 @@ const OUTCOME_TONE: Record<string, Tone> = {
  * app records what the school does — see CLAUDE.md — so the picker shows
  * everyone and the owner decides.
  */
+/** Sittings per page in the side column. */
+const SESSION_PAGE_SIZE = 20;
+
 export default function ExamsPage() {
   const { t } = useTranslation();
   const locale = currentLanguage();
 
   const [sessions, setSessions] = useState<ExamSession[]>([]);
+  // Sittings accumulate for as long as the school exists, a batch or two a
+  // month. The column is narrow, so a shorter page than the tables.
+  const { pageItems: sessionPage, pager: sessionPager } = usePaged(sessions, SESSION_PAGE_SIZE);
   const [selected, setSelected] = useState<number | null>(null);
   const [entries, setEntries] = useState<ExamEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -151,9 +158,10 @@ export default function ExamsPage() {
       ) : (
         <div className="grid gap-4 lg:grid-cols-[18rem_1fr]">
           {/* The sittings themselves */}
-          <Card flush className="h-fit overflow-hidden">
+          <div className="h-fit">
+          <Card flush className="overflow-hidden">
             <ul className="divide-y divide-line">
-              {sessions.map((s) => {
+              {sessionPage.map((s) => {
                 const active = s.id === selected;
                 return (
                   <li key={s.id}>
@@ -188,6 +196,8 @@ export default function ExamsPage() {
               })}
             </ul>
           </Card>
+          <Pager {...sessionPager} />
+          </div>
 
           {/* Who is in the selected one */}
           {sitting && (
