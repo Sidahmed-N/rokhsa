@@ -1,4 +1,4 @@
-# Packaging and Pricing — Tariqi
+# Packaging and Pricing — Rokhsa
 
 **Status:** Recommendation for PM decision
 **Date:** 2026-10-17

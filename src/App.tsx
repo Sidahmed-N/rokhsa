@@ -3,6 +3,7 @@ import { NavLink, Navigate, Route, Routes } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   CalendarDays,
+  CircleHelp,
   ChevronsLeft,
   ChevronsRight,
   GraduationCap,
@@ -15,8 +16,10 @@ import {
 
 import ClockWarning from "@/components/ClockWarning";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import Logo from "@/components/Logo";
 import { currentLanguage, setLanguage, type Language } from "@/i18n";
 import CalendarPage from "@/features/calendar/CalendarPage";
+import Onboarding, { onboardingDone, type OnboardingPhase } from "@/features/onboarding/Onboarding";
 import CandidateDetailPage from "@/features/candidates/CandidateDetailPage";
 import CandidatesPage from "@/features/candidates/CandidatesPage";
 import ExamsPage from "@/features/exams/ExamsPage";
@@ -88,6 +91,11 @@ function CompactLanguageToggle() {
 export default function App() {
   const { t } = useTranslation();
   const [collapsed, setCollapsed] = useState(storedCollapsed);
+  // First launch opens on the welcome; after that the tour only runs when
+  // asked for, from the button at the foot of the rail.
+  const [onboarding, setOnboarding] = useState<OnboardingPhase>(() =>
+    onboardingDone() ? null : "welcome",
+  );
 
   useEffect(() => {
     try {
@@ -141,18 +149,10 @@ export default function App() {
             collapsed ? "justify-center px-3" : "px-4",
           ].join(" ")}
         >
-          {/* The mark is the app’s initial in a rounded tile — enough to feel
-              like a product, with no asset to ship or to get wrong in RTL.
-              It stands down when collapsed: 64px holds one control, and a
-              control you can press is worth more than a logo. */}
-          {!collapsed && (
-            <span
-              aria-hidden="true"
-              className="flex size-8 shrink-0 items-center justify-center rounded-[0.6rem] bg-brand text-sm font-bold text-white shadow-card 2xl:size-10 2xl:text-base"
-            >
-              T
-            </span>
-          )}
+          {/* The mark (see Logo). It stands down when collapsed: 64px holds
+              one control, and a control you can press is worth more than a
+              logo. */}
+          {!collapsed && <Logo className="size-8 shrink-0 drop-shadow-sm 2xl:size-10" />}
           {!collapsed && (
             <span className="flex min-w-0 flex-col leading-tight">
               <span className="truncate text-sm font-semibold text-ink 2xl:text-base">
@@ -192,7 +192,7 @@ export default function App() {
           aria-label={t("nav.home")}
         >
           {groups.map((group) => (
-            <div key={group.labelKey}>
+            <div key={group.labelKey} data-tour={group.labelKey}>
               <p
                 className={[
                   "mb-1.5 px-2.5 text-[0.6875rem] font-medium tracking-wide text-faint uppercase 2xl:mb-2 2xl:text-xs",
@@ -207,6 +207,7 @@ export default function App() {
                 {group.items.map(({ to, labelKey, Icon }) => (
                   <NavLink
                     key={to}
+                    data-tour={to}
                     to={to}
                     end={to === "/"}
                     title={collapsed ? t(labelKey) : undefined}
@@ -239,6 +240,24 @@ export default function App() {
         </nav>
 
         <div className={collapsed ? "px-2 pb-4 pt-3" : "px-3 pb-4 pt-3"}>
+          {/* Replays the first-launch tour. Quiet, because it is needed once
+              or twice and never again; there, because "how did that work?"
+              comes back a week later. */}
+          <button
+            type="button"
+            data-tour="help"
+            onClick={() => setOnboarding("tour")}
+            title={collapsed ? t("tour.replay") : undefined}
+            aria-label={t("tour.replay")}
+            className={[
+              "mb-2 flex w-full items-center rounded-lg py-1.5 text-xs text-muted transition-colors hover:bg-surface/60 hover:text-ink",
+              collapsed ? "justify-center" : "gap-2 px-2.5",
+            ].join(" ")}
+          >
+            <CircleHelp className="size-4 shrink-0" aria-hidden="true" />
+            {!collapsed && <span className="truncate">{t("tour.replay")}</span>}
+          </button>
+
           {/* The pair of labels does not fit in 64px, but losing the language
               switch to a collapsed rail would be a worse trade: two people
               sharing one office PC read different scripts. Collapsed, it
@@ -276,6 +295,8 @@ export default function App() {
           </Routes>
         </main>
       </div>
+
+      <Onboarding phase={onboarding} onPhase={setOnboarding} />
     </div>
   );
 }

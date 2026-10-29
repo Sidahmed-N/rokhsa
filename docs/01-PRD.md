@@ -1,4 +1,4 @@
-# Product Requirements — Tariqi
+# Product Requirements — Rokhsa
 
 **Status:** Draft for PM review
 **Date:** 2026-10-17

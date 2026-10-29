@@ -1,6 +1,6 @@
-# Tariqi — Auto-École Management System for Algeria
+# Rokhsa — Auto-École Management System for Algeria
 
-> Working codename. Offline-first Windows desktop software for Algerian driving schools
+> Rokhsa (رخصة, "licence"). Offline-first Windows desktop software for Algerian driving schools
 > (*auto-écoles*), sold as a licensed product to independent schools.
 
 **Status:** Planning. No code yet.
@@ -14,7 +14,7 @@ and notebooks for cash collected in instalments. No owner can answer "how much a
 right now?" without adding up pages. No software exists for this market — the available
 tools are French and assume French paperwork, card payment, and constant internet.
 
-Tariqi runs entirely offline on the school's own PC, in French **and** Arabic, and produces
+Rokhsa runs entirely offline on the school's own PC, in French **and** Arabic, and produces
 the paperwork the Direction des Transports expects.
 
 ## Shape of the product

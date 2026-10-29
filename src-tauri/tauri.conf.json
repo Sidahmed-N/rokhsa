@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Tariqi",
+  "productName": "Rokhsa",
   "version": "0.1.0",
   "identifier": "dz.tariqi.desktop",
   "build": {
@@ -14,7 +14,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Tariqi",
+        "title": "Rokhsa",
         "width": 1280,
         "height": 800,
         "minWidth": 1024,

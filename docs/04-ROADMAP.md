@@ -1,4 +1,4 @@
-# Roadmap — Tariqi
+# Roadmap — Rokhsa
 
 > ⚠️ **Superseded as the active plan.** The PM's goal is revenue soon, and this eight-phase
 > plan delivers none until Phase 7. **[`09-FIRST-RELEASE.md`](09-FIRST-RELEASE.md) is what we

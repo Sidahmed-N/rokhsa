@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "Tariqi",
+    "name": "Rokhsa",
     "tagline": "Gestion d'auto-école"
   },
   "nav": {
@@ -43,9 +43,9 @@
     "cancelRestore": "Annuler la restauration",
     "error": {
       "corrupt": "Ce fichier est endommagé et ne peut pas être utilisé.",
-      "notTariqi": "Ce fichier n'est pas une sauvegarde Tariqi.",
+      "notTariqi": "Ce fichier n'est pas une sauvegarde Rokhsa.",
       "verificationFailed": "La sauvegarde n'a pas pu être vérifiée. Elle a été supprimée.",
-      "newerVersion": "Cette sauvegarde vient d'une version plus récente de l'application. Mettez Tariqi à jour avant de la restaurer.",
+      "newerVersion": "Cette sauvegarde vient d'une version plus récente de l'application. Mettez Rokhsa à jour avant de la restaurer.",
       "writeFailed": "Écriture impossible. La clé USB a-t-elle été retirée, ou le disque est-il plein ? Aucun fichier incomplet n'a été laissé.",
       "destinationUnreachable": "Ce dossier est introuvable. Vérifiez que la clé USB est bien branchée."
     }
@@ -435,5 +435,21 @@
   },
   "pager": {
     "of": "sur"
+  },
+  "tour": {
+    "welcome": "Bienvenue dans Rokhsa",
+    "chooseLanguage": "Choisissez votre langue",
+    "replay": "Visite guidée",
+    "skip": "Passer",
+    "done": "Terminer",
+    "step": {
+      "home": "Chaque matin : ce qui est dû à l’école, la journée, et les séances à pointer.",
+      "candidates": "Inscrivez un candidat, puis suivez-le en liste ou sur le tableau.",
+      "calendar": "Programmez les séances, seul ou en groupe, puis marquez Fait ou Absent.",
+      "exams": "Créez une session d’examen et enregistrez les résultats.",
+      "money": "Encaissez les versements, voyez qui doit quoi, et notez les dépenses.",
+      "backup": "Une fois par semaine, faites une copie sur clé USB.",
+      "help": "Ce bouton relance cette visite quand vous voulez."
+    }
   }
 }

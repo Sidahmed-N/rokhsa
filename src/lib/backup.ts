@@ -50,5 +50,5 @@ export function formatWhen(iso: string): string {
 export function suggestedFileName(): string {
   const d = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
-  return `tariqi-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}.db`;
+  return `rokhsa-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}.db`;
 }

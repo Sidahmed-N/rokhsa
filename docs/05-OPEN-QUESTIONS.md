@@ -1,4 +1,4 @@
-# Open Questions — Tariqi
+# Open Questions — Rokhsa
 
 **Owner:** PM (you). **Date:** 2026-10-17
 
@@ -224,7 +224,7 @@ performance targets. Without a committed pilot, Phase 8 has nothing to run on.
 
 ---
 
-### Q12. Product name 🟡
+### Q12. Product name — **ANSWERED 2026-10-29** 🟢
 Working name is **Tariqi** (طريقي, "my road"). Other candidates: **Rokhsa** (رخصة, "licence"),
 **Siyaqa** (سياقة, "driving"), **Sawaq** (سواق, "driver"), or something French-leaning like
 **AutoÉcole Pro**.
@@ -232,7 +232,9 @@ Working name is **Tariqi** (طريقي, "my road"). Other candidates: **Rokhsa**
 Needs to work in both languages, be easy to say on the phone, and ideally have a free
 `.dz` or `.com` domain. Your call.
 
-**Answer:**
+**Answer:** **Rokhsa** (رخصة). The visible name, window title, installer and backup files
+changed; the app identifier `dz.tariqi.desktop`, the crate and the database file did not —
+see CLAUDE.md. Logo: a steering wheel behind a licence card, chosen by the owner (`src-tauri/icons/source.png`).
 
 ---
 

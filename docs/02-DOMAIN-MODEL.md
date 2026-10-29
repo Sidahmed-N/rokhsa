@@ -1,4 +1,4 @@
-# Domain Model — Tariqi
+# Domain Model — Rokhsa
 
 **Status:** Draft for PM review
 **Date:** 2026-10-17

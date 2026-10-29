@@ -1,6 +1,14 @@
-# Tariqi — Auto-École Management System (Algeria)
+# Rokhsa — Auto-École Management System (Algeria)
 
-> Working codename: **Tariqi** (طريقي / "my road"). Not final — see `docs/05-OPEN-QUESTIONS.md`.
+> Product name: **Rokhsa** (رخصة / "licence"), chosen 2026-10-29 (`docs/05-OPEN-QUESTIONS.md` Q12).
+> It was **Tariqi** until then, and that name survives on purpose wherever a user never sees it:
+> the crate, `tariqi.db`, the `fc-tariqi-*` classes, the `tariqi.*` localStorage keys.
+> **Never change the app identifier `dz.tariqi.desktop`.** It decides the folder Windows keeps
+> each school's database in; a new identifier is an app that starts empty on every machine that
+> updates. Backups are now `rokhsa-*.db`, and `tariqi-*.db` is still recognised as one.
+> The logo is `src-tauri/icons/source.png` (every icon is generated from it with `npx tauri icon`) and the identical
+> `src/assets/logo.png` shown by `src/components/Logo.tsx`; replace both together. The window icon is compiled into the
+> executable, so after regenerating icons `touch src-tauri/build.rs` or the old one stays.
 
 This file is the engineering contract for this repository. Read it before writing code.
 
@@ -421,6 +429,13 @@ copies of React and blanks the whole app. It is NOT a code bug — check `npm ls
 and if it is deduped, stop the dev server, delete `node_modules/.vite`, and restart.
 Note the browser console keeps the old messages after the fix, so verify with the rendered
 page (`get_page_text`), not the console.
+
+### The first-launch tour points at the sidebar
+`src/features/onboarding/Onboarding.tsx`: a bilingual welcome that asks for the language, then
+seven spotlight steps on the sidebar items (`data-tour` attributes in `App.tsx`). It targets the
+sidebar, never buttons inside pages, because a page button may not exist on an empty install.
+**Renaming, moving or removing a sidebar item means updating `STEPS`**, or a step highlights
+nothing. Keep it short — the owner asked for short texts, and a long tour is skipped.
 
 ### Drag and drop needs `dragDropEnabled: false`
 Tauri's window takes OS drag-and-drop for itself by default (to receive dropped files), and

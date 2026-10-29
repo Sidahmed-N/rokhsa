@@ -74,8 +74,21 @@ fn io_err(context: &str, e: std::io::Error) -> AppError {
     AppError::Internal(format!("{context}: {e}"))
 }
 
+/// Automatic backups are named `rokhsa-<timestamp>.db`.
+const PREFIX: &str = "rokhsa-";
+
+/// What they were called before the app was renamed. Still recognised, so a
+/// school that updates keeps its existing backups in the rotation and in the
+/// "is one due" check — otherwise the old files would pile up forever and the
+/// first start after the update would think no backup had ever been made.
+const OLD_PREFIX: &str = "tariqi-";
+
+fn is_backup_name(name: &str) -> bool {
+    (name.starts_with(PREFIX) || name.starts_with(OLD_PREFIX)) && name.ends_with(".db")
+}
+
 fn timestamp_name(now: DateTime<Utc>) -> String {
-    format!("tariqi-{}.db", now.format("%Y%m%d-%H%M%S"))
+    format!("{PREFIX}{}.db", now.format("%Y%m%d-%H%M%S"))
 }
 
 /// Open a database file read-only, without creating it.
@@ -230,7 +243,7 @@ fn prune(dir: &Path, keep: usize) -> Result<(), AppError> {
     for entry in entries.flatten() {
         let path = entry.path();
         let name = entry.file_name().to_string_lossy().to_string();
-        if !name.starts_with("tariqi-") || !name.ends_with(".db") {
+        if !is_backup_name(&name) {
             continue;
         }
         if let Ok(meta) = entry.metadata() {
@@ -254,10 +267,7 @@ pub fn is_auto_backup_due(data_dir: &Path, now: DateTime<Utc>) -> bool {
         .into_iter()
         .flatten()
         .flatten()
-        .filter(|e| {
-            let n = e.file_name().to_string_lossy().to_string();
-            n.starts_with("tariqi-") && n.ends_with(".db")
-        })
+        .filter(|e| is_backup_name(&e.file_name().to_string_lossy()))
         .filter_map(|e| e.metadata().ok()?.modified().ok())
         .max();
 
@@ -585,6 +595,41 @@ mod tests {
 
         assert_eq!(remaining.iter().filter(|n| n.starts_with("tariqi-")).count(), 3);
         assert!(remaining.contains(&"my-own-copy.db".to_string()));
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// After the rename, old `tariqi-` backups and new `rokhsa-` ones are one
+    /// rotation: the oldest go first whatever they are called.
+    #[tokio::test]
+    async fn rotation_treats_backups_from_before_the_rename_as_backups() {
+        let dir = temp_dir("prune-rename");
+        let backups = backups_dir(&dir);
+        std::fs::create_dir_all(&backups).unwrap();
+
+        for name in [
+            "tariqi-20260101-000000.db",
+            "tariqi-20260102-000000.db",
+            "rokhsa-20260103-000000.db",
+            "rokhsa-20260104-000000.db",
+        ] {
+            std::fs::write(backups.join(name), b"x").unwrap();
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
+
+        prune(&backups, 3).unwrap();
+
+        let mut remaining: Vec<String> = std::fs::read_dir(&backups)
+            .unwrap()
+            .flatten()
+            .map(|e| e.file_name().to_string_lossy().to_string())
+            .collect();
+        remaining.sort();
+        assert_eq!(
+            remaining,
+            ["rokhsa-20260103-000000.db", "rokhsa-20260104-000000.db", "tariqi-20260102-000000.db"]
+        );
+        assert!(timestamp_name(Utc::now()).starts_with("rokhsa-"));
 
         std::fs::remove_dir_all(&dir).ok();
     }

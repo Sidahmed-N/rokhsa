@@ -20,7 +20,7 @@ import {
 } from "@/lib/backup";
 import { isDesktop } from "@/lib/tauri";
 
-const DB_FILTER = [{ name: "Tariqi", extensions: ["db"] }];
+const DB_FILTER = [{ name: "Rokhsa", extensions: ["db"] }];
 
 /**
  * Backup and restore.

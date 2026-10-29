@@ -1,4 +1,4 @@
-# Stack Decisions — Tariqi
+# Stack Decisions — Rokhsa
 
 **Status:** Recommendation, awaiting PM sign-off
 **Date:** 2026-10-17
