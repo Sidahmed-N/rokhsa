@@ -161,7 +161,7 @@ export default function PlannerView({
         // session, because db::lessons::reschedule moves every row sharing
         // the session id.
         id: String(first.id),
-        title: group.map((e) => personName(e, locale)).join(" · "),
+        title: group.map((e) => personName(e)).join(" · "),
         start: startOf(first),
         allDay: !first.scheduledTime,
         editable: first.status === "planned",
@@ -171,7 +171,7 @@ export default function PlannerView({
           planNote: first.planNote,
           kindLabel: t(`lessons.kind_${first.kind}`),
           statusLabel: t(`calendar.status_${first.status}`),
-          names: group.map((e) => personName(e, locale)),
+          names: group.map((e) => personName(e)),
         },
       };
       const end = endOf(first);
@@ -333,7 +333,11 @@ export default function PlannerView({
                 </span>
                 {shown.map((n, i) => (
                   <span key={i} className="fc-tariqi-title">
-                    {n}
+                    {/* Page direction outside, the name's own inside: see
+                        ProgressBoard. */}
+                    <span dir="auto" className="inline-block max-w-full truncate align-top">
+                      {n}
+                    </span>
                   </span>
                 ))}
                 {arg.event.extendedProps["planNote"] ? (

@@ -86,10 +86,8 @@ pub struct DayEntry {
     pub day: String,
     pub enrollment_id: i64,
     pub candidate_id: i64,
-    pub last_name_fr: String,
-    pub first_name_fr: String,
-    pub last_name_ar: String,
-    pub first_name_ar: String,
+    pub last_name: String,
+    pub first_name: String,
     pub phone: String,
     pub category_code: String,
     pub kind: String,
@@ -212,7 +210,7 @@ pub async fn minutes_by_kind(
 /// The columns every schedule row needs, with the day it falls on.
 const DAY_COLUMNS: &str = "l.id, COALESCE(l.scheduled_on, l.occurred_on) AS day,
                 l.enrollment_id, e.candidate_id,
-                c.last_name_fr, c.first_name_fr, c.last_name_ar, c.first_name_ar, c.phone,
+                c.last_name, c.first_name, c.phone,
                 e.category_code, l.kind, l.status, l.scheduled_time, l.minutes,
                 l.plan_note, l.notes, l.session_id";
 
@@ -641,8 +639,8 @@ mod tests {
         let candidate = candidates::create(
             pool,
             &CandidateInput {
-                last_name_fr: "BENALI".into(),
-                first_name_fr: "Yacine".into(),
+                last_name: "BENALI".into(),
+                first_name: "Yacine".into(),
                 ..Default::default()
             },
         )
@@ -937,8 +935,8 @@ mod tests {
         let candidate = candidates::create(
             pool,
             &CandidateInput {
-                last_name_fr: last.into(),
-                first_name_fr: "Test".into(),
+                last_name: last.into(),
+                first_name: "Test".into(),
                 ..Default::default()
             },
         )

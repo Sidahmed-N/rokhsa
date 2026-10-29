@@ -1,23 +1,26 @@
 /**
- * A person's name in the reader's script.
+ * A person's name, as the school typed it.
  *
- * Both forms are stored and neither is derived from the other, so a school
- * that only ever typed the Latin name still sees something in Arabic, and
- * one that only typed Arabic still sees something in French.
+ * One name per candidate, in whichever script the secretary used: a French
+ * page can show "مرابط بلال" and an Arabic page "MERABET Bilal". Nothing is
+ * transliterated — a computer cannot turn a name into the other script
+ * reliably, and a wrong spelling on a candidate's own name is worse than the
+ * other script. See migration 0010.
  *
- * Takes the four fields rather than a specific row type, because candidates,
- * day entries and receivable rows all carry the same four and none of them
- * should need converting to another shape first.
+ * Because the script is the school's choice, not the page's, a TRUNCATED name
+ * needs an inner `dir="auto"` inline-block inside an element that keeps the
+ * page's direction (see ProgressBoard): the outer one puts the name on the
+ * page's side, the inner one clips it at its own end.
+ *
+ * Takes the two fields rather than a specific row type, because candidates,
+ * day entries and receivable rows all carry them and none of them should need
+ * converting to another shape first.
  */
 export type NameFields = {
-  lastNameFr: string;
-  firstNameFr: string;
-  lastNameAr: string;
-  firstNameAr: string;
+  lastName: string;
+  firstName: string;
 };
 
-export function personName(row: NameFields, locale: "fr" | "ar"): string {
-  const arabic = `${row.lastNameAr} ${row.firstNameAr}`.trim();
-  const latin = `${row.lastNameFr} ${row.firstNameFr}`.trim();
-  return locale === "ar" ? arabic || latin : latin || arabic;
+export function personName(row: NameFields): string {
+  return `${row.lastName} ${row.firstName}`.trim();
 }

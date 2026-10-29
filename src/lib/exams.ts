@@ -42,10 +42,8 @@ export interface ExamEntry {
   id: number;
   enrollmentId: number;
   candidateId: number;
-  lastNameFr: string;
-  firstNameFr: string;
-  lastNameAr: string;
-  firstNameAr: string;
+  lastName: string;
+  firstName: string;
   nin: string;
   categoryCode: string;
   kind: string;
@@ -84,19 +82,42 @@ export interface ExamProgress {
 export interface BoardCard {
   enrollmentId: number;
   candidateId: number;
-  lastNameFr: string;
-  firstNameFr: string;
-  lastNameAr: string;
-  firstNameAr: string;
+  lastName: string;
+  firstName: string;
   phone: string;
   categoryCode: string;
   /** How a withdrawal is known — the results cannot imply one. */
   enrollmentStatus: string;
   progress: ExamProgress;
   daysSinceExam: number | null;
+  /** Decided in Rust: a drag between columns records something, and what
+   *  it records depends on which column the card is in. */
+  column: BoardColumn;
 }
 
+export type BoardColumn =
+  | "theory"
+  | "maneuvers"
+  | "road"
+  | "awaiting"
+  | "finished"
+  | "withdrawn";
+
+/** What a drag records. `kind` is the exam it is about. */
+export type BoardMove = {
+  action: "present" | "pass" | "resultPassed" | "resultFailed" | "undoPass";
+  kind: string;
+};
+
 export const getExamBoard = () => call<BoardCard[]>("get_exam_board");
+
+/** What dropping a card on `to` would record — nothing is written. */
+export const planBoardMove = (enrollmentId: number, to: BoardColumn) =>
+  call<BoardMove>("plan_board_move", { enrollmentId, to });
+
+/** Record it. Rust plans the move again inside the write. */
+export const moveOnBoard = (enrollmentId: number, to: BoardColumn, date: string) =>
+  call<BoardMove>("move_on_board", { enrollmentId, to, date });
 
 export const listExamSessions = () => call<ExamSession[]>("list_exam_sessions");
 

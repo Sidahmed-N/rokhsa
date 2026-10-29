@@ -21,7 +21,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let candidate = db::candidates::create(
         &pool,
         &CandidateInput {
-            last_name_fr: "CRASHTEST".into(),
+            last_name: "CRASHTEST".into(),
             ..Default::default()
         },
     )

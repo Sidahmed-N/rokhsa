@@ -16,7 +16,6 @@ import FreeText from "@/components/FreeText";
 import { Money, Num } from "@/components/Num";
 import Button from "@/components/ui/Button";
 import { Card, ErrorNote, Hero, PageHeader } from "@/components/ui/Surface";
-import { currentLanguage } from "@/i18n";
 import RuntimeBadge from "@/features/home/RuntimeBadge";
 import { isAppError, listCandidates } from "@/lib/candidates";
 import { useToday } from "@/lib/today";
@@ -139,7 +138,6 @@ function Panel({
  */
 export default function HomePage() {
   const { t } = useTranslation();
-  const locale = currentLanguage();
 
   const [receivables, setReceivables] = useState<Receivables | null>(null);
   const [flow, setFlow] = useState<CashFlow | null>(null);
@@ -278,7 +276,7 @@ export default function HomePage() {
                     to={`/candidates/${row.candidateId}`}
                     className="text-sm font-medium text-ink hover:text-brand hover:underline"
                   >
-                    {personName(row, locale)}
+                    {personName(row)}
                   </Link>
                   {row.planNote && (
                     <FreeText as="span" className="min-w-0 flex-1 truncate text-xs text-muted">
@@ -340,7 +338,7 @@ export default function HomePage() {
                     to={`/candidates/${row.candidateId}`}
                     className="text-sm font-medium text-ink hover:text-brand hover:underline"
                   >
-                    {personName(row, locale)}
+                    {personName(row)}
                   </Link>
                   {row.phone && (
                     <span className="inline-flex items-center gap-1 text-xs text-muted">
@@ -419,7 +417,7 @@ export default function HomePage() {
                     to={`/candidates/${row.candidateId}`}
                     className="text-sm font-medium text-ink hover:text-brand hover:underline"
                   >
-                    {personName(row, locale)}
+                    {personName(row)}
                   </Link>
 
                   <span className="ms-auto flex gap-1.5">

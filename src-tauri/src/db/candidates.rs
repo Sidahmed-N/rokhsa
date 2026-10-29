@@ -13,17 +13,12 @@ use crate::error::AppError;
 pub struct Candidate {
     pub id: i64,
     pub nin: Option<String>,
-    pub first_name_fr: String,
-    pub last_name_fr: String,
-    pub first_name_ar: String,
-    pub last_name_ar: String,
-    pub father_name_fr: String,
-    pub father_name_ar: String,
-    pub mother_name_fr: String,
-    pub mother_name_ar: String,
+    pub first_name: String,
+    pub last_name: String,
+    pub father_name: String,
+    pub mother_name: String,
     pub birth_date: Option<String>,
-    pub birth_place_fr: String,
-    pub birth_place_ar: String,
+    pub birth_place: String,
     pub gender: Option<String>,
     pub blood_group: String,
     pub phone: String,
@@ -40,9 +35,9 @@ pub struct Candidate {
     pub updated_at: String,
 }
 
-const COLUMNS: &str = "id, nin, first_name_fr, last_name_fr, first_name_ar, last_name_ar, \
-     father_name_fr, father_name_ar, mother_name_fr, mother_name_ar, birth_date, \
-     birth_place_fr, birth_place_ar, gender, blood_group, phone, phone_alt, \
+const COLUMNS: &str = "id, nin, first_name, last_name, \
+     father_name, mother_name, birth_date, \
+     birth_place, gender, blood_group, phone, phone_alt, \
      address_fr, address_ar, commune, wilaya_code, photo_path, status, notes, \
      registered_at, created_at, updated_at";
 
@@ -63,7 +58,7 @@ pub async fn list(
         "SELECT {COLUMNS} FROM candidates
          WHERE deleted_at IS NULL
            AND (?1 = '' OR search_text LIKE ?2)
-         ORDER BY last_name_fr COLLATE NOCASE, first_name_fr COLLATE NOCASE, id
+         ORDER BY last_name COLLATE NOCASE, first_name COLLATE NOCASE, id
          LIMIT ?3 OFFSET ?4"
     );
 
@@ -122,8 +117,8 @@ pub async fn find_possible_duplicates(
     // silently found nothing whenever the order differed — caught by
     // `warns_about_a_likely_duplicate_without_blocking_it`.
     let tokens: Vec<String> = fold_query(&format!(
-        "{} {} {} {}",
-        input.last_name_fr, input.first_name_fr, input.last_name_ar, input.first_name_ar
+        "{} {}",
+        input.last_name, input.first_name
     ))
     .split_whitespace()
     .take(6)
@@ -204,29 +199,24 @@ pub async fn create(pool: &SqlitePool, input: &CandidateInput) -> Result<Candida
 
     let row: (i64,) = sqlx::query_as(
         "INSERT INTO candidates (
-            nin, nin_digits, first_name_fr, last_name_fr, first_name_ar, last_name_ar,
-            father_name_fr, father_name_ar, mother_name_fr, mother_name_ar,
-            birth_date, birth_place_fr, birth_place_ar, gender, blood_group,
+            nin, nin_digits, first_name, last_name,
+            father_name, mother_name,
+            birth_date, birth_place, gender, blood_group,
             phone, phone_alt, address_fr, address_ar, commune, wilaya_code,
             status, notes, search_text, registered_at, created_at, updated_at
          ) VALUES (
-            ?1, ?27, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14,
-            ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26
+            ?1, ?22, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14,
+            ?15, ?16, ?17, ?18, ?19, ?20, ?21
          )
          RETURNING id",
     )
     .bind(input.nin_as_typed())
-    .bind(&input.first_name_fr)
-    .bind(&input.last_name_fr)
-    .bind(&input.first_name_ar)
-    .bind(&input.last_name_ar)
-    .bind(&input.father_name_fr)
-    .bind(&input.father_name_ar)
-    .bind(&input.mother_name_fr)
-    .bind(&input.mother_name_ar)
+    .bind(&input.first_name)
+    .bind(&input.last_name)
+    .bind(&input.father_name)
+    .bind(&input.mother_name)
     .bind(birth_date)
-    .bind(&input.birth_place_fr)
-    .bind(&input.birth_place_ar)
+    .bind(&input.birth_place)
     .bind(gender)
     .bind(&input.blood_group)
     .bind(&input.phone)
@@ -241,7 +231,7 @@ pub async fn create(pool: &SqlitePool, input: &CandidateInput) -> Result<Candida
     .bind(&now)
     .bind(&now)
     .bind(&now)
-    .bind(input.normalised_nin()) // ?27 — nin_digits
+    .bind(input.normalised_nin()) // ?22 — nin_digits
     .fetch_one(pool)
     .await
     .map_err(map_unique_violation)?;
@@ -280,28 +270,22 @@ pub async fn update(
 
     sqlx::query(
         "UPDATE candidates SET
-            nin = ?1, nin_digits = ?26,
-            first_name_fr = ?2, last_name_fr = ?3, first_name_ar = ?4,
-            last_name_ar = ?5, father_name_fr = ?6, father_name_ar = ?7,
-            mother_name_fr = ?8, mother_name_ar = ?9, birth_date = ?10,
-            birth_place_fr = ?11, birth_place_ar = ?12, gender = ?13,
-            blood_group = ?14, phone = ?15, phone_alt = ?16, address_fr = ?17,
-            address_ar = ?18, commune = ?19, wilaya_code = ?20, status = ?21,
-            notes = ?22, search_text = ?23, updated_at = ?24
-         WHERE id = ?25 AND deleted_at IS NULL",
+            nin = ?1, nin_digits = ?21,
+            first_name = ?2, last_name = ?3,
+            father_name = ?4, mother_name = ?5, birth_date = ?6,
+            birth_place = ?7, gender = ?8,
+            blood_group = ?9, phone = ?10, phone_alt = ?11, address_fr = ?12,
+            address_ar = ?13, commune = ?14, wilaya_code = ?15, status = ?16,
+            notes = ?17, search_text = ?18, updated_at = ?19
+         WHERE id = ?20 AND deleted_at IS NULL",
     )
     .bind(input.nin_as_typed())
-    .bind(&input.first_name_fr)
-    .bind(&input.last_name_fr)
-    .bind(&input.first_name_ar)
-    .bind(&input.last_name_ar)
-    .bind(&input.father_name_fr)
-    .bind(&input.father_name_ar)
-    .bind(&input.mother_name_fr)
-    .bind(&input.mother_name_ar)
+    .bind(&input.first_name)
+    .bind(&input.last_name)
+    .bind(&input.father_name)
+    .bind(&input.mother_name)
     .bind(birth_date)
-    .bind(&input.birth_place_fr)
-    .bind(&input.birth_place_ar)
+    .bind(&input.birth_place)
     .bind(gender)
     .bind(&input.blood_group)
     .bind(&input.phone)
@@ -315,7 +299,7 @@ pub async fn update(
     .bind(input.search_text())
     .bind(&now)
     .bind(id)
-    .bind(input.normalised_nin()) // ?26 — nin_digits
+    .bind(input.normalised_nin()) // ?21 — nin_digits
     .execute(pool)
     .await
     .map_err(map_unique_violation)?;
@@ -422,8 +406,8 @@ mod tests {
 
     fn input(last_fr: &str, first_fr: &str) -> CandidateInput {
         CandidateInput {
-            last_name_fr: last_fr.into(),
-            first_name_fr: first_fr.into(),
+            last_name: last_fr.into(),
+            first_name: first_fr.into(),
             ..Default::default()
         }
     }
@@ -442,7 +426,7 @@ mod tests {
     async fn creates_and_reads_back_a_candidate() {
         let pool = test_pool().await;
         let created = create(&pool, &input("BENALI", "Yacine")).await.unwrap();
-        assert_eq!(created.last_name_fr, "BENALI");
+        assert_eq!(created.last_name, "BENALI");
         assert_eq!(created.status, "active");
 
         let fetched = get(&pool, created.id).await.unwrap();
@@ -455,8 +439,7 @@ mod tests {
         create(
             &pool,
             &CandidateInput {
-                last_name_ar: "بْن عَلِي".into(),
-                last_name_fr: "BENALI".into(),
+                last_name: "بْن عَلِي".into(),
                 ..Default::default()
             },
         )

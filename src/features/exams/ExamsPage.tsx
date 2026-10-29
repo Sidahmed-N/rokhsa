@@ -11,7 +11,6 @@ import { SelectField, TextField } from "@/components/FormField";
 import Button, { IconButton } from "@/components/ui/Button";
 import { Badge, Card, EmptyState, ErrorNote, PageHeader, type Tone } from "@/components/ui/Surface";
 import CandidatePicker from "@/features/training/CandidatePicker";
-import { currentLanguage } from "@/i18n";
 import { isAppError } from "@/lib/candidates";
 import {
   addToExamSession,
@@ -55,7 +54,6 @@ const SESSION_PAGE_SIZE = 20;
 
 export default function ExamsPage() {
   const { t } = useTranslation();
-  const locale = currentLanguage();
 
   const [sessions, setSessions] = useState<ExamSession[]>([]);
   // Sittings accumulate for as long as the school exists, a batch or two a
@@ -249,7 +247,7 @@ export default function ExamsPage() {
                         to={`/candidates/${entry.candidateId}`}
                         className="text-sm font-medium text-ink hover:text-brand hover:underline"
                       >
-                        {personName(entry, locale)}
+                        {personName(entry)}
                       </Link>
                       {/* A second go is worth seeing at a glance. */}
                       {entry.attempt > 1 && (

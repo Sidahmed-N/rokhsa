@@ -13,10 +13,8 @@ import type { Centimes } from "@/lib/money";
 export interface ReceivableRow {
   enrollmentId: number;
   candidateId: number;
-  lastNameFr: string;
-  firstNameFr: string;
-  lastNameAr: string;
-  firstNameAr: string;
+  lastName: string;
+  firstName: string;
   phone: string;
   categoryCode: string;
   enrolledOn: string;

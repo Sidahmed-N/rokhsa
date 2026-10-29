@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import { Check, Search } from "lucide-react";
 
 import { Badge } from "@/components/ui/Surface";
-import { currentLanguage } from "@/i18n";
 import { isAppError } from "@/lib/candidates";
 import { personName } from "@/lib/names";
 import { isDesktop } from "@/lib/tauri";
@@ -48,7 +47,6 @@ export default function CandidatePicker({
 }) {
   const multi = selected !== undefined;
   const { t } = useTranslation();
-  const locale = currentLanguage();
 
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
@@ -133,8 +131,12 @@ export default function CandidatePicker({
                   ) : (
                     <span className="size-3.5 shrink-0" aria-hidden="true" />
                   )}
-                  <span className="min-w-0 flex-1 truncate font-medium">
-                    {personName(row, locale)}
+                  {/* Page direction outside, the name's own inside: see
+                      ProgressBoard. */}
+                  <span className="min-w-0 flex-1 font-medium">
+                    <span dir="auto" className="inline-block max-w-full truncate align-top">
+                      {personName(row)}
+                    </span>
                   </span>
                   {/* Somebody who has passed everything is not in the list
                       until his name is typed, so when he does appear it has

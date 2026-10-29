@@ -1,18 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import FreeText from "@/components/FreeText";
 import { Num } from "@/components/Num";
-import { currentLanguage } from "@/i18n";
 import {
   CANDIDATE_STATUSES,
   createCandidate,
-  displayName,
   findCandidateDuplicates,
   isAppError,
   updateCandidate,
   type Candidate,
   type CandidateInput,
 } from "@/lib/candidates";
+import { personName } from "@/lib/names";
 
 interface Props {
   initial: CandidateInput;
@@ -35,7 +35,7 @@ function Field({
   value: string;
   onChange: (next: string) => void;
   error?: string | undefined;
-  dir?: "ltr" | "rtl" | undefined;
+  dir?: "ltr" | "rtl" | "auto" | undefined;
   type?: string;
   placeholder?: string | undefined;
 }) {
@@ -61,7 +61,6 @@ function Field({
 
 export default function CandidateForm({ initial, editingId, onSaved, onCancel }: Props) {
   const { t } = useTranslation();
-  const locale = currentLanguage();
 
   const [form, setForm] = useState<CandidateInput>(initial);
   const [saving, setSaving] = useState(false);
@@ -75,11 +74,11 @@ export default function CandidateForm({ initial, editingId, onSaved, onCancel }:
   // Look for likely duplicates as the name is typed. A WARNING only — two
   // people genuinely can share a name, and blocking the second one would push
   // the secretary back to paper.
-  const nameKey = `${form.lastNameFr}|${form.firstNameFr}|${form.lastNameAr}|${form.nin}`;
+  const nameKey = `${form.lastName}|${form.firstName}|${form.nin}`;
   const latestRequest = useRef(0);
 
   useEffect(() => {
-    if (!form.lastNameFr && !form.lastNameAr && !form.nin) {
+    if (!form.lastName && !form.nin) {
       setDuplicates([]);
       return;
     }
@@ -149,7 +148,7 @@ export default function CandidateForm({ initial, editingId, onSaved, onCancel }:
               <ul className="mt-1 text-xs text-muted">
                 {duplicates.map((d) => (
                   <li key={d.id}>
-                    {displayName(d, locale)}
+                    <FreeText as="span">{personName(d)}</FreeText>
                     {d.phone && (
                       <>
                         {" — "}
@@ -169,53 +168,17 @@ export default function CandidateForm({ initial, editingId, onSaved, onCancel }:
             </legend>
             <div className="grid gap-3 sm:grid-cols-2">
               <Field
-                label={t("candidates.lastNameFr")}
-                value={form.lastNameFr}
-                onChange={(v) => set("lastNameFr", v)}
-                error={fieldError("lastNameFr")}
-                dir="ltr"
+                label={t("candidates.lastName")}
+                value={form.lastName}
+                onChange={(v) => set("lastName", v)}
+                error={fieldError("lastName")}
+                dir="auto"
               />
               <Field
-                label={t("candidates.lastNameAr")}
-                value={form.lastNameAr}
-                onChange={(v) => set("lastNameAr", v)}
-                dir="rtl"
-              />
-              <Field
-                label={t("candidates.firstNameFr")}
-                value={form.firstNameFr}
-                onChange={(v) => set("firstNameFr", v)}
-                dir="ltr"
-              />
-              <Field
-                label={t("candidates.firstNameAr")}
-                value={form.firstNameAr}
-                onChange={(v) => set("firstNameAr", v)}
-                dir="rtl"
-              />
-              <Field
-                label={t("candidates.fatherNameFr")}
-                value={form.fatherNameFr}
-                onChange={(v) => set("fatherNameFr", v)}
-                dir="ltr"
-              />
-              <Field
-                label={t("candidates.fatherNameAr")}
-                value={form.fatherNameAr}
-                onChange={(v) => set("fatherNameAr", v)}
-                dir="rtl"
-              />
-              <Field
-                label={t("candidates.motherNameFr")}
-                value={form.motherNameFr}
-                onChange={(v) => set("motherNameFr", v)}
-                dir="ltr"
-              />
-              <Field
-                label={t("candidates.motherNameAr")}
-                value={form.motherNameAr}
-                onChange={(v) => set("motherNameAr", v)}
-                dir="rtl"
+                label={t("candidates.firstName")}
+                value={form.firstName}
+                onChange={(v) => set("firstName", v)}
+                dir="auto"
               />
             </div>
           </fieldset>
@@ -242,16 +205,10 @@ export default function CandidateForm({ initial, editingId, onSaved, onCancel }:
                 dir="ltr"
               />
               <Field
-                label={t("candidates.birthPlaceFr")}
-                value={form.birthPlaceFr}
-                onChange={(v) => set("birthPlaceFr", v)}
-                dir="ltr"
-              />
-              <Field
-                label={t("candidates.birthPlaceAr")}
-                value={form.birthPlaceAr}
-                onChange={(v) => set("birthPlaceAr", v)}
-                dir="rtl"
+                label={t("candidates.birthPlace")}
+                value={form.birthPlace}
+                onChange={(v) => set("birthPlace", v)}
+                dir="auto"
               />
 
               <label className="block">
@@ -266,13 +223,6 @@ export default function CandidateForm({ initial, editingId, onSaved, onCancel }:
                   <option value="f">{t("candidates.genderFemale")}</option>
                 </select>
               </label>
-
-              <Field
-                label={t("candidates.bloodGroup")}
-                value={form.bloodGroup}
-                onChange={(v) => set("bloodGroup", v)}
-                dir="ltr"
-              />
             </div>
           </fieldset>
 

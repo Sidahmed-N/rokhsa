@@ -327,7 +327,7 @@ mod tests {
         let candidate = candidates::create(
             &pool,
             &CandidateInput {
-                last_name_fr: "BENALI".into(),
+                last_name: "BENALI".into(),
                 ..Default::default()
             },
         )
@@ -434,7 +434,7 @@ mod tests {
         let pool = test_pool().await;
         let candidate = candidates::create(
             &pool,
-            &CandidateInput { last_name_fr: "BENALI".into(), ..Default::default() },
+            &CandidateInput { last_name: "BENALI".into(), ..Default::default() },
         )
         .await
         .unwrap();

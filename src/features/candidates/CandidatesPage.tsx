@@ -7,10 +7,8 @@ import { Num } from "@/components/Num";
 import { Pager } from "@/components/ui/Pager";
 import Button, { IconButton } from "@/components/ui/Button";
 import { Badge, Card, EmptyState, ErrorNote, PageHeader, type Tone } from "@/components/ui/Surface";
-import { currentLanguage } from "@/i18n";
 import {
   deleteCandidate,
-  displayName,
   emptyCandidateInput,
   isAppError,
   listCandidates,
@@ -18,6 +16,7 @@ import {
   type Candidate,
   type CandidateInput,
 } from "@/lib/candidates";
+import { personName } from "@/lib/names";
 import { isDesktop } from "@/lib/tauri";
 import CandidateForm from "@/features/candidates/CandidateForm";
 import ProgressBoard from "@/features/candidates/ProgressBoard";
@@ -37,7 +36,6 @@ type View = "list" | "board";
 
 export default function CandidatesPage() {
   const { t } = useTranslation();
-  const locale = currentLanguage();
 
   // `?view=board` opens straight on the board, the same escape hatch the
   // calendar has, so it can be looked at without clicking through.
@@ -203,20 +201,8 @@ export default function CandidatesPage() {
                       to={`/candidates/${candidate.id}`}
                       className="font-medium text-ink hover:text-brand hover:underline"
                     >
-                      {displayName(candidate, locale)}
+                      {personName(candidate)}
                     </Link>
-                    {locale === "fr" && candidate.lastNameAr && (
-                      // The spacing lives on an OUTER span that inherits the row's
-                      // direction. Putting ms-* on the same element that carries
-                      // dir="rtl" makes margin-inline-start resolve against *that*
-                      // element, so the gap appears on the wrong visual side and
-                      // the two names touch.
-                      <span className="ms-2 text-xs text-muted">
-                        <span dir="rtl">
-                          {candidate.lastNameAr} {candidate.firstNameAr}
-                        </span>
-                      </span>
-                    )}
                   </td>
                   <td className="text-ink-soft">
                     {candidate.phone ? (
@@ -301,7 +287,7 @@ export default function CandidatesPage() {
               {t("candidates.deleteTitle")}
             </h2>
             <p className="mt-2 text-sm text-ink-soft">
-              {t("candidates.deleteBody", { name: displayName(confirmDelete, locale) })}
+              {t("candidates.deleteBody", { name: personName(confirmDelete) })}
             </p>
             <p className="mt-2 text-xs text-muted">{t("candidates.deleteNote")}</p>
             <div className="mt-5 flex gap-2">

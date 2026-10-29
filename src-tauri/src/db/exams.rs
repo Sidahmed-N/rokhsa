@@ -14,8 +14,10 @@ use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, SqlitePool};
 
-use crate::domain::dates::{parse_optional_time, parse_planned, DateProblem};
-use crate::domain::exams::{progress, Attempt, ExamProgress};
+use crate::domain::dates::{parse_optional_time, parse_planned, parse_recorded, DateProblem};
+use crate::domain::exams::{
+    column, plan_move, progress, Attempt, BoardColumn, BoardMove, ExamProgress,
+};
 use crate::error::AppError;
 
 use super::fees;
@@ -53,10 +55,8 @@ pub struct ExamEntry {
     pub id: i64,
     pub enrollment_id: i64,
     pub candidate_id: i64,
-    pub last_name_fr: String,
-    pub first_name_fr: String,
-    pub last_name_ar: String,
-    pub first_name_ar: String,
+    pub last_name: String,
+    pub first_name: String,
     pub nin: String,
     pub category_code: String,
     pub kind: String,
@@ -315,7 +315,7 @@ pub async fn entries_for_session(
 ) -> Result<Vec<ExamEntry>, AppError> {
     let rows = sqlx::query_as::<_, ExamEntry>(
         "SELECT r.id, r.enrollment_id, e.candidate_id,
-                c.last_name_fr, c.first_name_fr, c.last_name_ar, c.first_name_ar,
+                c.last_name, c.first_name,
                 c.nin, e.category_code, r.kind, r.sat_on, r.outcome, r.notes,
                 (SELECT COUNT(*) FROM exam_results prior
                    WHERE prior.enrollment_id = r.enrollment_id
@@ -328,7 +328,7 @@ pub async fn entries_for_session(
          JOIN enrollments e ON e.id = r.enrollment_id
          JOIN candidates  c ON c.id = e.candidate_id
          WHERE r.session_id = ?1 AND r.deleted_at IS NULL
-         ORDER BY c.last_name_fr COLLATE NOCASE, c.first_name_fr COLLATE NOCASE",
+         ORDER BY c.last_name COLLATE NOCASE, c.first_name COLLATE NOCASE",
     )
     .bind(session_id)
     .fetch_all(pool)
@@ -399,8 +399,8 @@ mod tests {
         let candidate = candidates::create(
             pool,
             &CandidateInput {
-                last_name_fr: last.into(),
-                first_name_fr: "Test".into(),
+                last_name: last.into(),
+                first_name: "Test".into(),
                 ..Default::default()
             },
         )
@@ -566,16 +566,17 @@ mod tests {
 pub struct BoardCard {
     pub enrollment_id: i64,
     pub candidate_id: i64,
-    pub last_name_fr: String,
-    pub first_name_fr: String,
-    pub last_name_ar: String,
-    pub first_name_ar: String,
+    pub last_name: String,
+    pub first_name: String,
     pub phone: String,
     pub category_code: String,
     /// The enrolment's own status, which is how a withdrawal is known — that
     /// is a decision the school made, not something the exam results imply.
     pub enrollment_status: String,
     pub progress: ExamProgress,
+    /// Which column the card is in. Decided in Rust because a drag between
+    /// columns records something, and what it records depends on this.
+    pub column: BoardColumn,
     /// Days since the most recent exam, so a candidate stuck at one stage for
     /// months is visible. None when they have never sat one.
     pub days_since_exam: Option<i64>,
@@ -585,10 +586,8 @@ pub struct BoardCard {
 struct BoardRow {
     enrollment_id: i64,
     candidate_id: i64,
-    last_name_fr: String,
-    first_name_fr: String,
-    last_name_ar: String,
-    first_name_ar: String,
+    last_name: String,
+    first_name: String,
     phone: String,
     category_code: String,
     enrollment_status: String,
@@ -640,12 +639,12 @@ pub async fn finished_enrollment_ids(
 pub async fn board(pool: &SqlitePool) -> Result<Vec<BoardCard>, AppError> {
     let rows = sqlx::query_as::<_, BoardRow>(
         "SELECT e.id AS enrollment_id, c.id AS candidate_id,
-                c.last_name_fr, c.first_name_fr, c.last_name_ar, c.first_name_ar,
+                c.last_name, c.first_name,
                 c.phone, e.category_code, e.status AS enrollment_status
          FROM enrollments e
          JOIN candidates c ON c.id = e.candidate_id
          WHERE e.deleted_at IS NULL AND c.deleted_at IS NULL
-         ORDER BY c.last_name_fr COLLATE NOCASE, c.first_name_fr COLLATE NOCASE",
+         ORDER BY c.last_name COLLATE NOCASE, c.first_name COLLATE NOCASE",
     )
     .fetch_all(pool)
     .await?;
@@ -683,21 +682,340 @@ pub async fn board(pool: &SqlitePool) -> Result<Vec<BoardCard>, AppError> {
                 .max()
                 .map(|last| (today - last).num_days());
 
+            let progress = progress(&attempts);
             BoardCard {
+                column: column(&progress, &row.enrollment_status),
                 enrollment_id: row.enrollment_id,
                 candidate_id: row.candidate_id,
-                last_name_fr: row.last_name_fr,
-                first_name_fr: row.first_name_fr,
-                last_name_ar: row.last_name_ar,
-                first_name_ar: row.first_name_ar,
+                last_name: row.last_name,
+                first_name: row.first_name,
                 phone: row.phone,
                 category_code: row.category_code,
                 enrollment_status: row.enrollment_status,
-                progress: progress(&attempts),
+                progress,
                 days_since_exam,
             }
         })
         .collect();
 
     Ok(cards)
+}
+
+/* ------------------------------ board moves ----------------------------- */
+
+/// A result row, with what an undo needs to know about where it came from.
+#[derive(sqlx::FromRow)]
+struct MoveRow {
+    id: i64,
+    kind: String,
+    outcome: String,
+    session_id: Option<i64>,
+}
+
+async fn plan_in(
+    conn: &mut sqlx::SqliteConnection,
+    enrollment_id: i64,
+    to: BoardColumn,
+) -> Result<(BoardMove, Vec<MoveRow>), AppError> {
+    let status: (String,) = sqlx::query_as(
+        "SELECT status FROM enrollments WHERE id = ?1 AND deleted_at IS NULL",
+    )
+    .bind(enrollment_id)
+    .fetch_optional(&mut *conn)
+    .await?
+    .ok_or(AppError::NotFound)?;
+
+    // Newest first, so "the latest presented / passed row" is the first match.
+    let rows = sqlx::query_as::<_, MoveRow>(
+        "SELECT id, kind, outcome, session_id FROM exam_results
+         WHERE enrollment_id = ?1 AND deleted_at IS NULL
+         ORDER BY sat_on DESC, id DESC",
+    )
+    .bind(enrollment_id)
+    .fetch_all(&mut *conn)
+    .await?;
+
+    let attempts: Vec<Attempt> = rows
+        .iter()
+        .map(|r| Attempt {
+            kind: r.kind.as_str(),
+            outcome: r.outcome.as_str(),
+        })
+        .collect();
+
+    let planned = plan_move(&progress(&attempts), &status.0, to).map_err(AppError::validation)?;
+    Ok((planned, rows))
+}
+
+/// What dropping a card on `to` would record, without recording it — so the
+/// confirmation can say "Benali a réussi le code" before anything is written.
+pub async fn plan_board_move(
+    pool: &SqlitePool,
+    enrollment_id: i64,
+    to: BoardColumn,
+) -> Result<BoardMove, AppError> {
+    let mut conn = pool.acquire().await?;
+    Ok(plan_in(&mut conn, enrollment_id, to).await?.0)
+}
+
+/// Record a drag on the progress board.
+///
+/// The move is planned AGAIN here, inside the transaction, rather than
+/// trusted from the confirmation: the board may be stale (someone recorded a
+/// result on the Examens screen meanwhile), and a move worked out against an
+/// old picture would write the wrong thing.
+///
+/// `date` is when it happened: the exam date for a presentation (may be
+/// ahead — tomorrow's batch), the exam date for a pass (not in the future).
+/// A result coming back for a presentation keeps that presentation's date.
+pub async fn apply_board_move(
+    pool: &SqlitePool,
+    enrollment_id: i64,
+    to: BoardColumn,
+    date: &str,
+) -> Result<BoardMove, AppError> {
+    let now = Utc::now().to_rfc3339();
+    let mut tx = pool.begin().await?;
+    let (planned, rows) = plan_in(&mut tx, enrollment_id, to).await?;
+
+    let latest = |kind: &str, outcome: &str| {
+        rows.iter()
+            .find(|r| r.kind == kind && r.outcome == outcome)
+            .map(|r| (r.id, r.session_id))
+            .ok_or(AppError::NotFound)
+    };
+
+    match &planned {
+        BoardMove::Present(kind) | BoardMove::Pass(kind) => {
+            let (outcome, day) = if matches!(planned, BoardMove::Present(_)) {
+                ("presented", parse_planned(date))
+            } else {
+                ("passed", parse_recorded(date))
+            };
+            let day = day
+                .map_err(|p| date_error(p, "date"))?
+                .format("%Y-%m-%d")
+                .to_string();
+
+            // No sitting: the board records what happened, not a batch. A
+            // school that wants the printed list uses the Examens screen.
+            sqlx::query(
+                "INSERT INTO exam_results
+                    (enrollment_id, session_id, kind, sat_on, outcome, created_at, updated_at)
+                 VALUES (?1, NULL, ?2, ?3, ?4, ?5, ?5)",
+            )
+            .bind(enrollment_id)
+            .bind(kind)
+            .bind(&day)
+            .bind(outcome)
+            .bind(&now)
+            .execute(&mut *tx)
+            .await?;
+        }
+
+        BoardMove::ResultPassed(kind) | BoardMove::ResultFailed(kind) => {
+            let (id, _) = latest(kind, "presented")?;
+            let outcome = if matches!(planned, BoardMove::ResultPassed(_)) {
+                "passed"
+            } else {
+                "failed"
+            };
+            sqlx::query("UPDATE exam_results SET outcome = ?1, updated_at = ?2 WHERE id = ?3")
+                .bind(outcome)
+                .bind(&now)
+                .bind(id)
+                .execute(&mut *tx)
+                .await?;
+        }
+
+        BoardMove::UndoPass(kind) => {
+            let (id, session_id) = latest(kind, "passed")?;
+            let fees: (i64,) = sqlx::query_as(
+                "SELECT COUNT(*) FROM exam_fee_charges WHERE result_id = ?1 AND deleted_at IS NULL",
+            )
+            .bind(id)
+            .fetch_one(&mut *tx)
+            .await?;
+
+            if session_id.is_none() && fees.0 == 0 {
+                // A pass typed straight onto the board: undoing it is
+                // removing it. Soft, like every result.
+                sqlx::query(
+                    "UPDATE exam_results SET deleted_at = ?1, updated_at = ?1 WHERE id = ?2",
+                )
+                .bind(&now)
+                .bind(id)
+                .execute(&mut *tx)
+                .await?;
+            } else {
+                // He really was entered for a sitting, and maybe charged for
+                // it. That stays true; only the outcome was wrong. So the
+                // result goes back to "waiting", and his fee is untouched — a
+                // drag must never quietly cancel money he owes.
+                sqlx::query(
+                    "UPDATE exam_results SET outcome = 'presented', updated_at = ?1 WHERE id = ?2",
+                )
+                .bind(&now)
+                .bind(id)
+                .execute(&mut *tx)
+                .await?;
+            }
+        }
+    }
+
+    tx.commit().await?;
+    Ok(planned)
+}
+
+#[cfg(test)]
+mod board_move_tests {
+    use super::*;
+    use crate::db::candidates;
+    use crate::db::enrollments;
+    use crate::db::test_pool;
+    use crate::domain::candidate::CandidateInput;
+
+    async fn enrol(pool: &SqlitePool) -> i64 {
+        let candidate = candidates::create(
+            pool,
+            &CandidateInput {
+                last_name: "BENALI".into(),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+        enrollments::create(
+            pool,
+            candidate.id,
+            &enrollments::EnrollmentInput {
+                category_code: "B".into(),
+                agreed_price_centimes: 35_000_00,
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap()
+        .id
+    }
+
+    async fn column_of(pool: &SqlitePool, enrollment_id: i64) -> BoardColumn {
+        board(pool)
+            .await
+            .unwrap()
+            .into_iter()
+            .find(|c| c.enrollment_id == enrollment_id)
+            .unwrap()
+            .column
+    }
+
+    #[tokio::test]
+    async fn dragging_forward_records_a_pass_and_moves_the_card() {
+        let pool = test_pool().await;
+        let e = enrol(&pool).await;
+        assert_eq!(column_of(&pool, e).await, BoardColumn::Theory);
+
+        apply_board_move(&pool, e, BoardColumn::Maneuvers, "2026-10-01").await.unwrap();
+        assert_eq!(column_of(&pool, e).await, BoardColumn::Maneuvers);
+
+        let history = results_for_enrollment(&pool, e).await.unwrap();
+        assert_eq!(history.len(), 1);
+        assert_eq!(history[0].outcome, "passed");
+        assert_eq!(history[0].sat_on, "2026-10-01");
+        assert_eq!(history[0].session_id, None);
+    }
+
+    /// Present, then the result comes back failed: back in his column with
+    /// the attempt counted, which is what puts the retake badge on him.
+    #[tokio::test]
+    async fn presenting_then_failing_counts_an_attempt() {
+        let pool = test_pool().await;
+        let e = enrol(&pool).await;
+
+        apply_board_move(&pool, e, BoardColumn::Awaiting, "2026-10-01").await.unwrap();
+        assert_eq!(column_of(&pool, e).await, BoardColumn::Awaiting);
+
+        apply_board_move(&pool, e, BoardColumn::Theory, "").await.unwrap();
+        assert_eq!(column_of(&pool, e).await, BoardColumn::Theory);
+        let p = progress_for_enrollment(&pool, e).await.unwrap();
+        assert_eq!(p.theory_attempts, 1);
+
+        // Second go, passed this time.
+        apply_board_move(&pool, e, BoardColumn::Awaiting, "2026-10-15").await.unwrap();
+        apply_board_move(&pool, e, BoardColumn::Maneuvers, "").await.unwrap();
+        assert_eq!(column_of(&pool, e).await, BoardColumn::Maneuvers);
+        assert_eq!(progress_for_enrollment(&pool, e).await.unwrap().theory_attempts, 2);
+    }
+
+    #[tokio::test]
+    async fn undoing_a_pass_typed_on_the_board_removes_it() {
+        let pool = test_pool().await;
+        let e = enrol(&pool).await;
+        apply_board_move(&pool, e, BoardColumn::Maneuvers, "2026-10-01").await.unwrap();
+
+        apply_board_move(&pool, e, BoardColumn::Theory, "").await.unwrap();
+        assert_eq!(column_of(&pool, e).await, BoardColumn::Theory);
+        assert!(results_for_enrollment(&pool, e).await.unwrap().is_empty());
+    }
+
+    /// A pass from a real sitting with a fee: undoing it must not cancel the
+    /// fee or forget he was entered. The result goes back to waiting.
+    #[tokio::test]
+    async fn undoing_a_pass_from_a_sitting_keeps_the_entry_and_the_fee() {
+        let pool = test_pool().await;
+        let e = enrol(&pool).await;
+        let s = create_session(
+            &pool,
+            &ExamSessionInput {
+                kind: "theory".into(),
+                held_on: "2026-10-01".into(),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+        let entry = add_to_session(&pool, s.id, e, 2_000_00).await.unwrap();
+        set_outcome(&pool, entry.id, "passed", "").await.unwrap();
+
+        apply_board_move(&pool, e, BoardColumn::Theory, "").await.unwrap();
+
+        let history = results_for_enrollment(&pool, e).await.unwrap();
+        assert_eq!(history.len(), 1);
+        assert_eq!(history[0].outcome, "presented");
+        assert_eq!(fees::total_for_enrollment(&pool, e).await.unwrap(), 2_000_00);
+        assert_eq!(column_of(&pool, e).await, BoardColumn::Awaiting);
+    }
+
+    #[tokio::test]
+    async fn a_refused_move_writes_nothing() {
+        let pool = test_pool().await;
+        let e = enrol(&pool).await;
+        assert!(apply_board_move(&pool, e, BoardColumn::Finished, "2026-10-01").await.is_err());
+        assert!(results_for_enrollment(&pool, e).await.unwrap().is_empty());
+    }
+
+    /// A pass is something that happened, so it cannot be dated next month;
+    /// a presentation can — tomorrow's batch.
+    #[tokio::test]
+    async fn a_pass_cannot_be_in_the_future_but_a_presentation_can() {
+        let pool = test_pool().await;
+        let e = enrol(&pool).await;
+        let ahead = (Utc::now().date_naive() + chrono::Duration::days(20))
+            .format("%Y-%m-%d")
+            .to_string();
+
+        assert!(apply_board_move(&pool, e, BoardColumn::Maneuvers, &ahead).await.is_err());
+        apply_board_move(&pool, e, BoardColumn::Awaiting, &ahead).await.unwrap();
+        assert_eq!(column_of(&pool, e).await, BoardColumn::Awaiting);
+    }
+
+    #[tokio::test]
+    async fn the_plan_matches_what_is_then_recorded() {
+        let pool = test_pool().await;
+        let e = enrol(&pool).await;
+        let planned = plan_board_move(&pool, e, BoardColumn::Awaiting).await.unwrap();
+        let done = apply_board_move(&pool, e, BoardColumn::Awaiting, "2026-10-01").await.unwrap();
+        assert_eq!(planned, done);
+        assert_eq!(planned, BoardMove::Present("theory".into()));
+    }
 }

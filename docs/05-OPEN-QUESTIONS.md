@@ -625,3 +625,28 @@ card.
 
 **Still open:** the make-up. A candidate marked Absent is recorded as having
 missed, and nothing offers to rebook him — the owner still carries that.
+
+---
+
+## Q21. Candidate names in one script or two — **ANSWERED 2026-10-29** 🟢
+
+**Asked:** the new-candidate form asked for every name twice — last, first,
+father, mother and place of birth, each in Latin AND Arabic, ten boxes.
+Should the French version ask in French and the Arabic version in Arabic,
+accepting either script in either?
+
+**Options put to the owner:** (1) one box per name, nothing else; (2) one box
+plus an optional "add the name in the other script" link.
+
+**Answer: option 1.** One box per name, whatever script the secretary types.
+
+**Built (migration 0010):** the `_fr` columns became the name; a candidate
+who had only an Arabic name had it moved across. The `_ar` columns are kept
+but no longer read or written, so Arabic typed before this is not lost.
+
+**Accepted cost:** search finds a name only in the script it was typed in —
+"مرابط" does not find "MERABET".
+
+**Still open:** whether the papers sent to the Direction des Transports (exam
+lists, dossiers) need the name in Arabic. If they do, a candidate typed in
+Latin will have no Arabic form to print, and option 2 is the way back.

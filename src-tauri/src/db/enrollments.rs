@@ -369,8 +369,8 @@ mod tests {
         let candidate = candidates::create(
             pool,
             &CandidateInput {
-                last_name_fr: "BENALI".into(),
-                first_name_fr: "Yacine".into(),
+                last_name: "BENALI".into(),
+                first_name: "Yacine".into(),
                 ..Default::default()
             },
         )
@@ -765,7 +765,7 @@ mod tests {
 
         let today = lessons::list_for_day(&pool, &in_days(0)).await.unwrap();
         assert_eq!(today.len(), 1);
-        assert_eq!(today[0].last_name_fr, "BENALI");
+        assert_eq!(today[0].last_name, "BENALI");
         assert_eq!(today[0].kind, "road");
         assert_eq!(today[0].scheduled_time.as_deref(), Some("09:00"));
         assert_eq!(today[0].plan_note, "créneau puis circulation");
@@ -1050,10 +1050,8 @@ mod tests {
 pub struct BookableEnrollment {
     pub enrollment_id: i64,
     pub candidate_id: i64,
-    pub last_name_fr: String,
-    pub first_name_fr: String,
-    pub last_name_ar: String,
-    pub first_name_ar: String,
+    pub last_name: String,
+    pub first_name: String,
     pub category_code: String,
     pub status: String,
     /// Normalised name and phone, so the picker can filter without a round
@@ -1080,13 +1078,13 @@ pub async fn bookable(
 
     let rows = sqlx::query_as::<_, BookableEnrollment>(
         "SELECT e.id AS enrollment_id, c.id AS candidate_id,
-                c.last_name_fr, c.first_name_fr, c.last_name_ar, c.first_name_ar,
+                c.last_name, c.first_name,
                 e.category_code, e.status, c.search_text
          FROM enrollments e
          JOIN candidates c ON c.id = e.candidate_id
          WHERE e.deleted_at IS NULL AND c.deleted_at IS NULL
            AND (?1 = '' OR c.search_text LIKE ?2)
-         ORDER BY c.last_name_fr COLLATE NOCASE, c.first_name_fr COLLATE NOCASE",
+         ORDER BY c.last_name COLLATE NOCASE, c.first_name COLLATE NOCASE",
     )
     .bind(&folded)
     .bind(&pattern)
@@ -1125,8 +1123,8 @@ mod bookable_tests {
         let candidate = candidates::create(
             pool,
             &CandidateInput {
-                last_name_fr: last.into(),
-                first_name_fr: "Test".into(),
+                last_name: last.into(),
+                first_name: "Test".into(),
                 ..Default::default()
             },
         )
@@ -1236,7 +1234,7 @@ mod bookable_tests {
 
         let offered = bookable(&pool, "").await.unwrap();
         assert_eq!(offered.len(), 1);
-        assert_eq!(offered[0].last_name_fr, "KADRI");
+        assert_eq!(offered[0].last_name, "KADRI");
     }
 
     /// Failing the last one puts him back: he needs hours before a repassage,

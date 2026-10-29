@@ -21,8 +21,8 @@ import ExamHistory from "@/features/candidates/ExamHistory";
 import { Duration, Money, Num } from "@/components/Num";
 import Button, { IconButton } from "@/components/ui/Button";
 import { Badge, Card, EmptyState, ErrorNote, type Tone } from "@/components/ui/Surface";
-import { currentLanguage } from "@/i18n";
-import { displayName, getCandidate, isAppError, type Candidate } from "@/lib/candidates";
+import { getCandidate, isAppError, type Candidate } from "@/lib/candidates";
+import { personName } from "@/lib/names";
 import { isDesktop } from "@/lib/tauri";
 import {
   completeLesson,
@@ -92,7 +92,6 @@ const PAYMENT_PAGE_SIZE = 10;
 
 export default function CandidateDetailPage() {
   const { t } = useTranslation();
-  const locale = currentLanguage();
   const params = useParams();
   const candidateId = Number(params.id);
 
@@ -207,7 +206,7 @@ export default function CandidateDetailPage() {
             <header className="mt-3 mb-5 flex flex-wrap items-center gap-x-4 gap-y-2">
               <div>
                 <h1 className="text-[1.375rem] font-semibold tracking-tight text-ink">
-                  {displayName(candidate, locale)}
+                  {personName(candidate)}
                 </h1>
                 <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted">
                   {candidate.phone && (

@@ -100,10 +100,8 @@ export interface DayEntry {
   day: string;
   enrollmentId: number;
   candidateId: number;
-  lastNameFr: string;
-  firstNameFr: string;
-  lastNameAr: string;
-  firstNameAr: string;
+  lastName: string;
+  firstName: string;
   phone: string;
   categoryCode: string;
   kind: string;
@@ -210,10 +208,8 @@ export const getSchool = () => call<School>("get_school");
 export interface BookableEnrollment {
   enrollmentId: number;
   candidateId: number;
-  lastNameFr: string;
-  firstNameFr: string;
-  lastNameAr: string;
-  firstNameAr: string;
+  lastName: string;
+  firstName: string;
   categoryCode: string;
   status: string;
   /** Normalised name and phone — filter against this, never the display name. */

@@ -7,7 +7,7 @@ use tauri::State;
 
 use crate::commands::AppState;
 use crate::db::{exams, fees};
-use crate::domain::exams::ExamProgress;
+use crate::domain::exams::{BoardColumn, BoardMove, ExamProgress};
 use crate::error::CommandResult;
 
 #[tauri::command]
@@ -105,4 +105,25 @@ pub async fn list_exam_fee_charges(
     enrollment_id: i64,
 ) -> CommandResult<Vec<fees::ExamFeeCharge>> {
     Ok(fees::list_for_enrollment(&state.pool, enrollment_id).await?)
+}
+
+/// What dropping a card on a column would record, before recording it.
+#[tauri::command]
+pub async fn plan_board_move(
+    state: State<'_, AppState>,
+    enrollment_id: i64,
+    to: BoardColumn,
+) -> CommandResult<BoardMove> {
+    Ok(exams::plan_board_move(&state.pool, enrollment_id, to).await?)
+}
+
+/// Record a drag on the progress board. Re-planned inside the write.
+#[tauri::command]
+pub async fn move_on_board(
+    state: State<'_, AppState>,
+    enrollment_id: i64,
+    to: BoardColumn,
+    date: String,
+) -> CommandResult<BoardMove> {
+    Ok(exams::apply_board_move(&state.pool, enrollment_id, to, &date).await?)
 }

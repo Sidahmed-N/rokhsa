@@ -24,10 +24,8 @@ use crate::error::AppError;
 pub struct ReceivableRow {
     pub enrollment_id: i64,
     pub candidate_id: i64,
-    pub last_name_fr: String,
-    pub first_name_fr: String,
-    pub last_name_ar: String,
-    pub first_name_ar: String,
+    pub last_name: String,
+    pub first_name: String,
     pub phone: String,
     pub category_code: String,
     pub enrolled_on: String,
@@ -60,10 +58,8 @@ struct EnrollmentJoin {
     discount_centimes: i64,
     extra_hour_price_centimes: i64,
     practical_hours_target: i64,
-    last_name_fr: String,
-    first_name_fr: String,
-    last_name_ar: String,
-    first_name_ar: String,
+    last_name: String,
+    first_name: String,
     phone: String,
     last_payment_on: Option<String>,
 }
@@ -74,7 +70,7 @@ pub async fn receivables(pool: &SqlitePool) -> Result<Receivables, AppError> {
         "SELECT e.id, e.candidate_id, e.category_code, e.enrolled_on, e.status,
                 e.agreed_price_centimes, e.discount_centimes,
                 e.extra_hour_price_centimes, e.practical_hours_target,
-                c.last_name_fr, c.first_name_fr, c.last_name_ar, c.first_name_ar,
+                c.last_name, c.first_name,
                 c.phone,
                 (SELECT MAX(p.paid_on) FROM payments p
                   WHERE p.enrollment_id = e.id AND p.amount_centimes > 0) AS last_payment_on
@@ -140,10 +136,8 @@ pub async fn receivables(pool: &SqlitePool) -> Result<Receivables, AppError> {
         rows.push(ReceivableRow {
             enrollment_id: e.id,
             candidate_id: e.candidate_id,
-            last_name_fr: e.last_name_fr,
-            first_name_fr: e.first_name_fr,
-            last_name_ar: e.last_name_ar,
-            first_name_ar: e.first_name_ar,
+            last_name: e.last_name,
+            first_name: e.first_name,
             phone: e.phone,
             category_code: e.category_code,
             enrolled_on: e.enrolled_on,
@@ -266,8 +260,8 @@ mod tests {
         candidates::create(
             pool,
             &CandidateInput {
-                last_name_fr: name.into(),
-                first_name_fr: "Test".into(),
+                last_name: name.into(),
+                first_name: "Test".into(),
                 ..Default::default()
             },
         )
@@ -365,7 +359,7 @@ mod tests {
         enrol(&pool, b, 40_000).await;
 
         let r = receivables(&pool).await.unwrap();
-        assert_eq!(r.rows[0].last_name_fr, "BIG");
+        assert_eq!(r.rows[0].last_name, "BIG");
         assert_eq!(r.total_owed_centimes, 50_000 * DA);
     }
 

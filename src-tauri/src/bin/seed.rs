@@ -146,12 +146,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // ---------------------------------------------------------------- people
     let mut ids = Vec::new();
-    for row in CANDIDATES {
+    for (n, row) in CANDIDATES.iter().enumerate() {
+        // One name per candidate, in whatever script the secretary used. A
+        // third are typed in Arabic so the demo shows both side by side.
+        let (last, first) = if n % 3 == 2 { (row.2, row.3) } else { (row.0, row.1) };
         let input = CandidateInput {
-            last_name_fr: row.0.into(),
-            first_name_fr: row.1.into(),
-            last_name_ar: row.2.into(),
-            first_name_ar: row.3.into(),
+            last_name: last.into(),
+            first_name: first.into(),
             phone: row.4.into(),
             nin: row.5.into(),
             birth_date: row.6.into(),

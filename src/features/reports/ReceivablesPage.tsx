@@ -8,7 +8,6 @@ import { Money, Num } from "@/components/Num";
 import Button from "@/components/ui/Button";
 import { Pager, usePaged } from "@/components/ui/Pager";
 import { Card, EmptyState, ErrorNote, PageHeader } from "@/components/ui/Surface";
-import { currentLanguage } from "@/i18n";
 import { isAppError } from "@/lib/candidates";
 import { personName } from "@/lib/names";
 import { getReceivables, type Receivables, type ReceivableRow } from "@/lib/reports";
@@ -21,9 +20,6 @@ const STALE_DAYS = 30;
 /** Rows per page. Same as the candidate list, so the two feel alike. */
 const PAGE_SIZE = 50;
 
-function name(row: ReceivableRow, locale: "fr" | "ar"): string {
-  return personName(row, locale);
-}
 
 /**
  * Who owes money.
@@ -34,7 +30,6 @@ function name(row: ReceivableRow, locale: "fr" | "ar"): string {
  */
 export default function ReceivablesPage() {
   const { t } = useTranslation();
-  const locale = currentLanguage();
 
   const [data, setData] = useState<Receivables | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -149,7 +144,7 @@ export default function ReceivablesPage() {
                       to={`/candidates/${row.candidateId}`}
                       className="font-medium text-ink hover:text-brand hover:underline"
                     >
-                      {name(row, locale)}
+                      {personName(row)}
                     </Link>
                   </td>
                   <td>

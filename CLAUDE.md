@@ -75,9 +75,18 @@ These are not style preferences. Breaking them causes data loss, legal problems,
 - A key missing from `ar` fails CI. We do not ship a half-translated screen.
 - **Use CSS logical properties only**: `ms-*`/`me-*`/`ps-*`/`pe-*`/`start-*`/`end-*`.
   `ml-*`, `pr-*`, `left-*`, `right-*` are banned in app code and enforced by lint.
-- Person and place names are stored in **both scripts**: `last_name_fr` + `last_name_ar`, etc.
-  Algerian administrative documents require the Arabic form; the Latin form is used for
-  internal search and Latin-script printouts. Neither is derived from the other.
+- **A candidate has ONE name per field, in whichever script the school typed it**
+  (`last_name`, `first_name`, `father_name`, `mother_name`, `birth_place` — migration 0010).
+  The owner's decision: ten boxes to register one person was friction, and the school writes a
+  name once, the way the candidate gives it. So a French page may show an Arabic name and the
+  other way round. Never transliterate. The old `_ar` columns are kept, unread and unwritten,
+  so Arabic typed before 0010 is not lost if paperwork turns out to need it.
+  The accepted cost: search finds a name only in the script it was typed in.
+  Because the script is the school's, a **truncated** name is two elements: an outer one in
+  the page's direction (so the name starts on the page's side) and an inner
+  `<span dir="auto" className="inline-block max-w-full truncate align-top">` (so it is clipped
+  at its own end). `dir="auto"` alone on the truncating element left-aligned every French name
+  in the Arabic board — seen on screen, not in review.
 - **Every number, identifier and Latin string rendered in the UI goes through `<Num>` or
   `<Money>`** (`src/components/Num.tsx`). Never interpolate a formatted number straight into
   JSX, and never call `formatDZD()` inside a JSX expression — `npm run check:rtl` fails on it.
@@ -412,6 +421,19 @@ copies of React and blanks the whole app. It is NOT a code bug — check `npm ls
 and if it is deduped, stop the dev server, delete `node_modules/.vite`, and restart.
 Note the browser console keeps the old messages after the fix, so verify with the rendered
 page (`get_page_text`), not the console.
+
+### Drag and drop needs `dragDropEnabled: false`
+Tauri's window takes OS drag-and-drop for itself by default (to receive dropped files), and
+on Windows that silently breaks HTML5 drag-and-drop inside the page: the drag starts, the card
+fades, and no `dragover` or `drop` ever arrives. The progress board depends on it, so
+`tauri.conf.json` sets `"dragDropEnabled": false`. Nothing in the app accepts dropped files; if
+something ever does, it must be done another way than turning this back on.
+
+**A board drag records an exam event.** The column is derived from exam results, so dropping a
+card writes the result that puts it there (pass, presentation, outcome, or a pass undone). What
+each drop means is `domain::exams::plan_move`; it is re-planned inside the write. One column at
+a time. Undoing a pass that came from a real sitting puts it back to "presented" — it never
+removes the entry or its fee.
 
 ### A debug build loads from the dev server
 `devUrl` points at `http://localhost:5173`, so a debug binary launched **without** Vite running

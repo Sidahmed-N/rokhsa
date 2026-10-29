@@ -11,17 +11,12 @@ import { call } from "@/lib/tauri";
 export interface Candidate {
   id: number;
   nin: string | null;
-  firstNameFr: string;
-  lastNameFr: string;
-  firstNameAr: string;
-  lastNameAr: string;
-  fatherNameFr: string;
-  fatherNameAr: string;
-  motherNameFr: string;
-  motherNameAr: string;
+  firstName: string;
+  lastName: string;
+  fatherName: string;
+  motherName: string;
   birthDate: string | null;
-  birthPlaceFr: string;
-  birthPlaceAr: string;
+  birthPlace: string;
   gender: string | null;
   bloodGroup: string;
   phone: string;
@@ -41,17 +36,12 @@ export interface Candidate {
 /** What the form sends. Every field is a string; Rust parses and validates. */
 export interface CandidateInput {
   nin: string;
-  firstNameFr: string;
-  lastNameFr: string;
-  firstNameAr: string;
-  lastNameAr: string;
-  fatherNameFr: string;
-  fatherNameAr: string;
-  motherNameFr: string;
-  motherNameAr: string;
+  firstName: string;
+  lastName: string;
+  fatherName: string;
+  motherName: string;
   birthDate: string;
-  birthPlaceFr: string;
-  birthPlaceAr: string;
+  birthPlace: string;
   gender: string;
   bloodGroup: string;
   phone: string;
@@ -75,17 +65,12 @@ export const CANDIDATE_STATUSES = [
 export function emptyCandidateInput(): CandidateInput {
   return {
     nin: "",
-    firstNameFr: "",
-    lastNameFr: "",
-    firstNameAr: "",
-    lastNameAr: "",
-    fatherNameFr: "",
-    fatherNameAr: "",
-    motherNameFr: "",
-    motherNameAr: "",
+    firstName: "",
+    lastName: "",
+    fatherName: "",
+    motherName: "",
     birthDate: "",
-    birthPlaceFr: "",
-    birthPlaceAr: "",
+    birthPlace: "",
     gender: "",
     bloodGroup: "",
     phone: "",
@@ -102,17 +87,12 @@ export function emptyCandidateInput(): CandidateInput {
 export function toInput(candidate: Candidate): CandidateInput {
   return {
     nin: candidate.nin ?? "",
-    firstNameFr: candidate.firstNameFr,
-    lastNameFr: candidate.lastNameFr,
-    firstNameAr: candidate.firstNameAr,
-    lastNameAr: candidate.lastNameAr,
-    fatherNameFr: candidate.fatherNameFr,
-    fatherNameAr: candidate.fatherNameAr,
-    motherNameFr: candidate.motherNameFr,
-    motherNameAr: candidate.motherNameAr,
+    firstName: candidate.firstName,
+    lastName: candidate.lastName,
+    fatherName: candidate.fatherName,
+    motherName: candidate.motherName,
     birthDate: candidate.birthDate ?? "",
-    birthPlaceFr: candidate.birthPlaceFr,
-    birthPlaceAr: candidate.birthPlaceAr,
+    birthPlace: candidate.birthPlace,
     gender: candidate.gender ?? "",
     bloodGroup: candidate.bloodGroup,
     phone: candidate.phone,
@@ -174,10 +154,3 @@ export function findCandidateDuplicates(
   return call<Candidate[]>("find_candidate_duplicates", { input, excludeId });
 }
 
-/** Display name in the given language, falling back to the other script. */
-export function displayName(candidate: Candidate, locale: "fr" | "ar"): string {
-  const arabic = `${candidate.lastNameAr} ${candidate.firstNameAr}`.trim();
-  const latin = `${candidate.lastNameFr} ${candidate.firstNameFr}`.trim();
-  if (locale === "ar") return arabic || latin;
-  return latin || arabic;
-}

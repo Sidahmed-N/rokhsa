@@ -151,8 +151,8 @@ mod tests {
         let candidate = candidates::create(
             pool,
             &CandidateInput {
-                last_name_fr: last.into(),
-                first_name_fr: "Test".into(),
+                last_name: last.into(),
+                first_name: "Test".into(),
                 ..Default::default()
             },
         )

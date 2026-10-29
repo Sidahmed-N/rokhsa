@@ -17,17 +17,12 @@ pub const NIN_DIGITS: usize = 18;
 #[serde(rename_all = "camelCase", default)]
 pub struct CandidateInput {
     pub nin: String,
-    pub first_name_fr: String,
-    pub last_name_fr: String,
-    pub first_name_ar: String,
-    pub last_name_ar: String,
-    pub father_name_fr: String,
-    pub father_name_ar: String,
-    pub mother_name_fr: String,
-    pub mother_name_ar: String,
+    pub first_name: String,
+    pub last_name: String,
+    pub father_name: String,
+    pub mother_name: String,
     pub birth_date: String,
-    pub birth_place_fr: String,
-    pub birth_place_ar: String,
+    pub birth_place: String,
     pub gender: String,
     pub blood_group: String,
     pub phone: String,
@@ -51,17 +46,12 @@ impl CandidateInput {
         }
         CandidateInput {
             nin: t!(nin),
-            first_name_fr: t!(first_name_fr),
-            last_name_fr: t!(last_name_fr),
-            first_name_ar: t!(first_name_ar),
-            last_name_ar: t!(last_name_ar),
-            father_name_fr: t!(father_name_fr),
-            father_name_ar: t!(father_name_ar),
-            mother_name_fr: t!(mother_name_fr),
-            mother_name_ar: t!(mother_name_ar),
+            first_name: t!(first_name),
+            last_name: t!(last_name),
+            father_name: t!(father_name),
+            mother_name: t!(mother_name),
             birth_date: t!(birth_date),
-            birth_place_fr: t!(birth_place_fr),
-            birth_place_ar: t!(birth_place_ar),
+            birth_place: t!(birth_place),
             gender: t!(gender),
             blood_group: t!(blood_group),
             phone: t!(phone),
@@ -101,12 +91,9 @@ impl CandidateInput {
     pub fn search_text(&self) -> String {
         build_search_text(
             &[
-                &self.first_name_fr,
-                &self.last_name_fr,
-                &self.first_name_ar,
-                &self.last_name_ar,
-                &self.father_name_fr,
-                &self.father_name_ar,
+                &self.first_name,
+                &self.last_name,
+                &self.father_name,
                 &self.commune,
             ],
             &[&self.phone, &self.phone_alt, &self.nin],
@@ -124,13 +111,11 @@ pub const STATUSES: [&str; 5] = ["prospect", "active", "inactive", "completed", 
 /// alternative is that they keep using the notebook for those candidates, and
 /// then the app's numbers are wrong. See docs/09-FIRST-RELEASE.md.
 pub fn validate(input: &CandidateInput) -> Result<(), AppError> {
-    let has_latin_name = !input.last_name_fr.is_empty();
-    let has_arabic_name = !input.last_name_ar.is_empty();
-
-    if !has_latin_name && !has_arabic_name {
+    // One name, in whichever script the school typed it. See migration 0010.
+    if input.last_name.is_empty() {
         return Err(AppError::field(
             "candidates.error.nameRequired",
-            "lastNameFr",
+            "lastName",
         ));
     }
 
@@ -182,8 +167,8 @@ mod tests {
 
     fn valid() -> CandidateInput {
         CandidateInput {
-            last_name_fr: "BENALI".into(),
-            first_name_fr: "Yacine".into(),
+            last_name: "BENALI".into(),
+            first_name: "Yacine".into(),
             ..Default::default()
         }
     }
@@ -196,7 +181,7 @@ mod tests {
     #[test]
     fn accepts_a_candidate_with_only_an_arabic_name() {
         let input = CandidateInput {
-            last_name_ar: "بن علي".into(),
+            last_name: "بن علي".into(),
             ..Default::default()
         };
         assert!(validate(&input).is_ok());
@@ -324,17 +309,16 @@ mod tests {
     #[test]
     fn trimming_prevents_near_duplicate_names() {
         let input = CandidateInput {
-            last_name_fr: "  BENALI  ".into(),
+            last_name: "  BENALI  ".into(),
             ..Default::default()
         };
-        assert_eq!(input.trimmed().last_name_fr, "BENALI");
+        assert_eq!(input.trimmed().last_name, "BENALI");
     }
 
     #[test]
-    fn search_text_covers_both_scripts_and_the_phone() {
+    fn search_text_covers_the_name_and_the_phone() {
         let input = CandidateInput {
-            last_name_fr: "BENALI".into(),
-            last_name_ar: "بن علي".into(),
+            last_name: "BENALI".into(),
             phone: "0551 23 45 67".into(),
             ..Default::default()
         };

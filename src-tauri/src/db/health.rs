@@ -96,7 +96,7 @@ mod tests {
         candidates::create(
             pool,
             &CandidateInput {
-                last_name_fr: "BENALI".into(),
+                last_name: "BENALI".into(),
                 ..Default::default()
             },
         )

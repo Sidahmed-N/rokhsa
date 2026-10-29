@@ -379,7 +379,7 @@ mod tests {
             candidates::create(
                 &pool,
                 &CandidateInput {
-                    last_name_fr: (*name).into(),
+                    last_name: (*name).into(),
                     ..Default::default()
                 },
             )
@@ -423,7 +423,7 @@ mod tests {
 
         candidates::create(
             &pool,
-            &CandidateInput { last_name_fr: "JUST_WRITTEN".into(), ..Default::default() },
+            &CandidateInput { last_name: "JUST_WRITTEN".into(), ..Default::default() },
         )
         .await
         .unwrap();
