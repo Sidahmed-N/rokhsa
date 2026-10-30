@@ -46,9 +46,16 @@ export function formatWhen(iso: string): string {
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-/** Default filename offered when saving to a USB stick. */
+/**
+ * Default filename offered when saving to a USB stick.
+ *
+ * Includes the time, not only the date: with the date alone a second USB
+ * backup the same day was offered the morning's name, and the owner who
+ * accepted it wrote over the morning's copy.
+ */
 export function suggestedFileName(): string {
   const d = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
-  return `rokhsa-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}.db`;
+  const day = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`;
+  return `rokhsa-${day}-${pad(d.getHours())}${pad(d.getMinutes())}.db`;
 }

@@ -68,14 +68,29 @@ export function NewEnrollmentDialog({
   const [error, setError] = useState<string | null>(null);
 
   async function save() {
+    // The price is never guessed. An empty or unreadable box used to become
+    // 0 DA silently — a free enrolment nobody chose. A school that really
+    // gives one away types 0. The extra-hour price stays optional: empty
+    // means the school does not charge extra hours.
+    const agreed = parseDZD(price);
+    const extra = extraHourPrice.trim() === "" ? 0 : parseDZD(extraHourPrice);
+    if (price.trim() === "") {
+      setError(t("enrollments.error.priceRequired"));
+      return;
+    }
+    if (agreed === null || agreed < 0 || extra === null || extra < 0) {
+      setError(t("common.amountInvalid"));
+      return;
+    }
+
     setSaving(true);
     setError(null);
     try {
       await createEnrollment(candidateId, {
         categoryCode: CATEGORY,
         enrolledOn: today(),
-        agreedPriceCentimes: parseDZD(price) ?? 0,
-        extraHourPriceCentimes: parseDZD(extraHourPrice) ?? 0,
+        agreedPriceCentimes: agreed,
+        extraHourPriceCentimes: extra,
         theoryHoursTarget: Number(theoryTarget) || 0,
         practicalHoursTarget: Number(practicalTarget) || 0,
         discountCentimes: 0,

@@ -164,10 +164,22 @@ pub async fn inspect(path: &Path) -> Result<BackupInfo, AppError> {
     })
 }
 
+/// The name a file is written under before it is known to be good.
+///
+/// Ends in `.partial`, not `.db`, so nothing that lists or rotates backups
+/// ever mistakes one for a backup.
+fn partial_path(dest: &Path) -> PathBuf {
+    PathBuf::from(format!("{}.partial", dest.to_string_lossy()))
+}
+
 /// Write a verified backup to `dest`.
 ///
-/// Refuses to leave a bad file behind: if verification fails the partial copy
-/// is deleted, so a file in the backups folder always means a good backup.
+/// The copy is written under a temporary name, verified, and only then
+/// renamed onto `dest`. So a file at `dest` always means a good backup, and
+/// one that was already there — the morning's USB backup, being overwritten
+/// in the afternoon — survives until its replacement is proven good. The
+/// first version deleted it before writing: a stick pulled out mid-write
+/// left the school with neither copy.
 pub async fn write_backup(pool: &SqlitePool, dest: &Path) -> Result<BackupInfo, AppError> {
     if let Some(parent) = dest.parent() {
         // A removed USB stick fails here rather than later, with a message
@@ -178,10 +190,11 @@ pub async fn write_backup(pool: &SqlitePool, dest: &Path) -> Result<BackupInfo, 
         }
     }
 
-    // VACUUM INTO refuses to overwrite, which is the behaviour we want for a
-    // timestamped name; for an explicit overwrite we clear the way first.
-    if dest.exists() {
-        std::fs::remove_file(dest).map_err(|e| io_err("replacing existing backup", e))?;
+    // VACUUM INTO refuses to overwrite. A leftover from an earlier write that
+    // was cut off is ours to clear; the real `dest` is not touched.
+    let partial = partial_path(dest);
+    if partial.exists() {
+        std::fs::remove_file(&partial).map_err(|e| io_err("clearing an unfinished backup", e))?;
     }
 
     let source_counts: (i64, i64) = sqlx::query_as(
@@ -194,28 +207,41 @@ pub async fn write_backup(pool: &SqlitePool, dest: &Path) -> Result<BackupInfo, 
     // whatever landed and say what actually went wrong — "database error" sends
     // the owner to the wrong problem entirely.
     if let Err(e) = sqlx::query("VACUUM INTO ?1")
-        .bind(dest.to_string_lossy().to_string())
+        .bind(partial.to_string_lossy().to_string())
         .execute(pool)
         .await
     {
-        std::fs::remove_file(dest).ok();
-        eprintln!("[tariqi] backup write to {} failed: {e}", dest.display());
+        std::fs::remove_file(&partial).ok();
+        eprintln!("[tariqi] backup write to {} failed: {e}", partial.display());
         return Err(AppError::validation("backup.error.writeFailed"));
     }
 
-    let info = match inspect(dest).await {
+    let mut info = match inspect(&partial).await {
         Ok(info) => info,
         Err(e) => {
-            std::fs::remove_file(dest).ok();
+            std::fs::remove_file(&partial).ok();
             return Err(e);
         }
     };
 
     if info.candidates != source_counts.0 || info.payments != source_counts.1 {
-        std::fs::remove_file(dest).ok();
+        std::fs::remove_file(&partial).ok();
         return Err(AppError::validation("backup.error.verificationFailed"));
     }
 
+    // Proven good: now, and only now, it takes the real name — replacing an
+    // older file of the same name in one step.
+    if let Err(e) = std::fs::rename(&partial, dest) {
+        std::fs::remove_file(&partial).ok();
+        eprintln!("[tariqi] could not put the backup in place at {}: {e}", dest.display());
+        return Err(AppError::validation("backup.error.writeFailed"));
+    }
+
+    info.path = dest.to_string_lossy().to_string();
+    info.file_name = dest
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_default();
     Ok(info)
 }
 
@@ -224,15 +250,21 @@ pub async fn auto_backup(pool: &SqlitePool, data_dir: &Path) -> Result<BackupInf
     let dir = backups_dir(data_dir);
     let dest = dir.join(timestamp_name(Utc::now()));
     let info = write_backup(pool, &dest).await?;
-    prune(&dir, KEEP_AUTOMATIC)?;
+    prune(&dir, KEEP_AUTOMATIC, Some(&dest))?;
     Ok(info)
 }
 
-/// Keep only the newest `keep` automatic backups.
+/// Keep only the newest `keep` automatic backups, counting `protect`.
 ///
 /// Only files matching our own naming are considered, so a copy the owner
 /// dropped in the folder by hand is never deleted.
-fn prune(dir: &Path, keep: usize) -> Result<(), AppError> {
+///
+/// `protect` is the backup just written, and it is never deleted. "Newest"
+/// is judged by the file's date, and on a PC whose clock is wrong — a dead
+/// clock battery puts it back in 2000 — the backup made a second ago has the
+/// OLDEST date in the folder. The first version deleted it straight after
+/// verifying it, every time, while the screen reported success.
+fn prune(dir: &Path, keep: usize, protect: Option<&Path>) -> Result<(), AppError> {
     let mut files: Vec<(PathBuf, std::time::SystemTime)> = Vec::new();
 
     let entries = match std::fs::read_dir(dir) {
@@ -243,7 +275,7 @@ fn prune(dir: &Path, keep: usize) -> Result<(), AppError> {
     for entry in entries.flatten() {
         let path = entry.path();
         let name = entry.file_name().to_string_lossy().to_string();
-        if !is_backup_name(&name) {
+        if !is_backup_name(&name) || protect == Some(path.as_path()) {
             continue;
         }
         if let Ok(meta) = entry.metadata() {
@@ -252,14 +284,21 @@ fn prune(dir: &Path, keep: usize) -> Result<(), AppError> {
         }
     }
 
+    // The protected file takes one of the `keep` places.
+    let others = if protect.is_some() { keep.saturating_sub(1) } else { keep };
     files.sort_by(|a, b| b.1.cmp(&a.1));
-    for (path, _) in files.into_iter().skip(keep) {
+    for (path, _) in files.into_iter().skip(others) {
         std::fs::remove_file(path).ok();
     }
     Ok(())
 }
 
 /// Whether enough time has passed to warrant another automatic backup.
+///
+/// A newest backup dated in the FUTURE means the clock has gone backwards
+/// since it was made. Then nothing about "how long ago" can be trusted, so a
+/// backup is due: one backup too many costs a few seconds, and the first
+/// version, which compared the dates anyway, made none at all on such a PC.
 pub fn is_auto_backup_due(data_dir: &Path, now: DateTime<Utc>) -> bool {
     let dir = backups_dir(data_dir);
     let newest = std::fs::read_dir(&dir)
@@ -275,7 +314,10 @@ pub fn is_auto_backup_due(data_dir: &Path, now: DateTime<Utc>) -> bool {
         None => true,
         Some(time) => {
             let last: DateTime<Utc> = time.into();
-            (now - last).num_hours() >= AUTO_BACKUP_AFTER_HOURS
+            let age = now - last;
+            // A few minutes ahead is ordinary clock drift; more is a clock
+            // that was moved back.
+            age < chrono::Duration::minutes(-10) || age.num_hours() >= AUTO_BACKUP_AFTER_HOURS
         }
     }
 }
@@ -310,12 +352,35 @@ pub async fn list(data_dir: &Path) -> Result<Vec<BackupInfo>, AppError> {
 ///
 /// Nothing is overwritten here. The swap happens in `apply_pending_restore`,
 /// before any connection is opened.
+///
+/// The copy is made under a temporary name, flushed to disk and checked
+/// again before it becomes the pending restore. Validating the SOURCE is not
+/// enough: a power cut while a large file comes off a USB stick leaves a
+/// truncated copy, and the first version would have swapped that in at the
+/// next start in place of the school's database.
 pub async fn stage_restore(data_dir: &Path, source: &Path) -> Result<BackupInfo, AppError> {
     let info = inspect(source).await?;
 
     std::fs::create_dir_all(data_dir).map_err(|e| io_err("creating data folder", e))?;
     let staged = data_dir.join(PENDING_RESTORE);
-    std::fs::copy(source, &staged).map_err(|e| io_err("staging the restore", e))?;
+    let partial = partial_path(&staged);
+
+    // Flushing needs a handle opened for writing on Windows (FlushFileBuffers);
+    // a read-only one is refused with "access denied".
+    let copied = std::fs::copy(source, &partial)
+        .and_then(|_| std::fs::File::options().write(true).open(&partial)?.sync_all());
+    if let Err(e) = copied {
+        std::fs::remove_file(&partial).ok();
+        return Err(io_err("staging the restore", e));
+    }
+    if let Err(e) = inspect(&partial).await {
+        std::fs::remove_file(&partial).ok();
+        return Err(e);
+    }
+    std::fs::rename(&partial, &staged).map_err(|e| {
+        std::fs::remove_file(&partial).ok();
+        io_err("staging the restore", e)
+    })?;
 
     Ok(info)
 }
@@ -333,11 +398,54 @@ pub fn cancel_pending_restore(data_dir: &Path) -> Result<(), AppError> {
     Ok(())
 }
 
+fn sidecar(db: &Path, suffix: &str) -> PathBuf {
+    PathBuf::from(format!("{}{suffix}", db.to_string_lossy()))
+}
+
+fn remove_if_present(path: &Path) -> std::io::Result<()> {
+    match std::fs::remove_file(path) {
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        other => other,
+    }
+}
+
+/// Retry a file operation for up to two seconds.
+///
+/// On Windows a file SQLite has just closed can stay locked for a moment
+/// after the connection reports closed, and a delete or rename in that window
+/// fails. Seen in the tests: the restore's own checkpoint connection still
+/// held the `-wal` when the old code deleted it, the delete failed silently,
+/// and the sidecar stayed next to the restored file. Startup only, so a
+/// blocking sleep is fine.
+fn retry<T>(mut op: impl FnMut() -> std::io::Result<T>) -> std::io::Result<T> {
+    let mut attempts = 0;
+    loop {
+        match op() {
+            Ok(value) => return Ok(value),
+            Err(e) if attempts >= 40 => return Err(e),
+            Err(_) => {
+                attempts += 1;
+                std::thread::sleep(std::time::Duration::from_millis(50));
+            }
+        }
+    }
+}
+
 /// Swap a staged restore into place. Call at startup, BEFORE opening the pool.
 ///
 /// The database being replaced is kept, not deleted: if the restore turns out
 /// to be the wrong file, the school has not lost today's work on top of it.
-pub fn apply_pending_restore(
+///
+/// "Kept" has to mean COMPLETE. The app never closes its pool cleanly, so the
+/// last payments may still be in the `-wal` sidecar rather than the `.db`
+/// file; the first version moved the `.db` and deleted the sidecar, and the
+/// copy it kept was missing them. Now the WAL is first folded into the file
+/// (a checkpoint, through `db::connect` as CLAUDE.md requires), and whatever
+/// is still in it is moved alongside the kept copy rather than deleted.
+///
+/// A staged file that fails its check is set aside and the live database is
+/// left alone: the app starts on the data it had, never on a broken file.
+pub async fn apply_pending_restore(
     data_dir: &Path,
     db_path: &Path,
 ) -> Result<Option<String>, AppError> {
@@ -345,26 +453,72 @@ pub fn apply_pending_restore(
         return Ok(None);
     };
 
+    if let Err(e) = inspect(&staged).await {
+        let rejected = data_dir.join(format!(
+            "rejected-restore-{}.db",
+            Utc::now().format("%Y%m%d-%H%M%S")
+        ));
+        eprintln!("[tariqi] staged restore failed its check ({e}); kept aside as {}", rejected.display());
+        std::fs::rename(&staged, &rejected)
+            .or_else(|_| std::fs::remove_file(&staged))
+            .ok();
+        return Ok(None);
+    }
+
     if db_path.exists() {
+        // Fold the WAL into the file. Best effort: a database damaged enough
+        // to be the reason for this restore may refuse, and then the sidecar
+        // is carried along below instead.
+        match crate::db::connect(db_path).await {
+            Ok(pool) => {
+                if let Err(e) = sqlx::query("PRAGMA wal_checkpoint(TRUNCATE)").execute(&pool).await {
+                    eprintln!("[tariqi] checkpoint before restore failed: {e}");
+                }
+                pool.close().await;
+            }
+            Err(e) => eprintln!("[tariqi] could not open the database being replaced: {e}"),
+        }
+
         let dir = backups_dir(data_dir);
         std::fs::create_dir_all(&dir).map_err(|e| io_err("creating backup folder", e))?;
         let kept = dir.join(format!(
             "replaced-{}.db",
             Utc::now().format("%Y%m%d-%H%M%S")
         ));
-        std::fs::rename(db_path, &kept)
+        let kept_wal = sidecar(&kept, "-wal");
+
+        // The sidecars are dealt with FIRST, while the database is still in
+        // place, so that if Windows will not let go of them the restore can
+        // be put off to the next start with nothing changed.
+        //
+        // Anything the checkpoint could not fold in goes WITH the kept copy:
+        // opened later as `replaced-….db`, SQLite finds `replaced-….db-wal`
+        // and replays it. Nothing may stay next to the restored file: SQLite
+        // would replay it against that file and corrupt it. The shared-memory
+        // file is rebuilt on open, so it is simply removed.
+        let wal = sidecar(db_path, "-wal");
+        let shm = sidecar(db_path, "-shm");
+        let wal_has_data = std::fs::metadata(&wal).map(|m| m.len() > 0).unwrap_or(false);
+        let cleared = (if wal_has_data {
+            retry(|| std::fs::rename(&wal, &kept_wal)).or_else(|_| {
+                std::fs::copy(&wal, &kept_wal)?;
+                retry(|| remove_if_present(&wal))
+            })
+        } else {
+            retry(|| remove_if_present(&wal))
+        })
+        .and_then(|_| retry(|| remove_if_present(&shm)));
+
+        if let Err(e) = cleared {
+            // The live database has not been touched: postpone, never half-do.
+            std::fs::remove_file(&kept_wal).ok();
+            eprintln!("[tariqi] restore postponed to the next start, sidecars still in use: {e}");
+            return Ok(None);
+        }
+
+        retry(|| std::fs::rename(db_path, &kept))
             .or_else(|_| std::fs::copy(db_path, &kept).map(|_| ()))
             .map_err(|e| io_err("setting the current database aside", e))?;
-    }
-
-    // The old WAL and shared-memory sidecars belong to the database we just
-    // moved away. Leaving them would have SQLite try to replay them against
-    // the restored file, which corrupts it.
-    for suffix in ["-wal", "-shm"] {
-        let sidecar = PathBuf::from(format!("{}{suffix}", db_path.to_string_lossy()));
-        if sidecar.exists() {
-            std::fs::remove_file(&sidecar).ok();
-        }
     }
 
     std::fs::rename(&staged, db_path)
@@ -585,7 +739,7 @@ mod tests {
         }
         std::fs::write(backups.join("my-own-copy.db"), b"x").unwrap();
 
-        prune(&backups, 3).unwrap();
+        prune(&backups, 3, None).unwrap();
 
         let remaining: Vec<String> = std::fs::read_dir(&backups)
             .unwrap()
@@ -617,7 +771,7 @@ mod tests {
             std::thread::sleep(std::time::Duration::from_millis(20));
         }
 
-        prune(&backups, 3).unwrap();
+        prune(&backups, 3, None).unwrap();
 
         let mut remaining: Vec<String> = std::fs::read_dir(&backups)
             .unwrap()
@@ -691,7 +845,7 @@ mod tests {
         other_pool.close().await;
 
         stage_restore(&dir, &snapshot).await.unwrap();
-        let applied = apply_pending_restore(&dir, &db_path).unwrap();
+        let applied = apply_pending_restore(&dir, &db_path).await.unwrap();
         assert!(applied.is_some());
         assert!(pending_restore(&dir).is_none(), "staging file is consumed");
 
@@ -729,7 +883,7 @@ mod tests {
         other_pool.close().await;
 
         stage_restore(&dir, &snapshot).await.unwrap();
-        apply_pending_restore(&dir, &db_path).unwrap();
+        apply_pending_restore(&dir, &db_path).await.unwrap();
 
         assert!(!wal.exists(), "stale WAL must be gone");
 
@@ -750,7 +904,7 @@ mod tests {
         stage_restore(&dir, &snapshot).await.unwrap();
         cancel_pending_restore(&dir).unwrap();
 
-        assert!(apply_pending_restore(&dir, &db_path).unwrap().is_none());
+        assert!(apply_pending_restore(&dir, &db_path).await.unwrap().is_none());
         assert_eq!(candidates::count(&pool, "").await.unwrap(), 1);
 
         std::fs::remove_dir_all(&dir).ok();
@@ -768,5 +922,172 @@ mod tests {
         assert_eq!(all[0].candidates, 2);
 
         std::fs::remove_dir_all(&dir).ok();
+    }
+
+    fn set_age(path: &Path, days_ago: u64) {
+        let when = std::time::SystemTime::now() - std::time::Duration::from_secs(days_ago * 86_400);
+        std::fs::File::options().write(true).open(path).unwrap().set_modified(when).unwrap();
+    }
+
+    /// A PC whose clock battery died boots in 2000, so the backup just made
+    /// carries the oldest date in the folder. It must still survive the
+    /// rotation that follows it.
+    #[tokio::test]
+    async fn the_backup_just_written_survives_rotation_even_with_the_oldest_date() {
+        let dir = temp_dir("prune-protect");
+        let backups = backups_dir(&dir);
+        std::fs::create_dir_all(&backups).unwrap();
+
+        for i in 0..KEEP_AUTOMATIC {
+            let path = backups.join(format!("rokhsa-202610{:02}-000000.db", i + 1));
+            std::fs::write(&path, b"x").unwrap();
+            set_age(&path, 10 - i as u64);
+        }
+        let just_written = backups.join("rokhsa-20000101-000000.db");
+        std::fs::write(&just_written, b"x").unwrap();
+        set_age(&just_written, 9_000);
+
+        prune(&backups, KEEP_AUTOMATIC, Some(&just_written)).unwrap();
+
+        assert!(just_written.exists(), "the newest backup must never be deleted");
+        let count = std::fs::read_dir(&backups).unwrap().count();
+        assert_eq!(count, KEEP_AUTOMATIC, "still ten in all, the oldest other one went");
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// With the clock moved back, the newest backup is "in the future". The
+    /// first version computed a negative age and never made another one.
+    #[tokio::test]
+    async fn a_backup_is_due_when_the_clock_has_gone_backwards() {
+        let dir = temp_dir("due-clock");
+        let (_, pool) = seeded_db(&dir, &["BENALI"]).await;
+        auto_backup(&pool, &dir).await.unwrap();
+
+        let clock_in_2000 = Utc::now() - chrono::Duration::days(9_000);
+        assert!(is_auto_backup_due(&dir, clock_in_2000));
+        // Ordinary drift of a minute or two is not "backwards".
+        assert!(!is_auto_backup_due(&dir, Utc::now() - chrono::Duration::minutes(2)));
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// Writing over an existing backup: the new one replaces it only once it
+    /// is proven good, and nothing half-written is left beside it.
+    #[tokio::test]
+    async fn overwriting_a_backup_replaces_it_only_with_a_good_copy() {
+        let dir = temp_dir("overwrite");
+        let (_, pool) = seeded_db(&dir, &["BENALI"]).await;
+        let dest = dir.join("usb.db");
+        write_backup(&pool, &dest).await.unwrap();
+
+        candidates::create(&pool, &CandidateInput { last_name: "KADRI".into(), ..Default::default() })
+            .await
+            .unwrap();
+        let info = write_backup(&pool, &dest).await.unwrap();
+        assert_eq!(info.candidates, 2);
+        assert_eq!(info.file_name, "usb.db", "reports the real name, not the temporary one");
+        assert_eq!(inspect(&dest).await.unwrap().candidates, 2);
+        assert!(!partial_path(&dest).exists(), "no temporary file left behind");
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// The case that used to lose both copies: the second write fails. The
+    /// first backup must still be there, intact.
+    #[tokio::test]
+    async fn a_failed_overwrite_leaves_the_previous_backup_intact() {
+        let dir = temp_dir("overwrite-fail");
+        let (_, pool) = seeded_db(&dir, &["BENALI"]).await;
+        let dest = dir.join("usb.db");
+        write_backup(&pool, &dest).await.unwrap();
+
+        // Make the write fail: the temporary name is occupied by a folder.
+        std::fs::create_dir_all(partial_path(&dest).join("blocked")).unwrap();
+        assert!(write_backup(&pool, &dest).await.is_err());
+
+        assert_eq!(inspect(&dest).await.unwrap().candidates, 1, "the old backup survived");
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// A restore sets the current database aside. The app never closes its
+    /// pool cleanly, so the last payments may live only in the -wal sidecar;
+    /// the copy set aside must still contain them.
+    #[tokio::test]
+    async fn the_database_set_aside_by_a_restore_keeps_writes_still_in_the_wal() {
+        let live = temp_dir("aside-live");
+        let (live_db, pool) = seeded_db(&live, &["A", "B", "C"]).await;
+        let wal_before = std::fs::metadata(sidecar(&live_db, "-wal")).map(|m| m.len()).unwrap_or(0);
+        assert!(wal_before > 0, "the test needs writes still in the WAL");
+
+        // Freeze the files as a power cut would leave them: main file stale,
+        // the recent writes only in the WAL.
+        let dir = temp_dir("aside");
+        let db_path = dir.join("tariqi.db");
+        std::fs::copy(&live_db, &db_path).unwrap();
+        std::fs::copy(sidecar(&live_db, "-wal"), sidecar(&db_path, "-wal")).unwrap();
+        pool.close().await;
+
+        let other = temp_dir("aside-src");
+        let (_, other_pool) = seeded_db(&other, &["ONLY"]).await;
+        let snapshot = other.join("snapshot.db");
+        write_backup(&other_pool, &snapshot).await.unwrap();
+        other_pool.close().await;
+
+        stage_restore(&dir, &snapshot).await.unwrap();
+        apply_pending_restore(&dir, &db_path).await.unwrap();
+
+        let kept = std::fs::read_dir(backups_dir(&dir))
+            .unwrap()
+            .flatten()
+            .map(|e| e.path())
+            .find(|p| {
+                let n = p.file_name().unwrap().to_string_lossy().to_string();
+                n.starts_with("replaced-") && n.ends_with(".db")
+            })
+            .unwrap();
+        let reopened = db::connect(&kept).await.unwrap();
+        assert_eq!(candidates::count(&reopened, "").await.unwrap(), 3, "nothing lost");
+        reopened.close().await;
+
+        let restored = db::connect(&db_path).await.unwrap();
+        assert_eq!(candidates::count(&restored, "").await.unwrap(), 1);
+        restored.close().await;
+
+        for d in [&live, &dir, &other] {
+            std::fs::remove_dir_all(d).ok();
+        }
+    }
+
+    /// A staged file damaged after staging — a power cut mid-copy — must not
+    /// replace the live database. It is set aside and the app starts on the
+    /// data it had.
+    #[tokio::test]
+    async fn a_damaged_staged_restore_is_refused_and_the_live_database_kept() {
+        let dir = temp_dir("bad-stage");
+        let (db_path, pool) = seeded_db(&dir, &["ONLY_ONE"]).await;
+        pool.close().await;
+
+        let other = temp_dir("bad-stage-src");
+        let (_, other_pool) = seeded_db(&other, &["A", "B", "C"]).await;
+        let snapshot = other.join("snapshot.db");
+        write_backup(&other_pool, &snapshot).await.unwrap();
+        other_pool.close().await;
+
+        stage_restore(&dir, &snapshot).await.unwrap();
+        let staged = pending_restore(&dir).unwrap();
+        let bytes = std::fs::read(&staged).unwrap();
+        std::fs::write(&staged, &bytes[..bytes.len() / 3]).unwrap();
+
+        assert!(apply_pending_restore(&dir, &db_path).await.unwrap().is_none());
+        assert!(pending_restore(&dir).is_none(), "not retried at every start");
+
+        let live = db::connect(&db_path).await.unwrap();
+        assert_eq!(candidates::count(&live, "").await.unwrap(), 1, "live data untouched");
+        live.close().await;
+
+        std::fs::remove_dir_all(&dir).ok();
+        std::fs::remove_dir_all(&other).ok();
     }
 }

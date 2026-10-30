@@ -66,31 +66,81 @@ export function formatDinars(
 }
 
 /**
- * Parse user input into centimes. Accepts "12500", "12 500", "12500,50",
- * "12.500,50" and "12500.50". Returns null when it cannot be read as money,
- * so callers show a validation message rather than silently storing a wrong
- * number.
+ * Parse what a secretary typed into centimes, or null if it is not clearly
+ * an amount — callers then show a validation message instead of saving.
+ *
+ * A dot or comma followed by exactly three digits is a THOUSANDS separator,
+ * because that is how amounts are written here: "12.000" and "12,000" are
+ * twelve thousand dinars. The first version read every lone separator as a
+ * decimal point and stored a 12 000 DA payment as 12 DA. With one or two
+ * digits after it, the separator is the decimal point ("12500,50").
+ *
+ *   "12500"  "12 500"  "12.000"  "12,000"  "1.500.000"  -> whole dinars
+ *   "12500,50"  "12500.5"  "12.500,50"  "12,500.50"     -> with centimes
+ *   "12.5000"  "1.50.000"  "12,345,6"  "abc"             -> null
+ *
+ * Integer arithmetic on the digit strings, never `Number(x) * 100` on a
+ * fraction: money is never a float here (CLAUDE.md). Arabic-Indic digits are
+ * accepted, since an Arabic keyboard types them. Tested by
+ * scripts/test-money.mjs, which `npm run check` runs.
  */
 export function parseDZD(input: string): Centimes | null {
-  const cleaned = input
+  let s = input
+    .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660))
     .replace(/[\s  ]/g, "")
-    .replace(/[،,]/g, ".")
-    .replace(/[^\d.-]/g, "");
+    .replace(/[،٫]/g, ",")
+    // A currency word typed after the figure ("12 000 DA", "12000 دج").
+    .replace(/(da|dzd|dinars?|دج|دينار)$/i, "");
 
-  if (cleaned === "" || cleaned === "-") return null;
+  let negative = false;
+  if (s.startsWith("-")) {
+    negative = true;
+    s = s.slice(1);
+  }
+  if (!/^\d[\d.,]*$/.test(s) || /[.,]$/.test(s)) return null;
 
-  // With several dots, treat all but the last as thousands separators.
-  const parts = cleaned.split(".");
-  let normalised = cleaned;
-  if (parts.length > 2) {
-    const last = parts.pop() as string;
-    normalised = `${parts.join("")}.${last}`;
+  let whole = s;
+  let fraction = "";
+  const lastSep = Math.max(s.lastIndexOf("."), s.lastIndexOf(","));
+
+  if (lastSep >= 0) {
+    const sepChar = s.charAt(lastSep);
+    const tail = s.slice(lastSep + 1);
+    const mixed = s.includes(".") && s.includes(",");
+    const separators = s.match(/[.,]/g) ?? [];
+
+    // Which separator, if any, is the decimal point.
+    let decimalAt = -1;
+    if (mixed) {
+      // "12.500,50": the last kind is the decimal point, and every earlier
+      // separator must be the other kind.
+      if (s.slice(0, lastSep).includes(sepChar)) return null;
+      decimalAt = lastSep;
+    } else if (separators.length === 1 && tail.length !== 3) {
+      decimalAt = lastSep;
+    }
+
+    if (decimalAt >= 0) {
+      whole = s.slice(0, decimalAt);
+      fraction = s.slice(decimalAt + 1);
+      if (fraction.length < 1 || fraction.length > 2) return null;
+    }
+
+    // The separators left are thousands: a first group of one to three
+    // digits, then groups of exactly three.
+    const groups = whole.split(/[.,]/);
+    if (groups.length > 1) {
+      const [first, ...rest] = groups;
+      if (!first || first.length > 3 || rest.some((g) => g.length !== 3)) return null;
+    }
+    whole = groups.join("");
   }
 
-  const value = Number(normalised);
-  if (!Number.isFinite(value)) return null;
+  if (!/^\d+$/.test(whole) || (fraction !== "" && !/^\d+$/.test(fraction))) return null;
 
-  return Math.round(value * CENTIMES_PER_DINAR);
+  const centimes = Number(whole) * CENTIMES_PER_DINAR + Number(fraction.padEnd(2, "0") || "0");
+  if (!Number.isSafeInteger(centimes)) return null;
+  return negative ? -centimes : centimes;
 }
 
 /* ---------------------------------------------------------------------------

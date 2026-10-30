@@ -116,7 +116,8 @@
     "loading": "جاري التحميل...",
     "none": "لا شيء",
     "previous": "السابق",
-    "next": "التالي"
+    "next": "التالي",
+    "amountInvalid": "المبلغ غير مفهوم. اكتب مثلا 35000 أو 35.000."
   },
   "clock": {
     "title": "ساعة هذا الحاسوب خاطئة.",
@@ -235,7 +236,8 @@
       "discountNegative": "التخفيض لا يمكن أن يكون سالبا.",
       "discountTooLarge": "التخفيض يتجاوز السعر المتفق عليه.",
       "statusInvalid": "الحالة غير صالحة.",
-      "alreadyEnrolled": "هذا المترشح مسجل بالفعل في هذا الصنف."
+      "alreadyEnrolled": "هذا المترشح مسجل بالفعل في هذا الصنف.",
+      "priceRequired": "أدخل السعر المتفق عليه (0 إذا كان التسجيل مجانيا)."
     },
     "includesExamFees": "منها الامتحانات:",
     "heading": "التسجيل"
@@ -400,7 +402,12 @@
     "standing_notSat": "لم يجتزه",
     "standing_awaiting": "في الانتظار",
     "standing_failed": "راسب",
-    "standing_passed": "ناجح"
+    "standing_passed": "ناجح",
+    "confirmDeleteTitle": "حذف دورة الامتحان هذه؟",
+    "confirmDeleteBody": "يُسحب المترشحون الذين ما زالوا «مقدَّمين» وتُلغى مصاريفهم. أما النتائج المسجّلة (ناجح، راسب، غائب) فتبقى في ملفاتهم.",
+    "confirmRemoveTitle": "سحب هذا المترشح من الدورة؟",
+    "confirmRemoveBody": "يُلغى تسجيله في هذه الدورة، وتُلغى معه المصاريف المطلوبة عنها.",
+    "confirmRemoveSettled": "تنبيه: توجد نتيجة مسجّلة ({{outcome}}). ستُمحى من ملفه مع المصاريف."
   },
   "board": {
     "col_awaiting": "في الانتظار",

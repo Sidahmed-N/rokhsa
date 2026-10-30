@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "check:i18n": "node scripts/check-i18n.mjs",
     "check:rtl": "node scripts/check-rtl.mjs",
-    "check": "npm run typecheck && npm run check:i18n && npm run check:rtl",
+    "test:money": "node --no-warnings scripts/test-money.mjs",
+    "check": "npm run typecheck && npm run check:i18n && npm run check:rtl && npm run test:money",
     "tauri": "tauri",
     "desktop": "tauri dev",
     "desktop:build": "tauri build"

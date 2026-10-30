@@ -64,6 +64,11 @@ export default function ExamsPage() {
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [adding, setAdding] = useState(false);
+  // Both destructive actions here are confirmed first. They sat one click
+  // away, the remove button right beside "Absent", and a slip erased a
+  // candidate's pass and his fee.
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [removing, setRemoving] = useState<ExamEntry | null>(null);
 
   const errorText = useCallback(
     (raw: unknown): string =>
@@ -220,12 +225,7 @@ export default function ExamsPage() {
                   <IconButton
                     aria-label={t("common.delete")}
                     className="size-8 text-owed hover:bg-owed-soft"
-                    onClick={() =>
-                      void run(async () => {
-                        await deleteExamSession(sitting.id);
-                        setSelected(null);
-                      })
-                    }
+                    onClick={() => setConfirmingDelete(true)}
                   >
                     <Trash2 className="size-3.5" aria-hidden="true" />
                   </IconButton>
@@ -285,7 +285,7 @@ export default function ExamsPage() {
                         <IconButton
                           aria-label={t("exams.removeFromSession")}
                           className="size-8 text-owed hover:bg-owed-soft"
-                          onClick={() => void run(() => removeExamResult(entry.id))}
+                          onClick={() => setRemoving(entry)}
                         >
                           <UserMinus className="size-3.5" aria-hidden="true" />
                         </IconButton>
@@ -297,6 +297,49 @@ export default function ExamsPage() {
             </Card>
           )}
         </div>
+      )}
+
+      {confirmingDelete && sitting && (
+        <Modal
+          title={t("exams.confirmDeleteTitle")}
+          onClose={() => setConfirmingDelete(false)}
+          onSubmit={() => {
+            setConfirmingDelete(false);
+            void run(async () => {
+              await deleteExamSession(sitting.id);
+              setSelected(null);
+            });
+          }}
+          submitLabel={t("common.delete")}
+        >
+          <p className="text-sm text-ink-soft">{t("exams.confirmDeleteBody")}</p>
+        </Modal>
+      )}
+
+      {removing && (
+        <Modal
+          title={t("exams.confirmRemoveTitle")}
+          onClose={() => setRemoving(null)}
+          onSubmit={() => {
+            const entry = removing;
+            setRemoving(null);
+            void run(() => removeExamResult(entry.id));
+          }}
+          submitLabel={t("exams.removeFromSession")}
+        >
+          {/* The name on its own line: it may be in the other script. */}
+          <p className="text-base font-semibold text-ink">
+            <FreeText as="span">{personName(removing)}</FreeText>
+          </p>
+          <p className="mt-2 text-sm text-ink-soft">{t("exams.confirmRemoveBody")}</p>
+          {removing.outcome !== "presented" && (
+            <p className="mt-3 rounded-md border border-owed/30 bg-owed-soft px-3 py-2 text-sm text-owed">
+              {t("exams.confirmRemoveSettled", {
+                outcome: t(`exams.outcome_${removing.outcome}`),
+              })}
+            </p>
+          )}
+        </Modal>
       )}
 
       {creating && (
@@ -423,10 +466,17 @@ function AddToSessionDialog({
       setPickError(t("calendar.pickCandidate"));
       return;
     }
+    // Empty is the deliberate "pays nothing this time". Anything typed must
+    // read as an amount: a typo used to become a silent 0.
+    const amount = fee.trim() === "" ? 0 : parseDZD(fee);
+    if (amount === null || amount < 0) {
+      setError(t("common.amountInvalid"));
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
-      await addToExamSession(sessionId, chosen, parseDZD(fee) ?? 0);
+      await addToExamSession(sessionId, chosen, amount);
       onDone();
     } catch (e: unknown) {
       setError(isAppError(e) ? t(e.code, { defaultValue: e.message }) : String(e));

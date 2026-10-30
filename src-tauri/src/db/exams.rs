@@ -163,14 +163,41 @@ pub async fn list_sessions(pool: &SqlitePool) -> Result<Vec<ExamSession>, AppErr
     Ok(rows)
 }
 
-/// Soft-delete, and detach its results rather than destroying them.
+/// Soft-delete a sitting.
 ///
-/// A result is the record of something that happened to a candidate. If a
-/// sitting was created by mistake the sitting goes, but "passed the code on
-/// the 12th" stays on the candidate's file.
+/// Two kinds of entry, two fates:
+///
+/// * A SETTLED result (passed, failed, absent) is the record of something
+///   that happened to a candidate. The sitting goes, but "passed the code on
+///   the 12th" stays on his file — detached from the sitting, kept.
+/// * An entry still PRESENTED is only "we meant to send him to this one".
+///   With the sitting gone it means nothing, so it goes too, and the fee
+///   raised for it is released — exactly what removing him by hand does.
+///   Detaching it instead, as the first version did, left him "en attente"
+///   for an exam that no longer existed, still charged for it, on no screen
+///   that could remove either; recreating the sitting then charged him twice.
+///
+/// One transaction: half of this surviving a power cut would be one of the
+/// two bugs above.
 pub async fn delete_session(pool: &SqlitePool, id: i64) -> Result<(), AppError> {
     let now = Utc::now().to_rfc3339();
     let mut tx = pool.begin().await?;
+
+    let pending: Vec<(i64,)> = sqlx::query_as(
+        "SELECT id FROM exam_results
+         WHERE session_id = ?1 AND outcome = 'presented' AND deleted_at IS NULL",
+    )
+    .bind(id)
+    .fetch_all(&mut *tx)
+    .await?;
+    for (result_id,) in pending {
+        sqlx::query("UPDATE exam_results SET deleted_at = ?1, updated_at = ?1 WHERE id = ?2")
+            .bind(&now)
+            .bind(result_id)
+            .execute(&mut *tx)
+            .await?;
+        fees::release_for_result(&mut tx, result_id, &now).await?;
+    }
 
     sqlx::query("UPDATE exam_results SET session_id = NULL, updated_at = ?1 WHERE session_id = ?2")
         .bind(&now)
@@ -523,6 +550,45 @@ mod tests {
         assert_eq!(history[0].outcome, "passed");
         assert_eq!(history[0].session_id, None, "detached from the sitting");
         assert_eq!(progress_for_enrollment(&pool, e).await.unwrap().theory, Standing::Passed);
+    }
+
+    /// The other half: someone only entered for the deleted sitting is taken
+    /// out of it, and his fee goes with him. Recreating the sitting and
+    /// entering him again then charges him once, not twice, and he is not
+    /// left "en attente" for an exam that no longer exists.
+    #[tokio::test]
+    async fn deleting_a_sitting_releases_those_still_waiting_and_their_fees() {
+        let pool = test_pool().await;
+        let waiting = enrol(&pool, "BENALI").await;
+        let settled = enrol(&pool, "KADRI").await;
+
+        let s = create_session(&pool, &sitting("theory", "2026-11-12")).await.unwrap();
+        add_to_session(&pool, s.id, waiting, 3_000_00).await.unwrap();
+        let kept = add_to_session(&pool, s.id, settled, 3_000_00).await.unwrap();
+        set_outcome(&pool, kept.id, "failed", "").await.unwrap();
+
+        delete_session(&pool, s.id).await.unwrap();
+
+        // The one still waiting: no entry, no fee, back to never presented.
+        assert!(results_for_enrollment(&pool, waiting).await.unwrap().is_empty());
+        assert_eq!(fees::total_for_enrollment(&pool, waiting).await.unwrap(), 0);
+        assert_eq!(
+            progress_for_enrollment(&pool, waiting).await.unwrap().theory,
+            Standing::NotSat
+        );
+
+        // The one with a result: kept, and so is his fee — he did sit it.
+        let history = results_for_enrollment(&pool, settled).await.unwrap();
+        assert_eq!(history.len(), 1);
+        assert_eq!(history[0].outcome, "failed");
+        assert_eq!(fees::total_for_enrollment(&pool, settled).await.unwrap(), 3_000_00);
+
+        // Recreated and re-entered: charged once.
+        let again = create_session(&pool, &sitting("theory", "2026-11-19")).await.unwrap();
+        add_to_session(&pool, again.id, waiting, 3_000_00).await.unwrap();
+        assert_eq!(fees::total_for_enrollment(&pool, waiting).await.unwrap(), 3_000_00);
+        let p = progress_for_enrollment(&pool, waiting).await.unwrap();
+        assert_eq!(p.theory_attempts, 1, "the deleted entry is not an attempt");
     }
 
     /// Taking someone back out of a batch before it happens.

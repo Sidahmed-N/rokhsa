@@ -116,7 +116,8 @@
     "loading": "Chargement...",
     "none": "Aucun",
     "previous": "Précédent",
-    "next": "Suivant"
+    "next": "Suivant",
+    "amountInvalid": "Montant non reconnu. Écrivez par exemple 35000 ou 35.000."
   },
   "clock": {
     "title": "L'horloge de cet ordinateur est fausse.",
@@ -235,7 +236,8 @@
       "discountNegative": "La remise ne peut pas être négative.",
       "discountTooLarge": "La remise dépasse le prix convenu.",
       "statusInvalid": "Statut invalide.",
-      "alreadyEnrolled": "Ce candidat est déjà inscrit à cette catégorie."
+      "alreadyEnrolled": "Ce candidat est déjà inscrit à cette catégorie.",
+      "priceRequired": "Indiquez le prix convenu (0 si l’inscription est gratuite)."
     },
     "includesExamFees": "dont examens :",
     "heading": "Inscription"
@@ -400,7 +402,12 @@
     "standing_notSat": "À passer",
     "standing_awaiting": "En attente",
     "standing_failed": "Ajourné",
-    "standing_passed": "Admis"
+    "standing_passed": "Admis",
+    "confirmDeleteTitle": "Supprimer cette session d’examen ?",
+    "confirmDeleteBody": "Les candidats encore « présentés » en sont retirés et leurs frais annulés. Les résultats déjà notés (admis, ajourné, absent) restent dans leur dossier.",
+    "confirmRemoveTitle": "Retirer ce candidat de la session ?",
+    "confirmRemoveBody": "Son inscription à cette session est annulée, ainsi que les frais demandés pour elle.",
+    "confirmRemoveSettled": "Attention : un résultat est déjà noté ({{outcome}}). Il sera effacé de son dossier, avec les frais."
   },
   "board": {
     "col_awaiting": "En attente",

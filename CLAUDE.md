@@ -52,6 +52,15 @@ These are not style preferences. Breaking them causes data loss, legal problems,
   receipt was removed at the owner's request, but the number stays: it is the only thing
   that makes a deleted payment visible, because a missing number is a hole an owner can
   see even when the row is gone. Never reuse one, and do not put it back on screen.
+- **A typed amount goes through `parseDZD` and is never guessed.** A dot or comma followed by
+  exactly three digits is a thousands separator ("12.000" = 12 000 DA); one or two digits after
+  it is the decimal point. The first version read every lone separator as a decimal point and
+  stored a 12 000 DA payment as 12 DA. An unreadable amount is an error shown to the user,
+  never `?? 0`: that once made enrolments free by accident. `npm run check` runs
+  `scripts/test-money.mjs`; add a case there for any new way schools write amounts.
+- **Hours "used" are taught hours only** (`status = 'done'`). Any query that counts minutes
+  toward the allowance must filter on it, as `lessons::minutes_by_kind` does — receivables
+  once counted booked and missed sessions and charged extra hours the file said were not owed.
 
 ### Regulatory values
 - **The app records what the school does; it does not enforce the law.** It is a bookkeeping
@@ -233,6 +242,17 @@ Design every screen so it works for a school with **one person, one vehicle**:
   and swapped in at the next startup before anything opens the database; the replaced
   database is kept, not deleted. Swapping a file under live connections corrupts it, and the
   stale `-wal`/`-shm` sidecars must be deleted or SQLite replays them onto the restored file.
+- **Every backup file is written under a `.partial` name, verified, then renamed.** That
+  holds for automatic backups, USB backups (an overwrite keeps the old copy until the new one
+  is proven) and the staged restore (flushed and re-checked; checked again at startup, and set
+  aside rather than swapped in if it fails).
+- **The kept copy of a replaced database must be complete.** The app never closes its pool
+  cleanly, so recent writes may be only in the `-wal`: the restore checkpoints first and moves
+  any remaining `-wal` beside the kept copy. On Windows a just-closed SQLite file stays locked
+  for a moment — file steps there use `retry`, and if the sidecars cannot be cleared the
+  restore is postponed, never half-done.
+- **Never trust the PC clock for rotation.** `prune` never deletes the backup just written
+  (a dead clock battery dates it oldest), and a newest backup "in the future" makes one due.
 
 ---
 
@@ -459,4 +479,5 @@ the frontend and need no server.
 ## Learned rules
 - Do not add traffic-law or regulatory tracking to this project; it is a business tool for recording hours, candidates, and money in and out.
 - Assume a one-time sale for this product; do not propose monthly or annual subscription tiers or recurring pricing.
+- Keep this app simple: do not add form fields beyond what the school needs to organize its records.
 <!-- end claude-reflect -->

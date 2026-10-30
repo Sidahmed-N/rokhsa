@@ -83,10 +83,15 @@ pub async fn receivables(pool: &SqlitePool) -> Result<Receivables, AppError> {
     .await?;
 
     // Practical minutes per enrolment, in one query rather than one per row.
+    // Only sessions that were TAUGHT (status 'done'), exactly like
+    // lessons::minutes_by_kind behind the candidate's file. Without the
+    // status filter, booked, missed and cancelled sessions counted as hours
+    // used, and this list charged extra hours the file said were not owed.
     let practical_rows: Vec<(i64, i64)> = sqlx::query_as(
         "SELECT enrollment_id, COALESCE(SUM(minutes), 0)
          FROM lessons
-         WHERE deleted_at IS NULL AND kind IN ('maneuvers', 'road')
+         WHERE deleted_at IS NULL AND status = 'done'
+           AND kind IN ('maneuvers', 'road')
          GROUP BY enrollment_id",
     )
     .fetch_all(pool)
@@ -419,6 +424,64 @@ mod tests {
             r.rows[0].balance_centimes, s.balance_centimes,
             "receivables and the candidate screen must never disagree"
         );
+    }
+
+    /// Only taught hours use up the allowance. A session booked for next
+    /// week, one the candidate missed and one that was called off are not
+    /// hours he has had — and this list once charged for all three.
+    #[tokio::test]
+    async fn booked_missed_and_cancelled_sessions_are_not_charged_as_extra_hours() {
+        let pool = test_pool().await;
+        let c = candidate(&pool, "BENALI").await;
+        let e = enrollments::create(
+            &pool,
+            c,
+            &enrollments::EnrollmentInput {
+                category_code: "B".into(),
+                agreed_price_centimes: 35_000 * DA,
+                extra_hour_price_centimes: 1_500 * DA,
+                practical_hours_target: 2,
+                enrolled_on: "2026-09-01".into(),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+
+        // Exactly the allowance taught: nothing extra is owed.
+        lessons::create(
+            &pool,
+            e.id,
+            &lessons::LessonInput {
+                kind: "road".into(),
+                occurred_on: "2026-09-10".into(),
+                minutes: 120,
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+
+        let book = |day: &str| lessons::ScheduleInput {
+            kind: "road".into(),
+            scheduled_on: day.into(),
+            scheduled_time: "09:00".into(),
+            minutes: 60,
+            ..Default::default()
+        };
+        let ahead = (chrono::Utc::now().date_naive() + chrono::Duration::days(7))
+            .format("%Y-%m-%d")
+            .to_string();
+        lessons::schedule(&pool, e.id, &book(&ahead)).await.unwrap();
+        let missed = lessons::schedule(&pool, e.id, &book("2026-09-12")).await.unwrap();
+        lessons::set_not_held(&pool, missed.id, "missed").await.unwrap();
+        let off = lessons::schedule(&pool, e.id, &book("2026-09-13")).await.unwrap();
+        lessons::set_not_held(&pool, off.id, "cancelled").await.unwrap();
+
+        let r = receivables(&pool).await.unwrap();
+        let s = enrollments::summary(&pool, e.id).await.unwrap();
+        assert_eq!(s.balance_centimes, 35_000 * DA, "nothing extra on the file");
+        assert_eq!(r.rows[0].balance_centimes, 35_000 * DA, "nor on the list");
     }
 
     #[tokio::test]

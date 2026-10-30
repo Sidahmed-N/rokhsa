@@ -49,7 +49,9 @@ pub fn run() {
 
             // A staged restore is swapped in HERE, before anything opens the
             // database. Replacing the file under live connections corrupts it.
-            if let Some(path) = backup::apply_pending_restore(&data_dir, &db_path)? {
+            if let Some(path) =
+                tauri::async_runtime::block_on(backup::apply_pending_restore(&data_dir, &db_path))?
+            {
                 println!("[tariqi] restored database into {path}");
             }
 
