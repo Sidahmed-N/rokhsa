@@ -46,6 +46,11 @@ These are not style preferences. Breaking them causes data loss, legal problems,
 - **Store money as integer centimes of DZD.** Type alias `Centimes = i64` in Rust,
   `type Centimes = number` in TS. **Never** use `f32`/`f64`/JS floats for money.
 - Every mutation that touches money writes an **audit log row** (who, when, before, after).
+  **Known, accepted gap (owner's decision, 2026-10-31, `05-OPEN-QUESTIONS` Q22):** today only
+  payments and candidates write one. Enrolment price/discount changes, expenses and exam fees
+  do not, and are parked for the Pro version, built with staff accounts — "who changed this"
+  only matters once there is more than one person. Do not quietly treat the gap as the rule:
+  new money writes should still log, and the Pro work closes the gap.
 - Money rows are **append-only**. A wrong payment is corrected with a reversing entry,
   never by editing or deleting the original.
 - Every payment carries a **gapless sequential number that no screen shows**. The printed

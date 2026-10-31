@@ -652,3 +652,20 @@ but no longer read or written, so Arabic typed before this is not lost.
 **Still open:** whether the papers sent to the Direction des Transports (exam
 lists, dossiers) need the name in Arabic. If they do, a candidate typed in
 Latin will have no Arabic form to print, and option 2 is the way back.
+
+---
+
+## Q22. Complete change history (audit log) — **PARKED FOR PRO 2026-10-31** 🟡
+
+**Found by the checkup:** the audit log records payments and candidate edits,
+but not changes to an enrolment's price, extra-hour price or discount,
+expenses (added or removed), or exam fees (charged or released).
+
+**Owner's decision:** park it for the Pro version. The log mainly answers "who
+changed this?", which only matters once a school has staff accounts; in the
+one-person version the answer is always the owner. It is built together with
+staff accounts and permissions.
+
+**What that costs in the meantime:** a price or discount changed before then
+leaves no before/after trace, so "what was this candidate's price before?"
+cannot be answered from the app.
