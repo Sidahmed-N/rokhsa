@@ -268,7 +268,9 @@
       "alreadyDone": "Cette séance a déjà été effectuée.",
       "statusInvalid": "Statut invalide.",
       "noCandidates": "Choisissez au moins un candidat.",
-      "duplicateCandidate": "Ce candidat est déjà dans cette séance."
+      "duplicateCandidate": "Ce candidat est déjà dans cette séance.",
+      "notYet": "Cette séance n’a pas encore eu lieu : elle se marque le jour même ou après.",
+      "notReopenable": "Seule une séance marquée absente ou annulée peut être rétablie."
     }
   },
   "payments": {
@@ -373,7 +375,8 @@
     "forCandidate": "Pour quel candidat",
     "pickCandidate": "Choisissez un candidat.",
     "chosenCount": "{{n}} candidats dans cette séance.",
-    "rebook": "Reprogrammer"
+    "rebook": "Reprogrammer",
+    "reopen": "Rétablir"
   },
   "exams": {
     "title": "Examens",
@@ -395,8 +398,6 @@
     "outcome_passed": "Admis",
     "outcome_failed": "Ajourné",
     "outcome_absent": "Absent",
-    "error.outcomeInvalid": "Résultat inconnu.",
-    "error.alreadyInSession": "Ce candidat est déjà dans cette session.",
     "nextDue": "Prochain :",
     "noneForCandidate": "Aucun examen passé pour l'instant.",
     "standing_notSat": "À passer",
@@ -407,7 +408,13 @@
     "confirmDeleteBody": "Les candidats encore « présentés » en sont retirés et leurs frais annulés. Les résultats déjà notés (admis, ajourné, absent) restent dans leur dossier.",
     "confirmRemoveTitle": "Retirer ce candidat de la session ?",
     "confirmRemoveBody": "Son inscription à cette session est annulée, ainsi que les frais demandés pour elle.",
-    "confirmRemoveSettled": "Attention : un résultat est déjà noté ({{outcome}}). Il sera effacé de son dossier, avec les frais."
+    "confirmRemoveSettled": "Attention : un résultat est déjà noté ({{outcome}}). Il sera effacé de son dossier, avec les frais.",
+    "error": {
+      "notYet": "Cet examen n’a pas encore eu lieu : son résultat se note à partir de sa date.",
+      "outcomeInvalid": "Résultat inconnu.",
+      "alreadyInSession": "Ce candidat est déjà dans cette session."
+    },
+    "resultsLater": "Les résultats se notent à partir du jour de l’examen."
   },
   "board": {
     "col_awaiting": "En attente",
@@ -419,7 +426,9 @@
     "move": {
       "same": "La carte est déjà dans cette colonne.",
       "oneStep": "Une étape à la fois : déposez la carte dans la colonne voisine.",
-      "withdrawn": "Un abandon ne se déplace pas sur le tableau. Modifiez l’inscription depuis la fiche du candidat."
+      "withdrawn": "Un abandon ne se déplace pas sur le tableau. Modifiez l’inscription depuis la fiche du candidat.",
+      "nothingToWithdraw": "Aucune présentation en attente à annuler.",
+      "fromSitting": "Cette présentation vient d’une session d’examen : retirez le candidat depuis la page Examens."
     },
     "confirm": {
       "present": "Présenté à l’examen : {{exam}}",
@@ -430,7 +439,8 @@
       "failedHint": "Cela compte comme une tentative de plus.",
       "undoHint": "Si ce résultat vient d’une session d’examen, il repasse « en attente » et les frais restent dus.",
       "date": "Date de l’examen",
-      "submit": "Confirmer"
+      "submit": "Confirmer",
+      "withdraw": "Placé ici par erreur ? Annuler la présentation"
     }
   },
   "fees": {

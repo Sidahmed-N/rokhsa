@@ -263,8 +263,15 @@ export const rescheduleLesson = (
   minutes: number,
 ) => call<Lesson>("reschedule_lesson", { id, scheduledOn, scheduledTime, minutes });
 
+/**
+ * Absent marks one person; Annulé calls off the whole slot, every candidate
+ * still planned in a group (Rust decides — see lessons::set_not_held).
+ */
 export const setLessonNotHeld = (id: number, status: "missed" | "cancelled") =>
   call<Lesson>("set_lesson_not_held", { id, status });
+
+/** Undo Absent or Annulé: planned again (a cancelled group slot, for all of it). */
+export const reopenLesson = (id: number) => call<Lesson>("reopen_lesson", { id });
 
 /**
  * Sessions whose day has passed that nobody ever marked.

@@ -97,6 +97,18 @@ fn check_outcome(outcome: &str) -> Result<(), AppError> {
     Ok(())
 }
 
+/// A result is something that happened, so it cannot be recorded for an
+/// exam whose date has not come yet (with the usual one day of slack for
+/// the UTC/Algeria offset). Entered in next week's batch and clicked
+/// "Admis" by mistake, a candidate used to be passed — and, for the
+/// circulation, marked finished and dropped from the booking picker.
+fn check_has_happened(sat_on: &str) -> Result<(), AppError> {
+    match parse_recorded(sat_on) {
+        Err(DateProblem::InFuture) => Err(AppError::validation("exams.error.notYet")),
+        _ => Ok(()),
+    }
+}
+
 fn date_error(problem: DateProblem, field: &'static str) -> AppError {
     match problem {
         DateProblem::InFuture => AppError::field("lessons.error.dateFuture", field),
@@ -291,6 +303,16 @@ pub async fn set_outcome(
     notes: &str,
 ) -> Result<(), AppError> {
     check_outcome(outcome)?;
+    if outcome != "presented" {
+        let sat_on: (String,) = sqlx::query_as(
+            "SELECT sat_on FROM exam_results WHERE id = ?1 AND deleted_at IS NULL",
+        )
+        .bind(result_id)
+        .fetch_optional(pool)
+        .await?
+        .ok_or(AppError::NotFound)?;
+        check_has_happened(&sat_on.0)?;
+    }
     let now = Utc::now().to_rfc3339();
     let result = sqlx::query(
         "UPDATE exam_results SET outcome = ?1, notes = ?2, updated_at = ?3
@@ -467,7 +489,7 @@ mod tests {
         let b = enrol(&pool, "KADRI").await;
         let c = enrol(&pool, "TOUATI").await;
 
-        let s = create_session(&pool, &sitting("theory", "2026-11-12")).await.unwrap();
+        let s = create_session(&pool, &sitting("theory", "2026-09-12")).await.unwrap();
         for e in [a, b, c] {
             add_to_session(&pool, s.id, e, 0).await.unwrap();
         }
@@ -477,14 +499,14 @@ mod tests {
         // Everyone starts presented: the outcome is not back yet.
         assert!(entries.iter().all(|e| e.outcome == "presented"));
         // And they carry the sitting's date and exam.
-        assert!(entries.iter().all(|e| e.sat_on == "2026-11-12" && e.kind == "theory"));
+        assert!(entries.iter().all(|e| e.sat_on == "2026-09-12" && e.kind == "theory"));
     }
 
     #[tokio::test]
     async fn the_same_candidate_cannot_be_added_twice() {
         let pool = test_pool().await;
         let e = enrol(&pool, "BENALI").await;
-        let s = create_session(&pool, &sitting("theory", "2026-11-12")).await.unwrap();
+        let s = create_session(&pool, &sitting("theory", "2026-09-12")).await.unwrap();
 
         add_to_session(&pool, s.id, e, 0).await.unwrap();
         assert!(add_to_session(&pool, s.id, e, 0).await.is_err());
@@ -496,7 +518,7 @@ mod tests {
     async fn passing_the_code_moves_the_stage_to_the_creneau() {
         let pool = test_pool().await;
         let e = enrol(&pool, "BENALI").await;
-        let s = create_session(&pool, &sitting("theory", "2026-11-12")).await.unwrap();
+        let s = create_session(&pool, &sitting("theory", "2026-09-12")).await.unwrap();
         let entry = add_to_session(&pool, s.id, e, 0).await.unwrap();
 
         // Before the result is back, still waiting.
@@ -515,11 +537,11 @@ mod tests {
         let pool = test_pool().await;
         let e = enrol(&pool, "BENALI").await;
 
-        let first = create_session(&pool, &sitting("maneuvers", "2026-11-12")).await.unwrap();
+        let first = create_session(&pool, &sitting("maneuvers", "2026-09-12")).await.unwrap();
         let a1 = add_to_session(&pool, first.id, e, 0).await.unwrap();
         set_outcome(&pool, a1.id, "failed", "").await.unwrap();
 
-        let second = create_session(&pool, &sitting("maneuvers", "2026-12-03")).await.unwrap();
+        let second = create_session(&pool, &sitting("maneuvers", "2026-10-03")).await.unwrap();
         let a2 = add_to_session(&pool, second.id, e, 0).await.unwrap();
         set_outcome(&pool, a2.id, "passed", "").await.unwrap();
 
@@ -539,7 +561,7 @@ mod tests {
     async fn deleting_a_sitting_keeps_its_results() {
         let pool = test_pool().await;
         let e = enrol(&pool, "BENALI").await;
-        let s = create_session(&pool, &sitting("theory", "2026-11-12")).await.unwrap();
+        let s = create_session(&pool, &sitting("theory", "2026-09-12")).await.unwrap();
         let entry = add_to_session(&pool, s.id, e, 0).await.unwrap();
         set_outcome(&pool, entry.id, "passed", "").await.unwrap();
 
@@ -562,7 +584,7 @@ mod tests {
         let waiting = enrol(&pool, "BENALI").await;
         let settled = enrol(&pool, "KADRI").await;
 
-        let s = create_session(&pool, &sitting("theory", "2026-11-12")).await.unwrap();
+        let s = create_session(&pool, &sitting("theory", "2026-09-12")).await.unwrap();
         add_to_session(&pool, s.id, waiting, 3_000_00).await.unwrap();
         let kept = add_to_session(&pool, s.id, settled, 3_000_00).await.unwrap();
         set_outcome(&pool, kept.id, "failed", "").await.unwrap();
@@ -584,7 +606,7 @@ mod tests {
         assert_eq!(fees::total_for_enrollment(&pool, settled).await.unwrap(), 3_000_00);
 
         // Recreated and re-entered: charged once.
-        let again = create_session(&pool, &sitting("theory", "2026-11-19")).await.unwrap();
+        let again = create_session(&pool, &sitting("theory", "2026-09-19")).await.unwrap();
         add_to_session(&pool, again.id, waiting, 3_000_00).await.unwrap();
         assert_eq!(fees::total_for_enrollment(&pool, waiting).await.unwrap(), 3_000_00);
         let p = progress_for_enrollment(&pool, waiting).await.unwrap();
@@ -596,7 +618,7 @@ mod tests {
     async fn a_candidate_can_be_pulled_from_a_sitting() {
         let pool = test_pool().await;
         let e = enrol(&pool, "BENALI").await;
-        let s = create_session(&pool, &sitting("theory", "2026-11-12")).await.unwrap();
+        let s = create_session(&pool, &sitting("theory", "2026-09-12")).await.unwrap();
         let entry = add_to_session(&pool, s.id, e, 0).await.unwrap();
 
         remove_result(&pool, entry.id).await.unwrap();
@@ -613,7 +635,7 @@ mod tests {
     async fn presenting_out_of_order_is_allowed() {
         let pool = test_pool().await;
         let e = enrol(&pool, "BENALI").await;
-        let s = create_session(&pool, &sitting("road", "2026-11-12")).await.unwrap();
+        let s = create_session(&pool, &sitting("road", "2026-09-12")).await.unwrap();
 
         let entry = add_to_session(&pool, s.id, e, 0).await.unwrap();
         set_outcome(&pool, entry.id, "passed", "").await.unwrap();
@@ -776,6 +798,7 @@ struct MoveRow {
     kind: String,
     outcome: String,
     session_id: Option<i64>,
+    sat_on: String,
 }
 
 async fn plan_in(
@@ -793,7 +816,7 @@ async fn plan_in(
 
     // Newest first, so "the latest presented / passed row" is the first match.
     let rows = sqlx::query_as::<_, MoveRow>(
-        "SELECT id, kind, outcome, session_id FROM exam_results
+        "SELECT id, kind, outcome, session_id, sat_on FROM exam_results
          WHERE enrollment_id = ?1 AND deleted_at IS NULL
          ORDER BY sat_on DESC, id DESC",
     )
@@ -881,6 +904,9 @@ pub async fn apply_board_move(
 
         BoardMove::ResultPassed(kind) | BoardMove::ResultFailed(kind) => {
             let (id, _) = latest(kind, "presented")?;
+            if let Some(row) = rows.iter().find(|r| r.id == id) {
+                check_has_happened(&row.sat_on)?;
+            }
             let outcome = if matches!(planned, BoardMove::ResultPassed(_)) {
                 "passed"
             } else {
@@ -931,6 +957,66 @@ pub async fn apply_board_move(
 
     tx.commit().await?;
     Ok(planned)
+}
+
+/// Take back a presentation made by mistake on the board.
+///
+/// Dropping a card into "En attente" by accident could only be undone by
+/// dragging it back, which records a FAILURE — a fake attempt and a retake
+/// badge for an exam he never sat. This removes the presentation instead.
+///
+/// Only for a presentation made on the board (no sitting, no fee). One from
+/// a real sitting is a batch entry, perhaps charged, and is taken out on the
+/// Examens screen, where removing it also deals with the fee in the open.
+pub async fn withdraw_board_presentation(
+    pool: &SqlitePool,
+    enrollment_id: i64,
+) -> Result<(), AppError> {
+    let mut tx = pool.begin().await?;
+
+    let rows = sqlx::query_as::<_, MoveRow>(
+        "SELECT id, kind, outcome, session_id, sat_on FROM exam_results
+         WHERE enrollment_id = ?1 AND deleted_at IS NULL
+         ORDER BY sat_on DESC, id DESC",
+    )
+    .bind(enrollment_id)
+    .fetch_all(&mut *tx)
+    .await?;
+
+    // The presentation the card is waiting on: the latest "presented" row of
+    // the exam that is due, the same one a result dragged out would settle.
+    let attempts: Vec<Attempt> = rows
+        .iter()
+        .map(|r| Attempt {
+            kind: r.kind.as_str(),
+            outcome: r.outcome.as_str(),
+        })
+        .collect();
+    let due = progress(&attempts).next_due;
+    let Some(row) = rows
+        .iter()
+        .find(|r| r.outcome == "presented" && Some(r.kind.as_str()) == due.as_deref())
+    else {
+        return Err(AppError::validation("board.move.nothingToWithdraw"));
+    };
+    let fees: (i64,) = sqlx::query_as(
+        "SELECT COUNT(*) FROM exam_fee_charges WHERE result_id = ?1 AND deleted_at IS NULL",
+    )
+    .bind(row.id)
+    .fetch_one(&mut *tx)
+    .await?;
+    if row.session_id.is_some() || fees.0 > 0 {
+        return Err(AppError::validation("board.move.fromSitting"));
+    }
+
+    let now = Utc::now().to_rfc3339();
+    sqlx::query("UPDATE exam_results SET deleted_at = ?1, updated_at = ?1 WHERE id = ?2")
+        .bind(&now)
+        .bind(row.id)
+        .execute(&mut *tx)
+        .await?;
+    tx.commit().await?;
+    Ok(())
 }
 
 #[cfg(test)]
@@ -1083,5 +1169,83 @@ mod board_move_tests {
         let done = apply_board_move(&pool, e, BoardColumn::Awaiting, "2026-10-01").await.unwrap();
         assert_eq!(planned, done);
         assert_eq!(planned, BoardMove::Present("theory".into()));
+    }
+
+    fn in_days(days: i64) -> String {
+        (Utc::now().date_naive() + chrono::Duration::days(days))
+            .format("%Y-%m-%d")
+            .to_string()
+    }
+
+    /// A result cannot be recorded for an exam that has not happened: not
+    /// from the Examens buttons, not by dragging out of "En attente".
+    #[tokio::test]
+    async fn a_result_waits_for_the_exam_date() {
+        let pool = test_pool().await;
+        let e = enrol(&pool).await;
+        let s = create_session(
+            &pool,
+            &ExamSessionInput {
+                kind: "theory".into(),
+                held_on: in_days(10),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+        let entry = add_to_session(&pool, s.id, e, 0).await.unwrap();
+
+        for outcome in ["passed", "failed", "absent"] {
+            let r = set_outcome(&pool, entry.id, outcome, "").await;
+            assert!(
+                matches!(r, Err(AppError::Validation(code, _)) if code.contains("notYet")),
+                "{outcome}: got {r:?}"
+            );
+        }
+        let r = apply_board_move(&pool, e, BoardColumn::Maneuvers, "").await;
+        assert!(matches!(r, Err(AppError::Validation(code, _)) if code.contains("notYet")));
+        assert_eq!(column_of(&pool, e).await, BoardColumn::Awaiting, "still waiting");
+
+        // Moving him to "presented" again is always allowed.
+        set_outcome(&pool, entry.id, "presented", "").await.unwrap();
+    }
+
+    /// A card dropped into "En attente" by mistake goes back without
+    /// recording a failure.
+    #[tokio::test]
+    async fn a_mistaken_presentation_on_the_board_can_be_withdrawn() {
+        let pool = test_pool().await;
+        let e = enrol(&pool).await;
+        apply_board_move(&pool, e, BoardColumn::Awaiting, &in_days(0)).await.unwrap();
+
+        withdraw_board_presentation(&pool, e).await.unwrap();
+
+        assert_eq!(column_of(&pool, e).await, BoardColumn::Theory);
+        assert!(results_for_enrollment(&pool, e).await.unwrap().is_empty());
+        assert_eq!(progress_for_enrollment(&pool, e).await.unwrap().theory_attempts, 0);
+    }
+
+    /// One entered in a real sitting is taken out on the Examens screen,
+    /// where its fee is dealt with in the open — not from the board.
+    #[tokio::test]
+    async fn a_sitting_entry_is_not_withdrawn_from_the_board() {
+        let pool = test_pool().await;
+        let e = enrol(&pool).await;
+        let s = create_session(
+            &pool,
+            &ExamSessionInput {
+                kind: "theory".into(),
+                held_on: in_days(3),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+        add_to_session(&pool, s.id, e, 2_000_00).await.unwrap();
+
+        let r = withdraw_board_presentation(&pool, e).await;
+        assert!(matches!(r, Err(AppError::Validation(code, _)) if code.contains("fromSitting")));
+        assert_eq!(column_of(&pool, e).await, BoardColumn::Awaiting);
+        assert_eq!(fees::total_for_enrollment(&pool, e).await.unwrap(), 2_000_00);
     }
 }

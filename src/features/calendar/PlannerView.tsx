@@ -6,7 +6,7 @@ import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import arLocale from "@fullcalendar/core/locales/ar-dz";
 import frLocale from "@fullcalendar/core/locales/fr";
-import type { EventDropArg, EventInput } from "@fullcalendar/core";
+import type { EventApi, EventDropArg, EventInput } from "@fullcalendar/core";
 import type { EventResizeDoneArg } from "@fullcalendar/interaction";
 
 import { ErrorNote } from "@/components/ui/Surface";
@@ -153,39 +153,57 @@ export default function PlannerView({
     }
 
     return [...bySession.values()].flatMap((group) => {
-      const first = group[0];
-      if (!first) return [];
+      // The block speaks for the people still COMING: its look, its status
+      // and its drag handle come from a row still planned, if any. Taken
+      // from the first row, as before, one cancelled candidate greyed out
+      // and locked a session two others were still booked into.
+      const lead = group.find((e) => e.status === "planned") ?? group[0];
+      if (!lead) return [];
 
       const event: EventInput = {
-        // The first row carries the block: dragging it reschedules the whole
-        // session, because db::lessons::reschedule moves every row sharing
-        // the session id.
-        id: String(first.id),
+        // Dragging the lead reschedules the whole session, because
+        // db::lessons::reschedule moves every planned row sharing the id.
+        id: String(lead.id),
         title: group.map((e) => personName(e)).join(" · "),
-        start: startOf(first),
-        allDay: !first.scheduledTime,
-        editable: first.status === "planned",
-        classNames: [`fc-kind-${first.kind}`, `fc-status-${first.status}`],
+        start: startOf(lead),
+        allDay: !lead.scheduledTime,
+        editable: lead.status === "planned",
+        classNames: [`fc-kind-${lead.kind}`, `fc-status-${lead.status}`],
         extendedProps: {
-          candidateId: first.candidateId,
-          planNote: first.planNote,
-          kindLabel: t(`lessons.kind_${first.kind}`),
-          statusLabel: t(`calendar.status_${first.status}`),
+          candidateId: lead.candidateId,
+          planNote: lead.planNote,
+          kindLabel: t(`lessons.kind_${lead.kind}`),
+          statusLabel: t(`calendar.status_${lead.status}`),
           names: group.map((e) => personName(e)),
+          minutes: lead.minutes,
         },
       };
-      const end = endOf(first);
+      const end = endOf(lead);
       if (end) event.end = end;
       return [event];
     });
   }, [visible, locale, t]);
 
-  async function move(id: string, start: Date | null, end: Date | null, revert: () => void) {
+  /**
+   * Save a drag or a resize.
+   *
+   * A session with no time is an all-day event to the calendar, and it has
+   * no end. The first version read its time from the drop position and its
+   * length as "60 if there is no end": an untimed two-hour lesson dragged
+   * to another day came back at 00:00 for one hour, off the bottom of the
+   * week grid. Now an all-day drop stays untimed, and a missing end keeps
+   * the session's own length.
+   */
+  async function move(event: EventApi, revert: () => void) {
+    const start = event.start;
     if (!start) return revert();
     const { day, time } = localParts(start);
-    const minutes = end ? Math.round((end.getTime() - start.getTime()) / 60000) : 60;
+    const ownMinutes = Number(event.extendedProps["minutes"]) || 60;
+    const minutes = event.end
+      ? Math.round((event.end.getTime() - start.getTime()) / 60000)
+      : ownMinutes;
     try {
-      await rescheduleLesson(Number(id), day, time, minutes);
+      await rescheduleLesson(Number(event.id), day, event.allDay ? "" : time, minutes);
       await refresh();
     } catch (raw: unknown) {
       // Put the block back where it was: the screen must never show a time
@@ -361,10 +379,10 @@ export default function PlannerView({
             onPickSlot(day, arg.allDay ? null : time);
           }}
           eventDrop={(arg: EventDropArg) =>
-            void move(arg.event.id, arg.event.start, arg.event.end, arg.revert)
+            void move(arg.event, arg.revert)
           }
           eventResize={(arg: EventResizeDoneArg) =>
-            void move(arg.event.id, arg.event.start, arg.event.end, arg.revert)
+            void move(arg.event, arg.revert)
           }
         />
       </div>

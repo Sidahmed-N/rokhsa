@@ -30,7 +30,9 @@ import {
   listEnrollments,
   listLessons,
   listPayments,
+  reopenLesson,
   reversePayment,
+  todayIso,
   type EnrollmentSummary,
   type Lesson,
   type Payment,
@@ -442,7 +444,28 @@ export default function CandidateDetailPage() {
                                         </Button>
                                       )}
 
-                                      {upcoming && (
+                                      {/* Absent and Annulé can be taken back. */}
+                                      {(lesson.status === "missed" ||
+                                        lesson.status === "cancelled") && (
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          icon={<Undo2 className="size-3.5" aria-hidden="true" />}
+                                          onClick={() =>
+                                            void reopenLesson(lesson.id)
+                                              .then(refresh)
+                                              .catch((e: unknown) => setError(errorText(e)))
+                                          }
+                                        >
+                                          {t("calendar.reopen")}
+                                        </Button>
+                                      )}
+
+                                      {/* Fait only once the day has come: on
+                                          next week's row it credited the
+                                          hours in advance. */}
+                                      {upcoming &&
+                                        (lesson.scheduledOn ?? lesson.occurredOn) <= todayIso() && (
                                         <Button
                                           size="sm"
                                           icon={<Check className="size-3.5" aria-hidden="true" />}

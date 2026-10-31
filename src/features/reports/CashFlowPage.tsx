@@ -23,6 +23,7 @@ import {
   type LineTotal,
 } from "@/lib/reports";
 import { isDesktop } from "@/lib/tauri";
+import { todayIso } from "@/lib/training";
 
 function Breakdown({
   title,
@@ -381,7 +382,10 @@ export default function CashFlowPage() {
 
       {adding && (
         <AddExpenseDialog
-          defaultDate={range.to}
+          // Today, unless the period shown is entirely in the past. The end of
+          // the period opened on the last day of the month, which the date
+          // check refused as "in the future" for most of the month.
+          defaultDate={range.to < todayIso() ? range.to : todayIso()}
           onClose={() => setAdding(false)}
           onDone={() => {
             setAdding(false);

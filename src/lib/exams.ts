@@ -119,6 +119,14 @@ export const planBoardMove = (enrollmentId: number, to: BoardColumn) =>
 export const moveOnBoard = (enrollmentId: number, to: BoardColumn, date: string) =>
   call<BoardMove>("move_on_board", { enrollmentId, to, date });
 
+/**
+ * Take back a presentation made by mistake on the board — instead of the
+ * failure that dragging the card back would record. Refused for one from a
+ * real sitting, which is removed on the Examens screen.
+ */
+export const withdrawBoardPresentation = (enrollmentId: number) =>
+  call<void>("withdraw_board_presentation", { enrollmentId });
+
 export const listExamSessions = () => call<ExamSession[]>("list_exam_sessions");
 
 export const createExamSession = (input: ExamSessionInput) =>

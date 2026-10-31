@@ -482,8 +482,18 @@ pub async fn complete(
     }
 
     // Blank fields mean "as planned", so the common case is one click.
+    // The planned day goes through the same "not in the future" check as a
+    // typed one: Fait sits on next week's rows too, and one click there used
+    // to credit the hours — and possibly an extra-hour charge — in advance.
     let occurred_on = if input.occurred_on.trim().is_empty() {
-        lesson.scheduled_on.clone().unwrap_or(lesson.occurred_on.clone())
+        let planned = lesson.scheduled_on.clone().unwrap_or(lesson.occurred_on.clone());
+        parse_recorded(&planned)
+            .map_err(|p| match p {
+                DateProblem::InFuture => AppError::validation("lessons.error.notYet"),
+                other => date_error(other, "occurredOn"),
+            })?
+            .format("%Y-%m-%d")
+            .to_string()
     } else {
         parse_recorded(&input.occurred_on)
             .map_err(|p| date_error(p, "occurredOn"))?
@@ -581,10 +591,21 @@ pub async fn reschedule(
     get(pool, id).await
 }
 
-/// The candidate did not turn up, or the session was called off.
+/// The candidate did not turn up (`missed`), or the session was called off
+/// (`cancelled`).
 ///
 /// Kept rather than deleted: a pattern of missed sessions is something an
 /// owner wants to see.
+///
+/// The two are different in kind, and treated so:
+///
+/// * `missed` is about ONE person, so it marks one row — one absentee in a
+///   group of three. It only makes sense once the day has come.
+/// * `cancelled` is about the SLOT: the instructor called off Tuesday 08:00.
+///   For a group it cancels every candidate still planned in it, because
+///   CLAUDE.md forbids changing one row of a group on its own; the first
+///   version cancelled only the clicked row and left the others planned,
+///   to turn up later in the overdue card. It may be done ahead of time.
 pub async fn set_not_held(
     pool: &SqlitePool,
     id: i64,
@@ -598,13 +619,72 @@ pub async fn set_not_held(
         return Err(AppError::validation("lessons.error.alreadyDone"));
     }
 
+    if status == "missed" {
+        let planned = lesson.scheduled_on.clone().unwrap_or(lesson.occurred_on.clone());
+        if let Err(DateProblem::InFuture) = parse_recorded(&planned) {
+            return Err(AppError::validation("lessons.error.notYet"));
+        }
+    }
+
     let now = Utc::now().to_rfc3339();
-    sqlx::query("UPDATE lessons SET status = ?1, updated_at = ?2 WHERE id = ?3")
-        .bind(status)
-        .bind(&now)
-        .bind(id)
-        .execute(pool)
-        .await?;
+    match (status, lesson.session_id) {
+        ("cancelled", Some(session_id)) => {
+            sqlx::query(
+                "UPDATE lessons SET status = 'cancelled', updated_at = ?1
+                 WHERE session_id = ?2 AND status = 'planned' AND deleted_at IS NULL",
+            )
+            .bind(&now)
+            .bind(session_id)
+            .execute(pool)
+            .await?;
+        }
+        _ => {
+            sqlx::query("UPDATE lessons SET status = ?1, updated_at = ?2 WHERE id = ?3")
+                .bind(status)
+                .bind(&now)
+                .bind(id)
+                .execute(pool)
+                .await?;
+        }
+    }
+
+    get(pool, id).await
+}
+
+/// Undo Absent or Annulé: the session is planned again.
+///
+/// Both sit one click from Fait, and with no way back a misclick could only
+/// be "fixed" by adding the hours by hand, leaving a contradictory missed row
+/// in the history. Mirrors `set_not_held`: an absence is reopened for that
+/// one person; a cancelled group slot is reopened for everyone it
+/// cancelled. A session already done is not touched — its hours are a
+/// record, corrected by an explicit edit.
+pub async fn reopen(pool: &SqlitePool, id: i64) -> Result<Lesson, AppError> {
+    let lesson = get(pool, id).await?;
+    if lesson.status != "missed" && lesson.status != "cancelled" {
+        return Err(AppError::validation("lessons.error.notReopenable"));
+    }
+
+    let now = Utc::now().to_rfc3339();
+    match (lesson.status.as_str(), lesson.session_id) {
+        ("cancelled", Some(session_id)) => {
+            sqlx::query(
+                "UPDATE lessons SET status = 'planned', updated_at = ?1
+                 WHERE session_id = ?2 AND status = 'cancelled' AND deleted_at IS NULL",
+            )
+            .bind(&now)
+            .bind(session_id)
+            .execute(pool)
+            .await?;
+        }
+        _ => {
+            sqlx::query("UPDATE lessons SET status = 'planned', updated_at = ?1 WHERE id = ?2")
+                .bind(&now)
+                .bind(id)
+                .execute(pool)
+                .await?;
+        }
+    }
 
     get(pool, id).await
 }
@@ -1210,5 +1290,100 @@ mod tests {
         soft_delete(&pool, booked[0].id).await.unwrap();
 
         assert!(list_overdue(&pool, &today()).await.unwrap().is_empty());
+    }
+
+    fn in_days(days: i64) -> String {
+        (Utc::now().date_naive() + chrono::Duration::days(days))
+            .format("%Y-%m-%d")
+            .to_string()
+    }
+
+    fn booking_on(day: &str) -> ScheduleInput {
+        ScheduleInput {
+            scheduled_on: day.into(),
+            ..booking(60)
+        }
+    }
+
+    /// Fait on next week's session used to credit the hours now.
+    #[tokio::test]
+    async fn a_future_session_cannot_be_marked_done() {
+        let pool = test_pool().await;
+        let e = setup(&pool).await;
+        let ahead = schedule(&pool, e, &booking_on(&in_days(7))).await.unwrap();
+
+        let result = complete(&pool, ahead.id, &CompleteInput::default()).await;
+        assert!(
+            matches!(result, Err(AppError::Validation(code, _)) if code.contains("notYet")),
+            "got {result:?}"
+        );
+        assert_eq!(road_minutes(&pool, e).await, 0, "no hours credited in advance");
+
+        // Today's is fine.
+        let now = schedule(&pool, e, &booking_on(&today())).await.unwrap();
+        complete(&pool, now.id, &CompleteInput::default()).await.unwrap();
+        assert_eq!(road_minutes(&pool, e).await, 60);
+    }
+
+    /// Absent only once the day has come; called off may be done ahead.
+    #[tokio::test]
+    async fn absent_needs_the_day_to_have_come_but_cancelling_ahead_is_fine() {
+        let pool = test_pool().await;
+        let e = setup(&pool).await;
+        let ahead = schedule(&pool, e, &booking_on(&in_days(3))).await.unwrap();
+
+        assert!(set_not_held(&pool, ahead.id, "missed").await.is_err());
+        let off = set_not_held(&pool, ahead.id, "cancelled").await.unwrap();
+        assert_eq!(off.status, "cancelled");
+    }
+
+    /// Calling off a group's slot calls it off for everyone in it — never
+    /// one row of a group on its own. Someone already marked absent stays so.
+    #[tokio::test]
+    async fn cancelling_a_group_slot_cancels_everyone_still_planned() {
+        let pool = test_pool().await;
+        let (a, b, c) = (setup(&pool).await, setup(&pool).await, setup(&pool).await);
+        let rows = schedule_many(&pool, &[a, b, c], &booking_on(&today())).await.unwrap();
+
+        set_not_held(&pool, rows[2].id, "missed").await.unwrap();
+        set_not_held(&pool, rows[0].id, "cancelled").await.unwrap();
+
+        assert_eq!(get(&pool, rows[0].id).await.unwrap().status, "cancelled");
+        assert_eq!(get(&pool, rows[1].id).await.unwrap().status, "cancelled");
+        assert_eq!(get(&pool, rows[2].id).await.unwrap().status, "missed");
+    }
+
+    /// A misclick on Absent or Annulé can be undone.
+    #[tokio::test]
+    async fn absent_and_cancelled_can_be_undone() {
+        let pool = test_pool().await;
+        let e = setup(&pool).await;
+        let s = schedule(&pool, e, &booking_on(&today())).await.unwrap();
+
+        set_not_held(&pool, s.id, "missed").await.unwrap();
+        assert_eq!(reopen(&pool, s.id).await.unwrap().status, "planned");
+
+        // And then it can be marked done as it should have been.
+        complete(&pool, s.id, &CompleteInput::default()).await.unwrap();
+        assert_eq!(road_minutes(&pool, e).await, 60);
+
+        // A session already done is a record: not reopened by this.
+        assert!(reopen(&pool, s.id).await.is_err());
+    }
+
+    /// Undoing a group's cancellation brings back exactly who it cancelled.
+    #[tokio::test]
+    async fn reopening_a_cancelled_group_slot_reopens_everyone_it_cancelled() {
+        let pool = test_pool().await;
+        let (a, b, c) = (setup(&pool).await, setup(&pool).await, setup(&pool).await);
+        let rows = schedule_many(&pool, &[a, b, c], &booking_on(&today())).await.unwrap();
+
+        set_not_held(&pool, rows[2].id, "missed").await.unwrap();
+        set_not_held(&pool, rows[0].id, "cancelled").await.unwrap();
+        reopen(&pool, rows[1].id).await.unwrap();
+
+        assert_eq!(get(&pool, rows[0].id).await.unwrap().status, "planned");
+        assert_eq!(get(&pool, rows[1].id).await.unwrap().status, "planned");
+        assert_eq!(get(&pool, rows[2].id).await.unwrap().status, "missed", "absence is his own");
     }
 }

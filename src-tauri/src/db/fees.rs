@@ -193,7 +193,7 @@ mod tests {
     async fn entering_a_candidate_charges_what_the_owner_typed() {
         let pool = test_pool().await;
         let enrollment = enrol(&pool, "Benaissa").await;
-        let session = sitting(&pool, "theory", "2026-11-10").await;
+        let session = sitting(&pool, "theory", "2026-08-10").await;
 
         exams::add_to_session(&pool, session, enrollment, 3_000 * DA)
             .await
@@ -211,13 +211,13 @@ mod tests {
         let pool = test_pool().await;
         let enrollment = enrol(&pool, "Benaissa").await;
 
-        let first = sitting(&pool, "theory", "2026-11-10").await;
+        let first = sitting(&pool, "theory", "2026-08-10").await;
         let entry = exams::add_to_session(&pool, first, enrollment, 3_000 * DA)
             .await
             .unwrap();
         exams::set_outcome(&pool, entry.id, "failed", "").await.unwrap();
 
-        let second = sitting(&pool, "theory", "2026-12-08").await;
+        let second = sitting(&pool, "theory", "2026-09-08").await;
         exams::add_to_session(&pool, second, enrollment, 0).await.unwrap();
 
         assert_eq!(
@@ -233,13 +233,13 @@ mod tests {
         let pool = test_pool().await;
         let enrollment = enrol(&pool, "Benaissa").await;
 
-        let first = sitting(&pool, "theory", "2026-11-10").await;
+        let first = sitting(&pool, "theory", "2026-08-10").await;
         let entry = exams::add_to_session(&pool, first, enrollment, 3_000 * DA)
             .await
             .unwrap();
         exams::set_outcome(&pool, entry.id, "failed", "").await.unwrap();
 
-        let second = sitting(&pool, "theory", "2026-12-08").await;
+        let second = sitting(&pool, "theory", "2026-09-08").await;
         exams::add_to_session(&pool, second, enrollment, 3_000 * DA)
             .await
             .unwrap();
@@ -257,12 +257,12 @@ mod tests {
         let pool = test_pool().await;
         let enrollment = enrol(&pool, "Benaissa").await;
 
-        let first = sitting(&pool, "theory", "2026-11-10").await;
+        let first = sitting(&pool, "theory", "2026-08-10").await;
         exams::add_to_session(&pool, first, enrollment, 3_000 * DA)
             .await
             .unwrap();
 
-        let second = sitting(&pool, "theory", "2026-12-08").await;
+        let second = sitting(&pool, "theory", "2026-09-08").await;
         exams::add_to_session(&pool, second, enrollment, 1_500 * DA)
             .await
             .unwrap();
@@ -278,12 +278,12 @@ mod tests {
         let pool = test_pool().await;
         let enrollment = enrol(&pool, "Benaissa").await;
 
-        let code = sitting(&pool, "theory", "2026-11-10").await;
+        let code = sitting(&pool, "theory", "2026-08-10").await;
         exams::add_to_session(&pool, code, enrollment, 3_000 * DA)
             .await
             .unwrap();
 
-        let creneau = sitting(&pool, "maneuvers", "2026-12-15").await;
+        let creneau = sitting(&pool, "maneuvers", "2026-09-15").await;
         exams::add_to_session(&pool, creneau, enrollment, 3_500 * DA)
             .await
             .unwrap();
@@ -300,7 +300,7 @@ mod tests {
         // phantom lines on a candidate's file.
         let pool = test_pool().await;
         let enrollment = enrol(&pool, "Benaissa").await;
-        let session = sitting(&pool, "theory", "2026-11-10").await;
+        let session = sitting(&pool, "theory", "2026-08-10").await;
 
         exams::add_to_session(&pool, session, enrollment, 0).await.unwrap();
 
@@ -312,7 +312,7 @@ mod tests {
     async fn a_negative_fee_is_refused() {
         let pool = test_pool().await;
         let enrollment = enrol(&pool, "Benaissa").await;
-        let session = sitting(&pool, "theory", "2026-11-10").await;
+        let session = sitting(&pool, "theory", "2026-08-10").await;
 
         let err = exams::add_to_session(&pool, session, enrollment, -1).await;
 
@@ -325,7 +325,7 @@ mod tests {
     async fn a_refused_fee_rolls_back_the_entry() {
         let pool = test_pool().await;
         let enrollment = enrol(&pool, "Benaissa").await;
-        let session = sitting(&pool, "theory", "2026-11-10").await;
+        let session = sitting(&pool, "theory", "2026-08-10").await;
 
         let _ = exams::add_to_session(&pool, session, enrollment, -1).await;
 
@@ -338,7 +338,7 @@ mod tests {
         // Entering the wrong person is a slip, and it must not leave a debt.
         let pool = test_pool().await;
         let enrollment = enrol(&pool, "Benaissa").await;
-        let session = sitting(&pool, "theory", "2026-11-10").await;
+        let session = sitting(&pool, "theory", "2026-08-10").await;
 
         let entry = exams::add_to_session(&pool, session, enrollment, 3_000 * DA)
             .await
@@ -354,12 +354,12 @@ mod tests {
         let pool = test_pool().await;
         let enrollment = enrol(&pool, "Benaissa").await;
 
-        let first = sitting(&pool, "theory", "2026-11-10").await;
+        let first = sitting(&pool, "theory", "2026-08-10").await;
         let entry = exams::add_to_session(&pool, first, enrollment, 3_000 * DA)
             .await
             .unwrap();
 
-        let second = sitting(&pool, "theory", "2026-12-08").await;
+        let second = sitting(&pool, "theory", "2026-09-08").await;
         exams::add_to_session(&pool, second, enrollment, 3_000 * DA)
             .await
             .unwrap();
@@ -376,7 +376,7 @@ mod tests {
     async fn the_fee_lands_on_the_candidates_balance() {
         let pool = test_pool().await;
         let enrollment = enrol(&pool, "Benaissa").await;
-        let session = sitting(&pool, "theory", "2026-11-10").await;
+        let session = sitting(&pool, "theory", "2026-08-10").await;
 
         exams::add_to_session(&pool, session, enrollment, 3_000 * DA)
             .await
@@ -393,7 +393,7 @@ mod tests {
     async fn the_charge_says_which_entry_it_was_for() {
         let pool = test_pool().await;
         let enrollment = enrol(&pool, "Benaissa").await;
-        let session = sitting(&pool, "theory", "2026-11-10").await;
+        let session = sitting(&pool, "theory", "2026-08-10").await;
 
         let entry = exams::add_to_session(&pool, session, enrollment, 3_000 * DA)
             .await

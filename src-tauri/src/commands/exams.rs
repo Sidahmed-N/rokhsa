@@ -127,3 +127,13 @@ pub async fn move_on_board(
 ) -> CommandResult<BoardMove> {
     Ok(exams::apply_board_move(&state.pool, enrollment_id, to, &date).await?)
 }
+
+/// Take back a presentation made by mistake on the board.
+#[tauri::command]
+pub async fn withdraw_board_presentation(
+    state: State<'_, AppState>,
+    enrollment_id: i64,
+) -> CommandResult<()> {
+    exams::withdraw_board_presentation(&state.pool, enrollment_id).await?;
+    Ok(())
+}

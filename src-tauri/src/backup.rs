@@ -231,7 +231,7 @@ pub async fn write_backup(pool: &SqlitePool, dest: &Path) -> Result<BackupInfo, 
 
     // Proven good: now, and only now, it takes the real name — replacing an
     // older file of the same name in one step.
-    if let Err(e) = std::fs::rename(&partial, dest) {
+    if let Err(e) = retry(|| std::fs::rename(&partial, dest)) {
         std::fs::remove_file(&partial).ok();
         eprintln!("[tariqi] could not put the backup in place at {}: {e}", dest.display());
         return Err(AppError::validation("backup.error.writeFailed"));
@@ -377,7 +377,7 @@ pub async fn stage_restore(data_dir: &Path, source: &Path) -> Result<BackupInfo,
         std::fs::remove_file(&partial).ok();
         return Err(e);
     }
-    std::fs::rename(&partial, &staged).map_err(|e| {
+    retry(|| std::fs::rename(&partial, &staged)).map_err(|e| {
         std::fs::remove_file(&partial).ok();
         io_err("staging the restore", e)
     })?;
@@ -459,8 +459,9 @@ pub async fn apply_pending_restore(
             Utc::now().format("%Y%m%d-%H%M%S")
         ));
         eprintln!("[tariqi] staged restore failed its check ({e}); kept aside as {}", rejected.display());
-        std::fs::rename(&staged, &rejected)
-            .or_else(|_| std::fs::remove_file(&staged))
+        // Retried: the check just above has only now let go of the file.
+        retry(|| std::fs::rename(&staged, &rejected))
+            .or_else(|_| retry(|| remove_if_present(&staged)))
             .ok();
         return Ok(None);
     }

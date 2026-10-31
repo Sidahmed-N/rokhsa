@@ -12,6 +12,7 @@ import { isAppError } from "@/lib/candidates";
 import {
   getExamBoard,
   moveOnBoard,
+  withdrawBoardPresentation,
   planBoardMove,
   type BoardCard,
   type BoardColumn,
@@ -322,6 +323,18 @@ function ConfirmMove({
     }
   }
 
+  async function withdraw() {
+    setSaving(true);
+    setError(null);
+    try {
+      await withdrawBoardPresentation(card.enrollmentId);
+      onDone();
+    } catch (raw: unknown) {
+      setError(isAppError(raw) ? t(raw.code, { defaultValue: raw.message }) : String(raw));
+      setSaving(false);
+    }
+  }
+
   const exam = t(`lessons.kind_${move.kind}`);
 
   return (
@@ -343,7 +356,20 @@ function ConfirmMove({
       </p>
 
       {move.action === "resultFailed" && (
-        <p className="mt-2 text-sm text-muted">{t("board.confirm.failedHint")}</p>
+        <>
+          <p className="mt-2 text-sm text-muted">{t("board.confirm.failedHint")}</p>
+          {/* Dragging back out of "En attente" means "ajourné" — unless the
+              card was put there by mistake. Then it is the presentation that
+              goes, not a failure that never happened. */}
+          <button
+            type="button"
+            disabled={saving}
+            onClick={() => void withdraw()}
+            className="mt-3 text-sm font-medium text-brand hover:underline disabled:opacity-50"
+          >
+            {t("board.confirm.withdraw")}
+          </button>
+        </>
       )}
       {move.action === "undoPass" && (
         <p className="mt-2 text-sm text-muted">{t("board.confirm.undoHint")}</p>

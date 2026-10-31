@@ -1201,7 +1201,7 @@ mod bookable_tests {
         let enrollment = enrol(&pool, "BENALI").await;
         pass(&pool, enrollment, "theory", "2026-09-08").await;
         pass(&pool, enrollment, "maneuvers", "2026-10-05").await;
-        pass(&pool, enrollment, "road", "2026-11-01").await;
+        pass(&pool, enrollment, "road", "2026-10-20").await;
 
         assert!(bookable(&pool, "").await.unwrap().is_empty());
     }
@@ -1214,7 +1214,7 @@ mod bookable_tests {
         let enrollment = enrol(&pool, "BENALI").await;
         pass(&pool, enrollment, "theory", "2026-09-08").await;
         pass(&pool, enrollment, "maneuvers", "2026-10-05").await;
-        pass(&pool, enrollment, "road", "2026-11-01").await;
+        pass(&pool, enrollment, "road", "2026-10-20").await;
 
         let found = bookable(&pool, "benali").await.unwrap();
         assert_eq!(found.len(), 1);
@@ -1230,7 +1230,7 @@ mod bookable_tests {
 
         pass(&pool, done, "theory", "2026-09-08").await;
         pass(&pool, done, "maneuvers", "2026-10-05").await;
-        pass(&pool, done, "road", "2026-11-01").await;
+        pass(&pool, done, "road", "2026-10-20").await;
 
         let offered = bookable(&pool, "").await.unwrap();
         assert_eq!(offered.len(), 1);
@@ -1250,7 +1250,7 @@ mod bookable_tests {
             &pool,
             &exams::ExamSessionInput {
                 kind: "road".into(),
-                held_on: "2026-11-01".into(),
+                held_on: "2026-10-20".into(),
                 held_at: "08:00".into(),
                 place: "Centre".into(),
                 ..Default::default()

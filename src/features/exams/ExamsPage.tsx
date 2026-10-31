@@ -124,6 +124,10 @@ export default function ExamsPage() {
 
   const sitting = sessions.find((s) => s.id === selected) ?? null;
   const settled = entries.filter((e) => e.outcome !== "presented").length;
+  // A sitting still ahead has no results to record yet: the outcome buttons
+  // wait for its day (Rust refuses them anyway — see exams::set_outcome).
+  // Read at render, not at mount, so it is right on the morning of the exam.
+  const notYet = sitting !== null && sitting.heldOn > todayIso();
 
   return (
     <div>
@@ -212,7 +216,9 @@ export default function ExamsPage() {
                   <Num>{sitting.heldOn}</Num>
                 </h2>
                 <span className="text-xs text-muted">
-                  {t("exams.settledCount", { settled, total: entries.length })}
+                  {notYet
+                    ? t("exams.resultsLater")
+                    : t("exams.settledCount", { settled, total: entries.length })}
                 </span>
                 <div className="ms-auto flex gap-2">
                   <Button
@@ -260,28 +266,38 @@ export default function ExamsPage() {
                         <Badge tone={OUTCOME_TONE[entry.outcome] ?? "neutral"}>
                           {t(`exams.outcome_${entry.outcome}`)}
                         </Badge>
-                        <Button
-                          size="sm"
-                          variant={entry.outcome === "passed" ? "primary" : "secondary"}
-                          icon={<Check className="size-3.5" aria-hidden="true" />}
-                          onClick={() => void run(() => setExamOutcome(entry.id, "passed", ""))}
-                        >
-                          {t("exams.outcome_passed")}
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={() => void run(() => setExamOutcome(entry.id, "failed", ""))}
-                        >
-                          {t("exams.outcome_failed")}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          icon={<X className="size-3.5" aria-hidden="true" />}
-                          onClick={() => void run(() => setExamOutcome(entry.id, "absent", ""))}
-                        >
-                          {t("exams.outcome_absent")}
-                        </Button>
+                        {!notYet && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant={entry.outcome === "passed" ? "primary" : "secondary"}
+                              icon={<Check className="size-3.5" aria-hidden="true" />}
+                              onClick={() =>
+                                void run(() => setExamOutcome(entry.id, "passed", ""))
+                              }
+                            >
+                              {t("exams.outcome_passed")}
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={() =>
+                                void run(() => setExamOutcome(entry.id, "failed", ""))
+                              }
+                            >
+                              {t("exams.outcome_failed")}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              icon={<X className="size-3.5" aria-hidden="true" />}
+                              onClick={() =>
+                                void run(() => setExamOutcome(entry.id, "absent", ""))
+                              }
+                            >
+                              {t("exams.outcome_absent")}
+                            </Button>
+                          </>
+                        )}
                         <IconButton
                           aria-label={t("exams.removeFromSession")}
                           className="size-8 text-owed hover:bg-owed-soft"

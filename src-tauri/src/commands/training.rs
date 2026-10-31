@@ -143,6 +143,12 @@ pub async fn set_lesson_not_held(
     Ok(lessons::set_not_held(&state.pool, id, &status).await?)
 }
 
+/// Undo Absent or Annulé — the session is planned again.
+#[tauri::command]
+pub async fn reopen_lesson(state: State<'_, AppState>, id: i64) -> CommandResult<lessons::Lesson> {
+    Ok(lessons::reopen(&state.pool, id).await?)
+}
+
 /// Everyone booked or seen on one day — the Today screen.
 #[tauri::command]
 pub async fn list_day(

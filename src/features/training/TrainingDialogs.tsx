@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import CandidatePicker from "@/features/training/CandidatePicker";
 import { useTranslation } from "react-i18next";
@@ -288,15 +288,38 @@ export function ScheduleSessionDialog({
   // the calendar, since there was nobody to look it up for until then.
   // Only for a single candidate: with a group there is no one last note to
   // carry, and picking one person’s would be worse than leaving it blank.
+  //
+  // So a note that was FILLED IN this way is taken back out when the booking
+  // becomes a group, or replaced when another single candidate is picked.
+  // The first version only ever filled it: pick A, add B and C, and all
+  // three were booked with A's note. A note the instructor TYPED is his and
+  // is never touched.
+  const noteIsAuto = useRef(false);
+  const noteNow = useRef(planNote);
+  noteNow.current = planNote;
+
   useEffect(() => {
-    if (chosenIds.length !== 1) return;
+    if (chosenIds.length !== 1) {
+      if (noteIsAuto.current) {
+        noteIsAuto.current = false;
+        setPlanNote("");
+      }
+      return;
+    }
     const only = chosenIds[0];
     if (only === undefined) return;
+    let stale = false;
     nextUp(only)
       .then((info) => {
-        if (info.lastNote) setPlanNote(info.lastNote);
+        if (stale) return;
+        if (noteNow.current !== "" && !noteIsAuto.current) return;
+        noteIsAuto.current = info.lastNote !== "";
+        setPlanNote(info.lastNote);
       })
       .catch(() => {});
+    return () => {
+      stale = true;
+    };
   }, [chosenIds]);
 
   async function save() {
@@ -393,7 +416,11 @@ export function ScheduleSessionDialog({
         <TextField
           label={t("calendar.planNote")}
           value={planNote}
-          onChange={setPlanNote}
+          onChange={(v) => {
+            // Typed by the instructor: his from now on, never auto-cleared.
+            noteIsAuto.current = false;
+            setPlanNote(v);
+          }}
           hint={t("calendar.planNoteHint")}
         />
       </div>

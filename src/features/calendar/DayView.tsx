@@ -8,6 +8,7 @@ import {
   ChevronRight,
   Phone,
   Plus,
+  Undo2,
   X,
 } from "lucide-react";
 
@@ -22,6 +23,7 @@ import { isDesktop } from "@/lib/tauri";
 import {
   completeLesson,
   listDay,
+  reopenLesson,
   setLessonNotHeld,
   shiftIso,
   todayIso,
@@ -242,43 +244,66 @@ export default function DayView({
                         make-up is a NEW booking. The absence stays on the
                         record: a candidate who misses often is something an
                         owner wants to see. */}
-                    {row.status === "missed" && (
-                      <div className="ms-auto">
+                    {/* Absent and Annulé sit one click from Fait, so both can
+                        be taken back: the session is planned again. */}
+                    {(row.status === "missed" || row.status === "cancelled") && (
+                      <div className="ms-auto flex flex-wrap gap-1.5">
+                        {row.status === "missed" && (
+                          <Button
+                            size="sm"
+                            icon={<CalendarPlus className="size-3.5" aria-hidden="true" />}
+                            onClick={() =>
+                              // The make-up starts today, not on the missed
+                              // day being looked at: a booking in the past
+                              // went straight into the overdue card.
+                              onBook(date < todayIso() ? todayIso() : date, {
+                                enrollmentId: row.enrollmentId,
+                                kind: row.kind,
+                              })
+                            }
+                          >
+                            {t("calendar.rebook")}
+                          </Button>
+                        )}
                         <Button
+                          variant="ghost"
                           size="sm"
-                          icon={<CalendarPlus className="size-3.5" aria-hidden="true" />}
-                          onClick={() =>
-                            onBook(date, {
-                              enrollmentId: row.enrollmentId,
-                              kind: row.kind,
-                            })
-                          }
+                          icon={<Undo2 className="size-3.5" aria-hidden="true" />}
+                          onClick={() => void run(() => reopenLesson(row.id))}
                         >
-                          {t("calendar.rebook")}
+                          {t("calendar.reopen")}
                         </Button>
                       </div>
                     )}
 
                     {row.status === "planned" && (
                       <div className="ms-auto flex flex-wrap gap-1.5">
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          icon={<Check className="size-3.5" aria-hidden="true" />}
-                          onClick={() =>
-                            void run(() =>
-                              completeLesson(row.id, { occurredOn: "", minutes: 0, notes: "" }),
-                            )
-                          }
-                        >
-                          {t("calendar.markDone")}
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={() => void run(() => setLessonNotHeld(row.id, "missed"))}
-                        >
-                          {t("calendar.markMissed")}
-                        </Button>
+                        {/* Fait and Absent only once the day has come: on a
+                            future day they credited hours in advance. Annulé
+                            stays — a lesson can be called off ahead. Rust
+                            refuses the first two anyway. */}
+                        {date <= todayIso() && (
+                          <>
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              icon={<Check className="size-3.5" aria-hidden="true" />}
+                              onClick={() =>
+                                void run(() =>
+                                  completeLesson(row.id, { occurredOn: "", minutes: 0, notes: "" }),
+                                )
+                              }
+                            >
+                              {t("calendar.markDone")}
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={() => void run(() => setLessonNotHeld(row.id, "missed"))}
+                            >
+                              {t("calendar.markMissed")}
+                            </Button>
+                          </>
+                        )}
                         <Button
                           variant="ghost"
                           size="sm"
