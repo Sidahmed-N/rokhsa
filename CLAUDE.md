@@ -492,30 +492,32 @@ shows nothing. An update is **never installed on its own**: the owner clicks, a 
 first, and if that backup fails nothing is downloaded.
 
 Every update is signed. The private key is `%USERPROFILE%\.tauri\rokhsa-updater.key` on the
-owner's PC (no password) and the repository secret `TAURI_SIGNING_PRIVATE_KEY`. **It must never be
+owner's PC (no password), **and only there** — releases are built on this PC, never on GitHub, so
+neither it nor the unlock hash is stored online (the owner's decision). **It must never be
 committed** (`*.key` is gitignored; the repository is public). The public key is in
 `tauri.conf.json`. **Losing the private key means installed copies can never be updated again**:
 a new key needs a new `pubkey`, which only a manually installed version carries.
 
-To release: raise `version` in `src-tauri/tauri.conf.json` and `package.json`, commit, then push
-a tag `vX.Y.Z` matching it. `.github/workflows/release.yml` runs the checks and tests, builds the
-signed installer and creates a **draft** release with `latest.json`. Schools see nothing until
-the draft is published on GitHub. A school that is never online gets the same installer by USB:
-installing over the old version keeps its data.
+To release: raise `version` in `src-tauri/tauri.conf.json` and `package.json`, commit and push,
+then `npm run release`. `scripts/release.mjs` runs the checks and tests, builds and signs the
+installer here, writes `latest.json` and uploads all three to GitHub as a **draft** (with `gh`,
+signed in once by the owner). Schools see nothing until the owner publishes the draft on GitHub.
+`npm run release -- --dry` builds and checks without uploading. A school that is never online gets
+the same installer by USB: installing over the old version keeps its data.
 
 ### The one-code lock (`src-tauri/src/license`)
 The owner installs every copy himself and types one code, known only to him, the first time the
 app starts on a PC (before the welcome screen). It is asked **once per PC**: updates, restarts and
 power cuts never ask again; another PC, a copied data folder, or a reinstalled Windows does.
 - The app holds only an **Argon2id hash** of the code, given at build time by `build.rs` from
-  `ROKHSA_UNLOCK_HASH` (GitHub secret) or the gitignored `src-tauri/unlock.hash`. **The code and
+  the gitignored `src-tauri/unlock.hash` (or `ROKHSA_UNLOCK_HASH`). **The code and
   its hash never go in the repository** — it is public. A release build without a hash stops.
 - Unlocking stores the code in `activation.bin` in the data folder, encrypted with Windows DPAPI,
   which only this Windows user on this PC can decrypt; each start decrypts and re-checks it.
 - **Locked is read-only, never hidden**: everything can be viewed and backed up. Every command
   that writes calls `state.require_unlocked()?` first — **a new writing command must too.**
-- Changing the code (after a leak): move the old hash into `retired.hash` / the
-  `ROKHSA_RETIRED_HASHES` secret, then make a new one. Retired codes keep PCs they already unlocked
+- Changing the code (after a leak): move the old hash into `retired.hash` (gitignored), then
+  make a new one. Retired codes keep PCs they already unlocked
   but unlock no new PC. `cargo run --bin unlock_hash` makes a hash (code on standard input);
   `-- --check unlock.hash` says whether a code matches. Pipe from bash, not Windows PowerShell —
   PowerShell altered the piped code once and the hash matched nothing.

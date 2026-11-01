@@ -5,10 +5,10 @@ fn main() {
 
 /// Hands the lock's hash to the app at build time (see src/license).
 ///
-/// From the `ROKHSA_UNLOCK_HASH` environment variable (GitHub's build, from a
-/// repository secret) or the gitignored file `unlock.hash` next to this one
-/// (the owner's PC). Never from the repository: it is public, and the hash of
-/// a short code can be attacked offline.
+/// From the gitignored file `unlock.hash` next to this one — releases are
+/// built on the owner's PC — or the `ROKHSA_UNLOCK_HASH` environment variable.
+/// Never from the repository: it is public, and the hash of a short code can
+/// be attacked offline.
 ///
 /// A release build without it stops here. An installer with no lock would be
 /// a free copy, and nobody would notice until a school had one. A debug build
