@@ -40,6 +40,8 @@ pub fn run() {
             }
         }))
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .setup(|app| {
             // One database per installation, in the OS's per-user data
             // directory. Keeping it out of Program Files is what lets the

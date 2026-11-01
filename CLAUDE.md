@@ -485,6 +485,24 @@ the first visit after it appears (seen steps are remembered per step, in `tariqi
 on an empty install Examens has only its "new sitting" button). **Removing or renaming a marked part means
 updating `PAGE_STEPS`.** Replaying "Visite guidée" resets the page tours too.
 
+### Updates and releases
+The app checks `https://github.com/Sidahmed-N/rokhsa/releases/latest/download/latest.json` when
+the PC is online (`src/features/updates/UpdateBanner.tsx`). Offline, or with nothing published, it
+shows nothing. An update is **never installed on its own**: the owner clicks, a backup is made
+first, and if that backup fails nothing is downloaded.
+
+Every update is signed. The private key is `%USERPROFILE%\.tauri\rokhsa-updater.key` on the
+owner's PC (no password) and the repository secret `TAURI_SIGNING_PRIVATE_KEY`. **It must never be
+committed** (`*.key` is gitignored; the repository is public). The public key is in
+`tauri.conf.json`. **Losing the private key means installed copies can never be updated again**:
+a new key needs a new `pubkey`, which only a manually installed version carries.
+
+To release: raise `version` in `src-tauri/tauri.conf.json` and `package.json`, commit, then push
+a tag `vX.Y.Z` matching it. `.github/workflows/release.yml` runs the checks and tests, builds the
+signed installer and creates a **draft** release with `latest.json`. Schools see nothing until
+the draft is published on GitHub. A school that is never online gets the same installer by USB:
+installing over the old version keeps its data.
+
 ### The WebView runs in French (`--lang=fr`)
 The browser's own date and time boxes take their format from the WebView's language, which is
 Windows' language unless told otherwise. On an English Windows they showed `mm/dd/yyyy` and

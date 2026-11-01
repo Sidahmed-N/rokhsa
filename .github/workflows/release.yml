@@ -1,0 +1,57 @@
+# Builds, signs and publishes a new version of Rokhsa.
+#
+# Run by pushing a tag that matches the version in src-tauri/tauri.conf.json:
+#   git tag v0.2.0 && git push origin v0.2.0
+#
+# It creates a DRAFT release with the installer, its signature and
+# latest.json. Schools see nothing until the draft is published on GitHub:
+# that click is the owner's last check before every school is offered it.
+#
+# Needs one repository secret, TAURI_SIGNING_PRIVATE_KEY: the content of the
+# private key file. Without it the build fails rather than ship an update the
+# installed apps would refuse.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: npm ci
+
+      # The same gate as every commit: types, both languages, RTL, money.
+      - run: npm run check
+
+      - run: cargo test --lib
+        working-directory: src-tauri
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "Rokhsa ${{ github.ref_name }}"
+          releaseBody: "Nouvelle version de Rokhsa."
+          releaseDraft: true
+          includeUpdaterJson: true

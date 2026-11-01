@@ -33,6 +33,7 @@ import HomePage from "@/features/home/HomePage";
 import CashFlowPage from "@/features/reports/CashFlowPage";
 import ReceivablesPage from "@/features/reports/ReceivablesPage";
 import BackupPage from "@/features/backup/BackupPage";
+import UpdateBanner from "@/features/updates/UpdateBanner";
 
 /**
  * Whether the rail is collapsed, remembered per device.
@@ -295,6 +296,7 @@ export default function App() {
             form is still max-w-3xl, because a name field 1900px wide is not
             an improvement. The shell fills the window; the page decides. */}
         <main className="w-full px-8 py-7">
+          <UpdateBanner />
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/calendar" element={<CalendarPage />} />

@@ -501,5 +501,15 @@
         "entries": "Ajoutez les candidats présentés. Le jour de l’examen, notez Admis, Ajourné ou Absent."
       }
     }
+  },
+  "updates": {
+    "available": "Nouvelle version disponible :",
+    "hint": "Installez-la quand vous voulez : l’application redémarre, une sauvegarde est faite avant.",
+    "install": "Installer maintenant",
+    "later": "Plus tard",
+    "backingUp": "Sauvegarde en cours…",
+    "downloading": "Téléchargement…",
+    "failed": "La mise à jour n’a pas pu se faire. Vos données n’ont pas changé. Réessayez quand l’internet est stable.",
+    "retry": "Réessayer"
   }
 }
