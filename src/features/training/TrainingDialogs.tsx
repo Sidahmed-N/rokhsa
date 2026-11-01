@@ -61,24 +61,19 @@ export function NewEnrollmentDialog({
   const errorText = useErrorText();
 
   const [price, setPrice] = useState("");
-  const [extraHourPrice, setExtraHourPrice] = useState("");
-  const [theoryTarget, setTheoryTarget] = useState("");
-  const [practicalTarget, setPracticalTarget] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function save() {
     // The price is never guessed. An empty or unreadable box used to become
     // 0 DA silently — a free enrolment nobody chose. A school that really
-    // gives one away types 0. The extra-hour price stays optional: empty
-    // means the school does not charge extra hours.
+    // gives one away types 0.
     const agreed = parseDZD(price);
-    const extra = extraHourPrice.trim() === "" ? 0 : parseDZD(extraHourPrice);
     if (price.trim() === "") {
       setError(t("enrollments.error.priceRequired"));
       return;
     }
-    if (agreed === null || agreed < 0 || extra === null || extra < 0) {
+    if (agreed === null || agreed < 0) {
       setError(t("common.amountInvalid"));
       return;
     }
@@ -90,9 +85,13 @@ export function NewEnrollmentDialog({
         categoryCode: CATEGORY,
         enrolledOn: today(),
         agreedPriceCentimes: agreed,
-        extraHourPriceCentimes: extra,
-        theoryHoursTarget: Number(theoryTarget) || 0,
-        practicalHoursTarget: Number(practicalTarget) || 0,
+        // The price is the whole deal (Q23): the school trains until the
+        // instructor judges a candidate ready, it does not sell hours. With no
+        // allowance and no extra-hour price, no extra hour is ever charged.
+        // The columns stay, so a school that sells hours is a form to put back.
+        extraHourPriceCentimes: 0,
+        theoryHoursTarget: 0,
+        practicalHoursTarget: 0,
         discountCentimes: 0,
         discountReason: "",
         status: "forming",
@@ -114,41 +113,14 @@ export function NewEnrollmentDialog({
       submitting={saving}
       error={error}
     >
-      <div className="grid gap-3">
-
-        <TextField
-          label={t("enrollments.agreedPrice")}
-          value={price}
-          onChange={setPrice}
-          dir="ltr"
-          placeholder="35000"
-          hint={t("enrollments.priceHint")}
-        />
-        <div className="grid gap-3 sm:grid-cols-2">
-          <TextField
-            label={t("enrollments.theoryTarget")}
-            value={theoryTarget}
-            onChange={setTheoryTarget}
-            dir="ltr"
-            type="number"
-          />
-          <TextField
-            label={t("enrollments.practicalTarget")}
-            value={practicalTarget}
-            onChange={setPracticalTarget}
-            dir="ltr"
-            type="number"
-          />
-        </div>
-        <TextField
-          label={t("enrollments.extraHourPrice")}
-          value={extraHourPrice}
-          onChange={setExtraHourPrice}
-          dir="ltr"
-          placeholder="0"
-          hint={t("enrollments.extraHourHint")}
-        />
-      </div>
+      <TextField
+        label={t("enrollments.agreedPrice")}
+        value={price}
+        onChange={setPrice}
+        dir="ltr"
+        placeholder="35000"
+        hint={t("enrollments.priceHint")}
+      />
     </Modal>
   );
 }

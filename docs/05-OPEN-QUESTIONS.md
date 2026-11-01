@@ -672,7 +672,12 @@ cannot be answered from the app.
 
 ---
 
-## Q23. Hours on the enrolment form — **OPEN 2026-11-01** 🔴
+## Q23. Hours on the enrolment form — **ANSWERED 2026-11-01** 🟢
+
+**Owner's decision:** remove them. The enrolment form asks for the price only;
+new enrolments store 0 hours and 0 DA per extra hour, so no extra hour is ever
+charged. The columns stay in the database, so a school that sells hours is a
+form to put back, not a migration.
 
 **Found in the test drive:** "Nouvelle inscription" still asks for code hours,
 driving hours and a price per extra hour. Since the owner said the school does
@@ -680,6 +685,6 @@ not sell hours (it trains until the instructor judges the candidate ready), the
 hour bars were removed from the candidate's file — so these three boxes are
 filled in and then never shown anywhere.
 
-**The question:** remove the three boxes (the price alone is enough), or keep
+**The question was:** remove the three boxes (the price alone is enough), or keep
 them for schools that do sell a fixed number of hours and charge extra ones?
 Removing them is safe: left empty, no extra hour is ever charged.
