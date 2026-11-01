@@ -22,11 +22,13 @@ pub async fn create_exam_session(
     state: State<'_, AppState>,
     input: exams::ExamSessionInput,
 ) -> CommandResult<exams::ExamSession> {
+    state.require_unlocked()?;
     Ok(exams::create_session(&state.pool, &input).await?)
 }
 
 #[tauri::command]
 pub async fn delete_exam_session(state: State<'_, AppState>, id: i64) -> CommandResult<()> {
+    state.require_unlocked()?;
     exams::delete_session(&state.pool, id).await?;
     Ok(())
 }
@@ -47,6 +49,7 @@ pub async fn add_to_exam_session(
     enrollment_id: i64,
     fee_centimes: i64,
 ) -> CommandResult<exams::ExamEntry> {
+    state.require_unlocked()?;
     Ok(exams::add_to_session(&state.pool, session_id, enrollment_id, fee_centimes).await?)
 }
 
@@ -57,12 +60,14 @@ pub async fn set_exam_outcome(
     outcome: String,
     notes: String,
 ) -> CommandResult<()> {
+    state.require_unlocked()?;
     exams::set_outcome(&state.pool, result_id, &outcome, &notes).await?;
     Ok(())
 }
 
 #[tauri::command]
 pub async fn remove_exam_result(state: State<'_, AppState>, result_id: i64) -> CommandResult<()> {
+    state.require_unlocked()?;
     exams::remove_result(&state.pool, result_id).await?;
     Ok(())
 }
@@ -125,6 +130,7 @@ pub async fn move_on_board(
     to: BoardColumn,
     date: String,
 ) -> CommandResult<BoardMove> {
+    state.require_unlocked()?;
     Ok(exams::apply_board_move(&state.pool, enrollment_id, to, &date).await?)
 }
 
@@ -134,6 +140,7 @@ pub async fn withdraw_board_presentation(
     state: State<'_, AppState>,
     enrollment_id: i64,
 ) -> CommandResult<()> {
+    state.require_unlocked()?;
     exams::withdraw_board_presentation(&state.pool, enrollment_id).await?;
     Ok(())
 }

@@ -43,10 +43,12 @@ pub async fn create_expense(
     state: State<'_, AppState>,
     input: expenses::ExpenseInput,
 ) -> CommandResult<expenses::Expense> {
+    state.require_unlocked()?;
     Ok(expenses::create(&state.pool, &input).await?)
 }
 
 #[tauri::command]
 pub async fn delete_expense(state: State<'_, AppState>, id: i64) -> CommandResult<()> {
+    state.require_unlocked()?;
     Ok(expenses::soft_delete(&state.pool, id).await?)
 }

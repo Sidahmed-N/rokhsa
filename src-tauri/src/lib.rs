@@ -12,6 +12,7 @@
 
 mod commands;
 mod error;
+mod license;
 
 pub mod backup;
 
@@ -81,7 +82,14 @@ pub fn run() {
             }
 
             println!("[tariqi] database ready at {}", db_path.display());
-            app.manage(AppState { pool, data_dir });
+            // Read once here; unlocking flips it without a restart.
+            let unlocked = license::is_unlocked(&data_dir);
+            println!("[tariqi] unlocked on this PC: {unlocked}");
+            app.manage(AppState {
+                pool,
+                data_dir,
+                unlocked: std::sync::atomic::AtomicBool::new(unlocked),
+            });
             Ok(())
         })
         .on_window_event(|window, event| {
@@ -105,6 +113,8 @@ pub fn run() {
             commands::app_version,
             commands::database_health,
             commands::clock_status,
+            commands::license_status,
+            commands::unlock_app,
             commands::candidates::list_candidates,
             commands::candidates::get_candidate,
             commands::candidates::create_candidate,

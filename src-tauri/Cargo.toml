@@ -41,6 +41,12 @@ tauri-plugin-single-instance = "2.4.5"
 # the owner says so, and verified against the public key in tauri.conf.json.
 tauri-plugin-updater = "2.14.1"
 tauri-plugin-process = "2.4.0"
+# The one-code lock (src/license): the code is checked against an Argon2id
+# hash, and kept on the PC encrypted with Windows DPAPI so a copy elsewhere
+# cannot read it.
+argon2 = "0.5.3"
+# Only for the random salt in src/bin/unlock_hash.rs and the tests.
+password-hash = { version = "0.5.0", features = ["getrandom"] }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
@@ -60,3 +66,13 @@ lto = true
 codegen-units = 1
 panic = "abort"
 strip = true
+
+# Argon2 unoptimised takes seconds per check; a debug build checks the lock at
+# every start.
+[profile.dev.package.argon2]
+opt-level = 3
+[profile.dev.package.blake2]
+opt-level = 3
+
+[target."cfg(windows)".dependencies]
+windows-sys = { version = "0.60", features = ["Win32_Security_Cryptography", "Win32_Foundation"] }

@@ -38,3 +38,7 @@ src-tauri/.cargo/
 
 # Built app, produced by npm run build + cargo build --release
 Tariqi.exe
+
+# The unlock code's hash (src-tauri/build.rs) - kept out of the public repository
+src-tauri/unlock.hash
+src-tauri/retired.hash

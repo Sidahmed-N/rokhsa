@@ -38,6 +38,7 @@ pub async fn create_enrollment(
     candidate_id: i64,
     input: enrollments::EnrollmentInput,
 ) -> CommandResult<enrollments::Enrollment> {
+    state.require_unlocked()?;
     Ok(enrollments::create(&state.pool, candidate_id, &input).await?)
 }
 
@@ -47,11 +48,13 @@ pub async fn update_enrollment(
     id: i64,
     input: enrollments::EnrollmentInput,
 ) -> CommandResult<enrollments::Enrollment> {
+    state.require_unlocked()?;
     Ok(enrollments::update(&state.pool, id, &input).await?)
 }
 
 #[tauri::command]
 pub async fn delete_enrollment(state: State<'_, AppState>, id: i64) -> CommandResult<()> {
+    state.require_unlocked()?;
     Ok(enrollments::soft_delete(&state.pool, id).await?)
 }
 
@@ -71,11 +74,13 @@ pub async fn create_lesson(
     enrollment_id: i64,
     input: lessons::LessonInput,
 ) -> CommandResult<lessons::Lesson> {
+    state.require_unlocked()?;
     Ok(lessons::create(&state.pool, enrollment_id, &input).await?)
 }
 
 #[tauri::command]
 pub async fn delete_lesson(state: State<'_, AppState>, id: i64) -> CommandResult<()> {
+    state.require_unlocked()?;
     Ok(lessons::soft_delete(&state.pool, id).await?)
 }
 
@@ -98,6 +103,7 @@ pub async fn schedule_group(
     enrollment_ids: Vec<i64>,
     input: lessons::ScheduleInput,
 ) -> CommandResult<Vec<lessons::Lesson>> {
+    state.require_unlocked()?;
     Ok(lessons::schedule_many(&state.pool, &enrollment_ids, &input).await?)
 }
 
@@ -108,6 +114,7 @@ pub async fn complete_lesson(
     id: i64,
     input: lessons::CompleteInput,
 ) -> CommandResult<lessons::Lesson> {
+    state.require_unlocked()?;
     Ok(lessons::complete(&state.pool, id, &input).await?)
 }
 
@@ -130,6 +137,7 @@ pub async fn reschedule_lesson(
     scheduled_time: String,
     minutes: i64,
 ) -> CommandResult<lessons::Lesson> {
+    state.require_unlocked()?;
     Ok(lessons::reschedule(&state.pool, id, &scheduled_on, &scheduled_time, minutes).await?)
 }
 
@@ -140,12 +148,14 @@ pub async fn set_lesson_not_held(
     id: i64,
     status: String,
 ) -> CommandResult<lessons::Lesson> {
+    state.require_unlocked()?;
     Ok(lessons::set_not_held(&state.pool, id, &status).await?)
 }
 
 /// Undo Absent or Annulé — the session is planned again.
 #[tauri::command]
 pub async fn reopen_lesson(state: State<'_, AppState>, id: i64) -> CommandResult<lessons::Lesson> {
+    state.require_unlocked()?;
     Ok(lessons::reopen(&state.pool, id).await?)
 }
 
@@ -211,6 +221,7 @@ pub async fn create_payment(
     enrollment_id: i64,
     input: payments::PaymentInput,
 ) -> CommandResult<payments::Payment> {
+    state.require_unlocked()?;
     Ok(payments::create(&state.pool, enrollment_id, &input).await?)
 }
 
@@ -222,6 +233,7 @@ pub async fn reverse_payment(
     id: i64,
     reason: String,
 ) -> CommandResult<payments::Payment> {
+    state.require_unlocked()?;
     Ok(payments::reverse(&state.pool, id, &reason).await?)
 }
 

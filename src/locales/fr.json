@@ -511,5 +511,16 @@
     "downloading": "Téléchargement…",
     "failed": "La mise à jour n’a pas pu se faire. Vos données n’ont pas changé. Réessayez quand l’internet est stable.",
     "retry": "Réessayer"
+  },
+  "license": {
+    "title": "Activation de Rokhsa",
+    "explain": "Entrez le code d’activation. Il n’est demandé qu’une fois sur cet ordinateur.",
+    "codeLabel": "Code d’activation",
+    "unlock": "Activer",
+    "wrongCode": "Code incorrect.",
+    "failed": "L’activation n’a pas pu se faire. Réessayez.",
+    "readOnly": "Continuer en lecture seule",
+    "readOnlyBanner": "Application non activée sur cet ordinateur : vous pouvez tout consulter et sauvegarder, mais rien ajouter ni modifier.",
+    "locked": "Application non activée sur cet ordinateur : lecture seule. Demandez le code d’activation à votre fournisseur."
   }
 }

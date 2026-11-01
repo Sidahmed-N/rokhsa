@@ -7,9 +7,13 @@
 # latest.json. Schools see nothing until the draft is published on GitHub:
 # that click is the owner's last check before every school is offered it.
 #
-# Needs one repository secret, TAURI_SIGNING_PRIVATE_KEY: the content of the
-# private key file. Without it the build fails rather than ship an update the
-# installed apps would refuse.
+# Needs two repository secrets:
+# - TAURI_SIGNING_PRIVATE_KEY: the content of the update signing key file.
+#   Without it the build fails rather than ship an update the installed apps
+#   would refuse.
+# - ROKHSA_UNLOCK_HASH: the content of unlock.hash (the one-code lock, see
+#   src-tauri/src/license). Without it build.rs stops the build rather than
+#   ship an installer with no lock. ROKHSA_RETIRED_HASHES is optional.
 name: Release
 
 on:
@@ -49,6 +53,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+          ROKHSA_UNLOCK_HASH: ${{ secrets.ROKHSA_UNLOCK_HASH }}
+          ROKHSA_RETIRED_HASHES: ${{ secrets.ROKHSA_RETIRED_HASHES }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "Rokhsa ${{ github.ref_name }}"

@@ -56,6 +56,7 @@ pub async fn stage_restore(
     state: State<'_, AppState>,
     path: String,
 ) -> CommandResult<backup::BackupInfo> {
+    state.require_unlocked()?;
     Ok(backup::stage_restore(&state.data_dir, &PathBuf::from(path)).await?)
 }
 

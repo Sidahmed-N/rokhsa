@@ -34,6 +34,9 @@ import CashFlowPage from "@/features/reports/CashFlowPage";
 import ReceivablesPage from "@/features/reports/ReceivablesPage";
 import BackupPage from "@/features/backup/BackupPage";
 import UpdateBanner from "@/features/updates/UpdateBanner";
+import { ActivationScreen, ReadOnlyBanner } from "@/features/license/Activation";
+import { licenseStatus, type LicenseStatus } from "@/lib/license";
+import { isDesktop } from "@/lib/tauri";
 
 /**
  * Whether the rail is collapsed, remembered per device.
@@ -107,6 +110,23 @@ export default function App() {
   // on top of the first-launch tour, which walks through these same pages.
   const pageTour = pageTourFor(useLocation().pathname);
 
+  // The one-code lock. Asked for before anything else, the welcome included:
+  // the owner types it while installing, before the school sees the app.
+  // In a browser (no Rust behind it) there is nothing to lock.
+  const [license, setLicense] = useState<LicenseStatus | null>(
+    isDesktop() ? null : { required: false, unlocked: true },
+  );
+  const [readOnly, setReadOnly] = useState(false);
+  useEffect(() => {
+    if (!isDesktop()) return;
+    licenseStatus()
+      .then(setLicense)
+      // Unknown is treated as locked: Rust refuses writes either way, and
+      // the screen then says why instead of failing on every save.
+      .catch(() => setLicense({ required: true, unlocked: false }));
+  }, []);
+  const locked = license !== null && license.required && !license.unlocked;
+
   useEffect(() => {
     try {
       localStorage.setItem(RAIL_KEY, collapsed ? "1" : "0");
@@ -137,6 +157,16 @@ export default function App() {
       items: [{ to: "/backup", labelKey: "nav.backup", Icon: HardDrive }],
     },
   ] as const;
+
+  if (license === null) return null;
+  if (locked && !readOnly) {
+    return (
+      <ActivationScreen
+        onUnlocked={() => setLicense({ required: true, unlocked: true })}
+        onReadOnly={() => setReadOnly(true)}
+      />
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-rail">
@@ -296,6 +326,7 @@ export default function App() {
             form is still max-w-3xl, because a name field 1900px wide is not
             an improvement. The shell fills the window; the page decides. */}
         <main className="w-full px-8 py-7">
+          {locked && <ReadOnlyBanner onUnlock={() => setReadOnly(false)} />}
           <UpdateBanner />
           <Routes>
             <Route path="/" element={<HomePage />} />

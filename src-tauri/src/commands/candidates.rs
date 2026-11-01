@@ -47,6 +47,7 @@ pub async fn create_candidate(
     state: State<'_, AppState>,
     input: CandidateInput,
 ) -> CommandResult<Candidate> {
+    state.require_unlocked()?;
     Ok(repo::create(&state.pool, &input).await?)
 }
 
@@ -56,11 +57,13 @@ pub async fn update_candidate(
     id: i64,
     input: CandidateInput,
 ) -> CommandResult<Candidate> {
+    state.require_unlocked()?;
     Ok(repo::update(&state.pool, id, &input).await?)
 }
 
 #[tauri::command]
 pub async fn delete_candidate(state: State<'_, AppState>, id: i64) -> CommandResult<()> {
+    state.require_unlocked()?;
     Ok(repo::soft_delete(&state.pool, id).await?)
 }
 
