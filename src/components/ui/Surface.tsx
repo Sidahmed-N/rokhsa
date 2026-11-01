@@ -14,9 +14,12 @@ export function Card({
   flush = false,
   tone,
   className,
+  tourId,
 }: {
   children: ReactNode;
   flush?: boolean | undefined;
+  /** Marks it for a page tour (src/features/onboarding). */
+  tourId?: string | undefined;
   /** Colours the border only — for a row that needs to stand out in a list. */
   tone?: "brand" | "ok" | "warn" | "owed" | undefined;
   className?: string | undefined;
@@ -34,6 +37,7 @@ export function Card({
 
   return (
     <section
+      data-tour={tourId}
       className={[
         "rounded-lg border bg-surface shadow-card",
         border,
@@ -90,14 +94,20 @@ export function Hero({
   children,
   footer,
   action,
+  tourId,
 }: {
   label: string;
   children: ReactNode;
+  /** Marks it for a page tour (src/features/onboarding). */
+  tourId?: string | undefined;
   footer?: ReactNode | undefined;
   action?: ReactNode | undefined;
 }) {
   return (
-    <section className="relative overflow-hidden rounded-xl bg-ink p-5 text-white shadow-raised">
+    <section
+      data-tour={tourId}
+      className="relative overflow-hidden rounded-xl bg-ink p-5 text-white shadow-raised"
+    >
       {/* A single soft highlight so the dark panel is not a flat rectangle. */}
       <span
         aria-hidden="true"

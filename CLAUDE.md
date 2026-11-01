@@ -428,6 +428,12 @@ npm run desktop        # tauri dev - builds Rust and launches the app window
 npm run desktop:build  # production build + NSIS installer
 ```
 
+To see an **empty install** without touching the real data, start a debug build with
+`$env:ROKHSA_DATA_DIR = 'C:\Users\<you>\AppData\Local\Temp\rk-empty'` (keep the path short:
+SQLite cannot open a file under a very long one). It is compiled out of release builds. Do not
+rename the real data folder instead: Windows holds files in it open, and a rename there once
+moved only part of it.
+
 ### Toolchain
 Rust 1.99.1 and Visual Studio Build Tools 2022 (MSVC 14.44) are installed.
 Cargo lives at `%USERPROFILE%\.cargo\bin`.
@@ -461,6 +467,14 @@ seven spotlight steps on the sidebar items (`data-tour` attributes in `App.tsx`)
 sidebar, never buttons inside pages, because a page button may not exist on an empty install.
 **Renaming, moving or removing a sidebar item means updating `STEPS`**, or a step highlights
 nothing. Keep it short — the owner asked for short texts, and a long tour is skipped.
+
+The four daily pages (Accueil, Calendrier, Candidats, Examens) also explain themselves the
+first time each is opened: `PAGE_STEPS` in the same file, two to four steps, pointing at
+`data-tour` marks inside the page (`tourId` on `Card`/`Hero`). Those parts may not exist — no
+overdue sessions, no sitting yet — so a step whose part is not on screen is left out and shown on
+the first visit after it appears (seen steps are remembered per step, in `tariqi.tour.<page>`;
+on an empty install Examens has only its "new sitting" button). **Removing or renaming a marked part means
+updating `PAGE_STEPS`.** Replaying "Visite guidée" resets the page tours too.
 
 ### Drag and drop needs `dragDropEnabled: false`
 Tauri's window takes OS drag-and-drop for itself by default (to receive dropped files), and

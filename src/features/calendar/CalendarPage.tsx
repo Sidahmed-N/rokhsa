@@ -67,6 +67,7 @@ export default function CalendarPage() {
   return (
     <div>
       <PageHeader title={t("calendar.title")}>
+        <div data-tour="calendar-views">
         <Segmented<Tab>
           value={tab}
           onChange={setTab}
@@ -89,6 +90,7 @@ export default function CalendarPage() {
             },
           ]}
         />
+        </div>
       </PageHeader>
 
       {tab === "day" ? (

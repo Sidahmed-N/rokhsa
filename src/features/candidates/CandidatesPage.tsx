@@ -111,6 +111,7 @@ export default function CandidatesPage() {
         actions={
           <Button
             variant="primary"
+            data-tour="candidates-new"
             icon={<Plus className="size-4" aria-hidden="true" />}
             onClick={newCandidate}
           >
@@ -118,6 +119,7 @@ export default function CandidatesPage() {
           </Button>
         }
       >
+        <div data-tour="candidates-views">
         <Segmented<View>
           value={view}
           onChange={setView}
@@ -135,6 +137,7 @@ export default function CandidatesPage() {
             },
           ]}
         />
+        </div>
       </PageHeader>
 
       {view === "board" && <ProgressBoard />}
@@ -142,7 +145,7 @@ export default function CandidatesPage() {
       {view === "list" && (
       <>
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <div className="relative w-full max-w-md">
+        <div className="relative w-full max-w-md" data-tour="candidates-search">
           <Search
             className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-faint"
             aria-hidden="true"

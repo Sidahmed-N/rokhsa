@@ -45,6 +45,15 @@ pub fn run() {
             // directory. Keeping it out of Program Files is what lets the
             // NSIS installer run without admin rights on a school PC.
             let data_dir = app.path().app_data_dir()?;
+            // A debug build may be pointed at another folder, to look at an
+            // empty install without moving the real data aside (Windows holds
+            // the folder open, and a rename there half-moved it once).
+            // Compiled out of release builds: a school's copy cannot use it.
+            #[cfg(debug_assertions)]
+            let data_dir = std::env::var_os("ROKHSA_DATA_DIR")
+                .map(std::path::PathBuf::from)
+                .unwrap_or(data_dir);
+            std::fs::create_dir_all(&data_dir)?;
             let db_path = data_dir.join("tariqi.db");
 
             // A staged restore is swapped in HERE, before anything opens the

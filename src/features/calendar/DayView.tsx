@@ -143,6 +143,7 @@ export default function DayView({
 
         <Button
           variant="primary"
+          data-tour="calendar-book"
           icon={<Plus className="size-4" aria-hidden="true" />}
           onClick={() => onBook(date)}
         >
@@ -173,7 +174,7 @@ export default function DayView({
         />
       )}
 
-      <div className="grid gap-2.5">
+      <div className="grid gap-2.5" data-tour="calendar-day">
         {rows.map((row) => {
           const settled = row.status !== "planned";
 

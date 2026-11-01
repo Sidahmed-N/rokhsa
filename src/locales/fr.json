@@ -467,6 +467,35 @@
       "money": "Encaissez les versements, voyez qui doit quoi, et notez les dépenses.",
       "backup": "Une fois par semaine, faites une copie sur clé USB.",
       "help": "Ce bouton relance cette visite quand vous voulez."
+    },
+    "page": {
+      "home": {
+        "owed": "Ce que tous vos candidats doivent encore à l’école.",
+        "today": "Les séances prévues aujourd’hui.",
+        "chase": "Ceux qui n’ont rien payé depuis longtemps : à appeler en premier.",
+        "overdue": "Des séances passées jamais pointées. Marquez-les Fait ou Absent pour que les heures restent justes."
+      },
+      "calendar": {
+        "viewsTitle": "Jour, semaine, mois",
+        "views": "Jour : la liste des séances à pointer. Semaine et mois : la vue d’ensemble, où l’on déplace une séance en la glissant.",
+        "book": "Réservez une séance, pour un candidat ou pour un groupe.",
+        "dayTitle": "Pointer les séances",
+        "day": "Après chaque séance : Fait, Absent ou Annulé. Les heures du candidat se comptent toutes seules."
+      },
+      "candidates": {
+        "new": "Inscrivez un nouveau candidat. Seul le nom est obligatoire.",
+        "searchTitle": "Recherche",
+        "search": "Retrouvez un candidat par son nom, son téléphone ou son NIN.",
+        "viewsTitle": "Liste ou tableau",
+        "views": "Le tableau montre où en est chacun. Glissez une carte pour noter un résultat d’examen."
+      },
+      "exams": {
+        "new": "Créez une session d’examen : l’épreuve, la date et le lieu.",
+        "sittingsTitle": "Les sessions",
+        "sittings": "Cliquez sur une session pour voir ses candidats.",
+        "entriesTitle": "Candidats et résultats",
+        "entries": "Ajoutez les candidats présentés. Le jour de l’examen, notez Admis, Ajourné ou Absent."
+      }
     }
   }
 }

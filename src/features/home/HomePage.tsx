@@ -95,8 +95,10 @@ function Panel({
   count,
   to,
   linkLabel,
+  tourId,
   children,
 }: {
+  tourId?: string | undefined;
   title: string;
   count: number;
   to: string;
@@ -104,7 +106,7 @@ function Panel({
   children: React.ReactNode;
 }) {
   return (
-    <Card flush className="flex flex-col">
+    <Card flush tourId={tourId} className="flex flex-col">
       <header className="flex items-center gap-2 border-b border-line px-4 py-2.5">
         <h2 className="text-sm font-semibold text-ink">{title}</h2>
         <span className="rounded-full bg-sunken px-2 py-0.5 text-xs font-medium text-muted">
@@ -210,6 +212,7 @@ export default function HomePage() {
       {/* The money owed is what an owner walks in worrying about, so it stops
           being a peer of the other three and becomes the screen's hero. */}
       <Hero
+        tourId="home-owed"
         label={t("receivables.totalOwed")}
         footer={t("home.owingCount", { n: receivables?.enrollmentsOwing ?? 0 })}
         action={
@@ -253,6 +256,7 @@ export default function HomePage() {
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         {/* Who is coming in */}
         <Panel
+          tourId="home-today"
           title={t("home.todayTitle")}
           count={plannedToday.length}
           to="/calendar"
@@ -318,6 +322,7 @@ export default function HomePage() {
 
         {/* Who to call */}
         <Panel
+          tourId="home-chase"
           title={t("home.chaseTitle")}
           count={receivables?.enrollmentsOwing ?? 0}
           to="/receivables"
@@ -385,7 +390,7 @@ export default function HomePage() {
           long. overflow-hidden because Card rounds its corners but does not
           clip, so the filled header painted past them. */}
       {overdue.length > 0 && (
-        <div className="mt-4">
+        <div className="mt-4" data-tour="home-overdue">
           <Card flush tone="warn" className="overflow-hidden">
             <header className="flex items-center gap-2 border-b border-line bg-warn-soft px-4 py-2.5">
               <AlertTriangle className="size-4 shrink-0 text-warn" aria-hidden="true" />

@@ -137,6 +137,7 @@ export default function ExamsPage() {
         actions={
           <Button
             variant="primary"
+            data-tour="exams-new"
             icon={<Plus className="size-4" aria-hidden="true" />}
             onClick={() => setCreating(true)}
           >
@@ -165,7 +166,7 @@ export default function ExamsPage() {
       ) : (
         <div className="grid gap-4 lg:grid-cols-[18rem_1fr]">
           {/* The sittings themselves */}
-          <div className="h-fit">
+          <div className="h-fit" data-tour="exams-sittings">
           <Card flush className="overflow-hidden">
             <ul className="divide-y divide-line">
               {sessionPage.map((s) => {
@@ -208,7 +209,7 @@ export default function ExamsPage() {
 
           {/* Who is in the selected one */}
           {sitting && (
-            <Card flush>
+            <Card flush tourId="exams-entries">
               <header className="flex flex-wrap items-center gap-3 border-b border-line px-4 py-3">
                 <h2 className="text-sm font-semibold text-ink">
                   {t(`lessons.kind_${sitting.kind}`)}

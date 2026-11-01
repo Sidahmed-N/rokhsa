@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { NavLink, Navigate, Route, Routes } from "react-router-dom";
+import { NavLink, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   CalendarDays,
@@ -19,7 +19,13 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 import Logo from "@/components/Logo";
 import { currentLanguage, setLanguage, type Language } from "@/i18n";
 import CalendarPage from "@/features/calendar/CalendarPage";
-import Onboarding, { onboardingDone, type OnboardingPhase } from "@/features/onboarding/Onboarding";
+import Onboarding, {
+  PageTour,
+  onboardingDone,
+  pageTourFor,
+  resetPageTours,
+  type OnboardingPhase,
+} from "@/features/onboarding/Onboarding";
 import CandidateDetailPage from "@/features/candidates/CandidateDetailPage";
 import CandidatesPage from "@/features/candidates/CandidatesPage";
 import ExamsPage from "@/features/exams/ExamsPage";
@@ -96,6 +102,9 @@ export default function App() {
   const [onboarding, setOnboarding] = useState<OnboardingPhase>(() =>
     onboardingDone() ? null : "welcome",
   );
+  // Each daily page explains itself the first time it is opened — but never
+  // on top of the first-launch tour, which walks through these same pages.
+  const pageTour = pageTourFor(useLocation().pathname);
 
   useEffect(() => {
     try {
@@ -246,7 +255,11 @@ export default function App() {
           <button
             type="button"
             data-tour="help"
-            onClick={() => setOnboarding("tour")}
+            onClick={() => {
+              // A replay brings the page tours back as well.
+              resetPageTours();
+              setOnboarding("tour");
+            }}
             title={collapsed ? t("tour.replay") : undefined}
             aria-label={t("tour.replay")}
             className={[
@@ -297,6 +310,7 @@ export default function App() {
       </div>
 
       <Onboarding phase={onboarding} onPhase={setOnboarding} />
+      {onboarding === null && pageTour && <PageTour key={pageTour} page={pageTour} />}
     </div>
   );
 }
