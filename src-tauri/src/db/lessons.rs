@@ -99,6 +99,9 @@ pub struct DayEntry {
     /// Rows sharing one of these were booked together and are one session on
     /// the calendar. NULL means this candidate is on their own.
     pub session_id: Option<i64>,
+    /// Booked ahead (it has a scheduled day), as opposed to hours added after
+    /// the fact. Only a booked session can be taken back to planned.
+    pub booked: bool,
 }
 
 #[derive(Debug, Clone, Copy, Default, Serialize)]
@@ -212,7 +215,8 @@ const DAY_COLUMNS: &str = "l.id, COALESCE(l.scheduled_on, l.occurred_on) AS day,
                 l.enrollment_id, e.candidate_id,
                 c.last_name, c.first_name, c.phone,
                 e.category_code, l.kind, l.status, l.scheduled_time, l.minutes,
-                l.plan_note, l.notes, l.session_id";
+                l.plan_note, l.notes, l.session_id,
+                l.scheduled_on IS NOT NULL AS booked";
 
 const DAY_JOINS: &str = "FROM lessons l
          JOIN enrollments e ON e.id = l.enrollment_id
@@ -661,7 +665,14 @@ pub async fn set_not_held(
 /// record, corrected by an explicit edit.
 pub async fn reopen(pool: &SqlitePool, id: i64) -> Result<Lesson, AppError> {
     let lesson = get(pool, id).await?;
-    if lesson.status != "missed" && lesson.status != "cancelled" {
+    // A booked session ticked "done" by mistake comes back too: Fait sits
+    // beside Absent, and a wrong tap credited hours with no way to take them
+    // back. Nothing about money is stored when a session is done — balances
+    // and extra hours are recomputed from the rows — so undoing it is safe.
+    // Hours added after the fact ("Ajouter des heures") have no booking to
+    // return to; those are deleted instead.
+    let booked_done = lesson.status == "done" && lesson.scheduled_on.is_some();
+    if lesson.status != "missed" && lesson.status != "cancelled" && !booked_done {
         return Err(AppError::validation("lessons.error.notReopenable"));
     }
 
@@ -1367,8 +1378,32 @@ mod tests {
         complete(&pool, s.id, &CompleteInput::default()).await.unwrap();
         assert_eq!(road_minutes(&pool, e).await, 60);
 
-        // A session already done is a record: not reopened by this.
-        assert!(reopen(&pool, s.id).await.is_err());
+        // A wrong "Fait" comes back too, and its hours stop counting.
+        assert_eq!(reopen(&pool, s.id).await.unwrap().status, "planned");
+        assert_eq!(road_minutes(&pool, e).await, 0);
+    }
+
+    /// Hours added after the fact were never booked: there is no planned
+    /// session to go back to, so they are deleted rather than reopened.
+    #[tokio::test]
+    async fn added_hours_are_not_reopened() {
+        let pool = test_pool().await;
+        let e = setup(&pool).await;
+        let added = create(
+            &pool,
+            e,
+            &LessonInput {
+                kind: "road".into(),
+                occurred_on: today(),
+                minutes: 60,
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+
+        assert!(reopen(&pool, added.id).await.is_err());
+        assert_eq!(road_minutes(&pool, e).await, 60);
     }
 
     /// Undoing a group's cancellation brings back exactly who it cancelled.

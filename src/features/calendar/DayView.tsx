@@ -247,6 +247,20 @@ export default function DayView({
                         owner wants to see. */}
                     {/* Absent and Annulé sit one click from Fait, so both can
                         be taken back: the session is planned again. */}
+                    {/* And so can Fait, for a booked session: it sits beside
+                        Absent, and a wrong tap credited the hours. */}
+                    {row.status === "done" && row.booked && (
+                      <div className="ms-auto flex flex-wrap gap-1.5">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          icon={<Undo2 className="size-3.5" aria-hidden="true" />}
+                          onClick={() => void run(() => reopenLesson(row.id))}
+                        >
+                          {t("calendar.reopen")}
+                        </Button>
+                      </div>
+                    )}
                     {(row.status === "missed" || row.status === "cancelled") && (
                       <div className="ms-auto flex flex-wrap gap-1.5">
                         {row.status === "missed" && (

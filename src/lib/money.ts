@@ -26,7 +26,10 @@ export function assertCentimes(value: unknown, label = "amount"): Centimes {
 }
 
 /**
- * Format centimes for display, e.g. 1250000 -> "12 500,00 DA".
+ * Format centimes for display, e.g. 1250000 -> "12 500 DA", 1250050 -> "12 500,50 DA".
+ *
+ * Centimes are shown only when there are some. No school charges them, and a
+ * ",00" on one page beside "12 500 DA" on the next read as two different sums.
  *
  * Uses a non-breaking thin space as the thousands separator and a comma as the
  * decimal mark, which is the French/Algerian convention. Digits stay Western
@@ -44,7 +47,7 @@ export function formatDZD(
   const cents = abs % CENTIMES_PER_DINAR;
 
   const grouped = String(dinars).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-  const body = `${grouped},${String(cents).padStart(2, "0")}`;
+  const body = cents === 0 ? grouped : `${grouped},${String(cents).padStart(2, "0")}`;
   const signed = negative ? `-${body}` : body;
 
   if (!withSuffix) return signed;

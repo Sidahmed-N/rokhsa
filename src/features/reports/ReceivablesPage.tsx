@@ -10,12 +10,14 @@ import { Pager, usePaged } from "@/components/ui/Pager";
 import { Card, EmptyState, ErrorNote, PageHeader } from "@/components/ui/Surface";
 import { isAppError } from "@/lib/candidates";
 import { personName } from "@/lib/names";
-import { getReceivables, type Receivables, type ReceivableRow } from "@/lib/reports";
+import {
+  getReceivables,
+  STALE_DAYS,
+  type Receivables,
+  type ReceivableRow,
+} from "@/lib/reports";
 import { isDesktop } from "@/lib/tauri";
 import { TakePaymentDialog } from "@/features/training/TrainingDialogs";
-
-/** Rows quieter than this are worth chasing. */
-const STALE_DAYS = 30;
 
 /** Rows per page. Same as the candidate list, so the two feel alike. */
 const PAGE_SIZE = 50;

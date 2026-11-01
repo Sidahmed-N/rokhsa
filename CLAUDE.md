@@ -63,6 +63,12 @@ These are not style preferences. Breaking them causes data loss, legal problems,
   stored a 12 000 DA payment as 12 DA. An unreadable amount is an error shown to the user,
   never `?? 0`: that once made enrolments free by accident. `npm run check` runs
   `scripts/test-money.mjs`; add a case there for any new way schools write amounts.
+  An unreadable amount says so (`common.amountInvalid`) — telling someone who typed "15OOO"
+  that the amount "must be above zero" sent them looking for the wrong mistake.
+- **Amounts display in whole dinars** ("35 000 DA"); `formatDZD` adds centimes only when there
+  are some. A ",00" on the candidate's file beside "35 000 DA" on Accueil read as two sums.
+- **Anything that cannot be taken back asks first**: reversing a payment (the reversal row is
+  permanent) and deleting an expense. A payment already reversed shows no reverse button.
 - **Hours "used" are taught hours only** (`status = 'done'`). Any query that counts minutes
   toward the allowance must filter on it, as `lessons::minutes_by_kind` does — receivables
   once counted booked and missed sessions and charged extra hours the file said were not owed.
@@ -179,6 +185,9 @@ These are not style preferences. Breaking them causes data loss, legal problems,
   Never move, cancel or re-time one row of a group on its own.
 - **Attendance is per candidate and already exists**: `lessons.status` is `done` or
   `missed` for *that person*, so one absentee in a group of three needs no new concept.
+  Every mark can be taken back (`lessons::reopen`): Absent, Annulé, and Fait on a *booked*
+  session — Fait sits beside Absent, and nothing about money is stored when a session is done.
+  Hours added after the fact have no booking to return to; they are deleted instead.
 - `schedule_many` is the ONLY insert path for a booking; `schedule` is a wrapper over it.
   A second insert path is a second chance for a group's rows to disagree.
 
@@ -475,6 +484,15 @@ overdue sessions, no sitting yet — so a step whose part is not on screen is le
 the first visit after it appears (seen steps are remembered per step, in `tariqi.tour.<page>`;
 on an empty install Examens has only its "new sitting" button). **Removing or renaming a marked part means
 updating `PAGE_STEPS`.** Replaying "Visite guidée" resets the page tours too.
+
+### The WebView runs in French (`--lang=fr`)
+The browser's own date and time boxes take their format from the WebView's language, which is
+Windows' language unless told otherwise. On an English Windows they showed `mm/dd/yyyy` and
+`09:00 AM` in a French app. `tauri.conf.json` passes `--lang=fr` in `additionalBrowserArgs`, so
+every PC shows `jj/mm/aaaa` and 24 h. Setting that field **replaces** wry's defaults, so they are
+repeated there (`--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection`) — keep them.
+The `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS` environment variable overrides the whole field; to
+drive a debug build over `--remote-debugging-port`, pass the same switches in it as well.
 
 ### Drag and drop needs `dragDropEnabled: false`
 Tauri's window takes OS drag-and-drop for itself by default (to receive dropped files), and

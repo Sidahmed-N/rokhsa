@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import FreeText from "@/components/FreeText";
 import { SelectField, TextField } from "@/components/FormField";
 import Modal from "@/components/Modal";
 import { Pager, usePaged } from "@/components/ui/Pager";
@@ -91,6 +92,10 @@ function AddExpenseDialog({
 
   async function save() {
     const parsed = parseDZD(amount);
+    if (parsed === null && amount.trim() !== "") {
+      setError(t("common.amountInvalid"));
+      return;
+    }
     if (parsed === null || parsed <= 0) {
       setError(t("expenses.error.amountPositive"));
       return;
@@ -184,6 +189,9 @@ export default function CashFlowPage() {
   );
   const [categories, setCategories] = useState<ExpenseCategory[]>([]);
   const [adding, setAdding] = useState(false);
+  // Asked first: "Supprimer" sits at the end of every row, and a removed
+  // expense quietly raises the month's difference.
+  const [removing, setRemoving] = useState<Expense | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -277,14 +285,16 @@ export default function CashFlowPage() {
           <p className="text-xs uppercase tracking-wide text-muted">{t("cashFlow.in")}</p>
           <Money centimes={flow?.inCentimes ?? 0} className="text-2xl font-bold text-ok" />
           <p className="mt-0.5 text-xs text-muted">
-            <Num>{flow?.paymentCount ?? 0}</Num> {t("cashFlow.payments")}
+            <Num>{flow?.paymentCount ?? 0}</Num>{" "}
+            {t("cashFlow.payments", { count: flow?.paymentCount ?? 0 })}
           </p>
         </div>
         <div>
           <p className="text-xs uppercase tracking-wide text-muted">{t("cashFlow.out")}</p>
           <Money centimes={flow?.outCentimes ?? 0} className="text-2xl font-bold text-owed" />
           <p className="mt-0.5 text-xs text-muted">
-            <Num>{flow?.expenseCount ?? 0}</Num> {t("cashFlow.expenses")}
+            <Num>{flow?.expenseCount ?? 0}</Num>{" "}
+            {t("cashFlow.expenses", { count: flow?.expenseCount ?? 0 })}
           </p>
         </div>
         <div>
@@ -348,9 +358,15 @@ export default function CashFlowPage() {
                 </td>
                 <td className="px-4 py-2">{categoryName(expense.categoryCode)}</td>
                 <td className="px-4 py-2">
-                  {expense.description || <span className="text-muted">—</span>}
+                  {expense.description ? (
+                    <FreeText as="span">{expense.description}</FreeText>
+                  ) : (
+                    !expense.supplier && <span className="text-muted">—</span>
+                  )}
                   {expense.supplier && (
-                    <span className="ms-2 text-xs text-muted">{expense.supplier}</span>
+                    <span className="ms-2 text-xs text-muted">
+                      <FreeText as="span">{expense.supplier}</FreeText>
+                    </span>
                   )}
                 </td>
                 <td className="px-4 py-2 text-end">
@@ -359,15 +375,7 @@ export default function CashFlowPage() {
                 <td className="px-4 py-2 text-end">
                   <button
                     type="button"
-                    onClick={() =>
-                      void deleteExpense(expense.id)
-                        .then(refresh)
-                        .catch((e: unknown) =>
-                          setError(
-                            isAppError(e) ? t(e.code, { defaultValue: e.message }) : String(e),
-                          ),
-                        )
-                    }
+                    onClick={() => setRemoving(expense)}
                     className="text-xs text-owed hover:underline"
                   >
                     {t("common.delete")}
@@ -379,6 +387,28 @@ export default function CashFlowPage() {
         </table>
       </div>
       <Pager {...expensePager} />
+
+      {removing && (
+        <Modal
+          title={t("expenses.deleteTitle")}
+          submitLabel={t("common.delete")}
+          onClose={() => setRemoving(null)}
+          onSubmit={() => {
+            const target = removing;
+            setRemoving(null);
+            void deleteExpense(target.id)
+              .then(refresh)
+              .catch((e: unknown) =>
+                setError(isAppError(e) ? t(e.code, { defaultValue: e.message }) : String(e)),
+              );
+          }}
+        >
+          <p className="text-sm text-ink-soft">
+            <Num>{removing.spentOn}</Num> · {categoryName(removing.categoryCode)} ·{" "}
+            <Money centimes={removing.amountCentimes} />
+          </p>
+        </Modal>
+      )}
 
       {adding && (
         <AddExpenseDialog

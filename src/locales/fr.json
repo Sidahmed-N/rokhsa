@@ -72,7 +72,9 @@
     "out": "Dépensé",
     "net": "Différence",
     "payments": "versements",
+    "payments_one": "versement",
     "expenses": "dépenses",
+    "expenses_one": "dépense",
     "byMethod": "Encaissements par mode de paiement",
     "byCategory": "Dépenses par catégorie",
     "noPayments": "Aucun encaissement sur la période.",
@@ -81,6 +83,7 @@
   "expenses": {
     "title": "Dépenses",
     "add": "Ajouter une dépense",
+    "deleteTitle": "Supprimer cette dépense ?",
     "addTitle": "Nouvelle dépense",
     "category": "Catégorie",
     "amount": "Montant (DA)",
@@ -141,6 +144,7 @@
     "version": "version",
     "todayTitle": "Aujourd'hui",
     "chaseTitle": "À relancer",
+    "chaseNone": "Personne à relancer pour l’instant : aucun reste à payer n’attend depuis plus de {{n}} jours.",
     "overdueTitle": "Séances non pointées",
     "overdueHint": "Leur jour est passé et personne n’a dit ce qui s’est passé.",
     "overdueMore": "et {{n}} autres."
@@ -209,7 +213,7 @@
   "enrollments": {
     "new": "Nouvelle inscription",
     "newTitle": "Nouvelle inscription",
-    "none": "Ce candidat n'est inscrit à aucune catégorie.",
+    "none": "Ce candidat n’a pas encore d’inscription.",
     "agreedPrice": "Prix convenu (DA)",
     "priceHint": "Ce prix est figé pour ce candidat. Modifier le tarif plus tard ne le changera pas.",
     "theoryTarget": "Heures de code",
@@ -270,7 +274,7 @@
       "noCandidates": "Choisissez au moins un candidat.",
       "duplicateCandidate": "Ce candidat est déjà dans cette séance.",
       "notYet": "Cette séance n’a pas encore eu lieu : elle se marque le jour même ou après.",
-      "notReopenable": "Seule une séance marquée absente ou annulée peut être rétablie."
+      "notReopenable": "Seule une séance programmée et déjà pointée peut être rétablie. Des heures ajoutées après coup se suppriment."
     }
   },
   "payments": {
@@ -288,6 +292,10 @@
     "reversal": "annulation",
     "reverse": "Annuler",
     "reversedByUser": "Annulé depuis l'application",
+    "reverseTitle": "Annuler ce versement ?",
+    "reverseBody": "Une ligne d’annulation sera ajoutée et le reste à payer remontera d’autant. Le versement d’origine reste visible : cela ne peut pas être défait.",
+    "reverseConfirm": "Annuler le versement",
+    "reverseKeep": "Ne rien changer",
     "appendOnlyNote": "Un versement ne peut être ni modifié ni supprimé : une erreur est corrigée par une annulation, qui garde les deux lignes.",
     "error": {
       "amountPositive": "Le montant doit être supérieur à zéro.",
@@ -444,11 +452,11 @@
     }
   },
   "fees": {
-    "amount": "Montant",
+    "amount": "Frais d’examen (DA)",
     "error": {
       "negative": "Le montant ne peut pas être négatif."
     },
-    "entryHint": "Laissez vide s’il ne paie rien cette fois."
+    "entryHint": "Ajouté à ce qu’il doit à l’école. Laissez vide s’il n’y a rien à payer cette fois."
   },
   "pager": {
     "of": "sur"

@@ -465,6 +465,13 @@ export function TakePaymentDialog({
   const method = methods.find((m) => m.code === methodCode);
 
   async function save() {
+    // An empty box is "nothing typed"; letters in it are a typo, and telling
+    // a secretary who typed "15OOO" that it must be above zero sends her
+    // looking for the wrong mistake.
+    if (parsed === null && amount.trim() !== "") {
+      setError(t("common.amountInvalid"));
+      return;
+    }
     if (parsed === null || parsed <= 0) {
       setError(t("payments.error.amountPositive"));
       return;

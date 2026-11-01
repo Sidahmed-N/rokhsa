@@ -79,6 +79,13 @@ export interface ExpenseInput {
 
 export const getReceivables = () => call<Receivables>("get_receivables");
 
+/**
+ * A balance quiet for this many days is worth a call: no payment since, or
+ * since enrolment if none. Shared by Créances' filter and Accueil's "À
+ * relancer", which listed people who had enrolled that same morning.
+ */
+export const STALE_DAYS = 30;
+
 export const getCashFlow = (from: string, to: string) =>
   call<CashFlow>("get_cash_flow", { from, to });
 

@@ -669,3 +669,17 @@ staff accounts and permissions.
 **What that costs in the meantime:** a price or discount changed before then
 leaves no before/after trace, so "what was this candidate's price before?"
 cannot be answered from the app.
+
+---
+
+## Q23. Hours on the enrolment form — **OPEN 2026-11-01** 🔴
+
+**Found in the test drive:** "Nouvelle inscription" still asks for code hours,
+driving hours and a price per extra hour. Since the owner said the school does
+not sell hours (it trains until the instructor judges the candidate ready), the
+hour bars were removed from the candidate's file — so these three boxes are
+filled in and then never shown anywhere.
+
+**The question:** remove the three boxes (the price alone is enough), or keep
+them for schools that do sell a fixed number of hours and charge extra ones?
+Removing them is safe: left empty, no extra hour is ever charged.

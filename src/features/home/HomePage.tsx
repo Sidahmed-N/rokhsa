@@ -24,6 +24,7 @@ import { personName } from "@/lib/names";
 import {
   getCashFlow,
   getReceivables,
+  STALE_DAYS,
   thisMonth,
   type CashFlow,
   type ReceivableRow,
@@ -190,11 +191,14 @@ export default function HomePage() {
     }
   }
 
-  const plannedToday = today.filter((r) => r.status === "planned");
-
   // Worst first: the biggest balance that has been quiet longest is the call
-  // worth making before the others.
-  const chase: ReceivableRow[] = [...(receivables?.rows ?? [])]
+  // worth making before the others. Only the quiet ones: every candidate in
+  // training owes something, and a list of all of them — including someone
+  // who enrolled this morning — is not a list of calls to make.
+  const stale = (receivables?.rows ?? []).filter(
+    (r) => (r.daysSincePayment ?? 0) >= STALE_DAYS,
+  );
+  const chase: ReceivableRow[] = [...stale]
     .sort(
       (a, b) =>
         (b.daysSincePayment ?? Number.MAX_SAFE_INTEGER) -
@@ -258,7 +262,7 @@ export default function HomePage() {
         <Panel
           tourId="home-today"
           title={t("home.todayTitle")}
-          count={plannedToday.length}
+          count={today.length}
           to="/calendar"
           linkLabel={t("nav.calendar")}
         >
@@ -324,13 +328,15 @@ export default function HomePage() {
         <Panel
           tourId="home-chase"
           title={t("home.chaseTitle")}
-          count={receivables?.enrollmentsOwing ?? 0}
+          count={stale.length}
           to="/receivables"
           linkLabel={t("nav.receivables")}
         >
           {chase.length === 0 ? (
             <p className="px-4 py-8 text-center text-sm text-muted">
-              {t("receivables.nobodyOwes")}
+              {(receivables?.enrollmentsOwing ?? 0) > 0
+                ? t("home.chaseNone", { n: STALE_DAYS })
+                : t("receivables.nobodyOwes")}
             </p>
           ) : (
             <ul className="divide-y divide-line">

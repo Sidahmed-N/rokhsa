@@ -174,12 +174,18 @@ export default function CandidateDetailPage() {
     void refresh();
   }
 
+  // Asked first: the reversal row can never be taken back (money rows are
+  // append-only), and the button sits one row away from the next payment.
+  const [reversing, setReversing] = useState<Payment | null>(null);
+
   async function doReverse(payment: Payment) {
     const reason = t("payments.reversedByUser");
     try {
       await reversePayment(payment.id, reason);
+      setReversing(null);
       await refresh();
     } catch (raw: unknown) {
+      setReversing(null);
       setError(errorText(raw));
     }
   }
@@ -444,9 +450,12 @@ export default function CandidateDetailPage() {
                                         </Button>
                                       )}
 
-                                      {/* Absent and Annulé can be taken back. */}
+                                      {/* Absent and Annulé can be taken back,
+                                          and so can a booked session's Fait. */}
                                       {(lesson.status === "missed" ||
-                                        lesson.status === "cancelled") && (
+                                        lesson.status === "cancelled" ||
+                                        (lesson.status === "done" &&
+                                          lesson.scheduledOn !== null)) && (
                                         <Button
                                           size="sm"
                                           variant="ghost"
@@ -535,6 +544,11 @@ export default function CandidateDetailPage() {
                           <tbody>
                             {pagePayments.map((payment) => {
                               const isReversal = payment.reversesPaymentId !== null;
+                              // From every payment, not this page's: the
+                              // reversal may sit on another page of the list.
+                              const reversed = payments.some(
+                                (p) => p.reversesPaymentId === payment.id,
+                              );
                               return (
                                 <tr key={payment.id} className="group border-t border-line">
                                   <td className="py-2 text-ink-soft">
@@ -560,11 +574,11 @@ export default function CandidateDetailPage() {
                                   </td>
                                   <td className="py-2">
                                     <div className="flex items-center justify-end gap-1">
-                                      {!isReversal && (
+                                      {!isReversal && !reversed && (
                                         <IconButton
                                           aria-label={t("payments.reverse")}
                                           className="size-8 text-owed hover:bg-owed-soft"
-                                          onClick={() => void doReverse(payment)}
+                                          onClick={() => setReversing(payment)}
                                         >
                                           <Undo2 className="size-3.5" aria-hidden="true" />
                                         </IconButton>
@@ -625,6 +639,35 @@ export default function CandidateDetailPage() {
             void refresh();
           }}
         />
+      )}
+
+      {reversing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-6 backdrop-blur-[2px]">
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="w-full max-w-md rounded-lg border border-line bg-surface p-5 shadow-overlay"
+          >
+            <h2 className="text-base font-semibold tracking-tight text-ink">
+              {t("payments.reverseTitle")}
+            </h2>
+            <p className="mt-2 text-sm text-ink-soft">
+              <Num>{reversing.paidOn}</Num> · <Money centimes={reversing.amountCentimes} />
+            </p>
+            <p className="mt-2 text-xs text-muted">{t("payments.reverseBody")}</p>
+            <div className="mt-5 flex gap-2">
+              <Button
+                variant="primary"
+                className="bg-owed hover:bg-owed"
+                icon={<Undo2 className="size-4" aria-hidden="true" />}
+                onClick={() => void doReverse(reversing)}
+              >
+                {t("payments.reverseConfirm")}
+              </Button>
+              <Button onClick={() => setReversing(null)}>{t("payments.reverseKeep")}</Button>
+            </div>
+          </div>
+        </div>
       )}
 
       {payingFor && (

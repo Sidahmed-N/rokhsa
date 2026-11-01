@@ -115,6 +115,8 @@ export interface DayEntry {
    * value are one session on the calendar.
    */
   sessionId: number | null;
+  /** Booked ahead rather than added after the fact; only these can be reopened. */
+  booked: boolean;
 }
 
 export interface ScheduleInput {
