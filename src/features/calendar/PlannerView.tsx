@@ -213,6 +213,57 @@ export default function PlannerView({
     }
   }
 
+  /**
+   * The "+ 09:30" box on the slot a click would book, in the week.
+   *
+   * Clicking an empty slot books it, and nothing on the grid said so. The
+   * pointer is over an hour row that runs across the whole week, so CSS hover
+   * cannot pick out one slot; this finds the day column under the pointer and
+   * the half-hour row, and draws a box exactly there. Hidden over a session
+   * (a click there opens the day instead) and outside the grid.
+   */
+  const [hint, setHint] = useState<{
+    key: string;
+    start: number;
+    top: number;
+    width: number;
+    height: number;
+    time: string;
+  } | null>(null);
+
+  function trackHint(e: React.MouseEvent<HTMLDivElement>) {
+    if (view !== "week") return;
+    const box = e.currentTarget;
+    const under = document.elementFromPoint(e.clientX, e.clientY);
+    const lane = under?.closest<HTMLElement>("td.fc-timegrid-slot-lane");
+    const col = [
+      ...box.querySelectorAll<HTMLElement>(".fc-timegrid-col:not(.fc-timegrid-axis)"),
+    ].find((c) => {
+      const r = c.getBoundingClientRect();
+      return e.clientX >= r.left && e.clientX < r.right;
+    });
+    if (!lane || !col || under?.closest(".fc-event")) {
+      setHint(null);
+      return;
+    }
+    const b = box.getBoundingClientRect();
+    const c = col.getBoundingClientRect();
+    const l = lane.getBoundingClientRect();
+    // Measured from the box's inline start, so it lands right in Arabic too.
+    const rtl = getComputedStyle(box).direction === "rtl";
+    const time = (lane.dataset["time"] ?? "").slice(0, 5);
+    const next = {
+      key: `${col.dataset["date"] ?? ""}|${time}`,
+      start: (rtl ? b.right - c.right : c.left - b.left) - box.clientLeft,
+      top: l.top - b.top - box.clientTop,
+      width: c.width,
+      height: l.height,
+      time,
+    };
+    // Only re-render when the pointer reaches another slot.
+    setHint((current) => (current?.key === next.key ? current : next));
+  }
+
   function toggleKind(kind: string) {
     setKinds((current) =>
       current.includes(kind) ? current.filter((k) => k !== kind) : [...current, kind],
@@ -256,7 +307,26 @@ export default function PlannerView({
 
       {error && <ErrorNote>{error}</ErrorNote>}
 
-      <div className="tariqi-calendar rounded-lg border border-line bg-surface p-3 shadow-card">
+      <div
+        className="tariqi-calendar relative rounded-lg border border-line bg-surface p-3 shadow-card"
+        onMouseMove={trackHint}
+        onMouseLeave={() => setHint(null)}
+        onWheel={() => setHint(null)}
+      >
+        {hint && (
+          <div
+            aria-hidden="true"
+            className="fc-tariqi-ghost pointer-events-none absolute"
+            style={{
+              insetInlineStart: hint.start,
+              top: hint.top,
+              width: hint.width,
+              height: hint.height,
+            }}
+          >
+            <span className="num">+ {hint.time}</span>
+          </div>
+        )}
         <FullCalendar
           ref={calendar}
           plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
