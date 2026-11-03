@@ -308,7 +308,7 @@ Decided in `docs/03-STACK.md` (read it for the reasoning and the rejected altern
 - **Rust↔TS boundary**: Tauri commands with `tauri-specta` generating TypeScript types
 - **Printing**: HTML print layouts rendered by WebView2 — **not** a Rust PDF library
   (Rust PDF crates generally do not shape Arabic text correctly; the WebView does)
-- **Packaging**: NSIS installer, plus an offline WebView2 bootstrapper for older machines
+- **Packaging**: NSIS installer; the USB edition carries the offline WebView2 installer
 
 ### Architectural rule: the Rust layer owns the business
 
@@ -503,7 +503,13 @@ then `npm run release`. `scripts/release.mjs` runs the checks and tests, builds 
 installer here, writes `latest.json` and uploads all three to GitHub as a **draft** (with `gh`,
 signed in once by the owner). Schools see nothing until the owner publishes the draft on GitHub.
 `npm run release -- --dry` builds and checks without uploading. A school that is never online gets
-the same installer by USB: installing over the old version keeps its data.
+an installer by USB: installing over the old version keeps its data.
+
+**Two installers per release.** `-setup.exe` (~3 MB) is what the updater downloads; it fetches
+WebView2 from the internet if a PC lacks it. `-usb.exe` (~210 MB, `src-tauri/tauri.usb.conf.json`,
+also copied to the Desktop) carries the offline WebView2 installer, because a new school may have
+no internet and "lite" Windows copies sold locally can strip WebView2 out. Both install WebView2
+only when it is missing. Do not make the offline one the default: every update would then be 130 MB.
 
 ### The one-code lock (`src-tauri/src/license`)
 The owner installs every copy himself and types one code, known only to him, the first time the

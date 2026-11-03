@@ -5,6 +5,14 @@
 //   npm run release            build, check, upload a draft
 //   npm run release -- --dry   build and check only, upload nothing
 //
+// Two installers come out of it, and both install WebView2 only if the PC lacks it:
+//   Rokhsa_<v>_x64-setup.exe   ~3 MB. What installed copies download to update.
+//                              Fetches WebView2 from the internet when missing.
+//   Rokhsa_<v>_x64-usb.exe     ~210 MB. What goes on the USB stick for a new school.
+//                              Carries WebView2 inside, so it installs with no
+//                              internet (some "lite" Windows copies strip it out).
+//                              Also copied to the Desktop.
+//
 // Built here, not on GitHub, on purpose: the update signing key and the
 // unlock code's hash never leave the owner's PC.
 //
@@ -77,12 +85,7 @@ console.log(`\n▶ Checking ${tag}…`);
 run("npm", ["run", "check"]);
 run("cargo", ["test", "--lib"], { cwd: path.join(root, "src-tauri") });
 
-// 3. Build and sign the installer.
-console.log(`\n▶ Building ${tag}…`);
-run("npx", ["tauri", "build"], {
-  env: { ...process.env, TAURI_SIGNING_PRIVATE_KEY: key, TAURI_SIGNING_PRIVATE_KEY_PASSWORD: "" },
-});
-
+// 3. Build and sign the installers.
 // cargo's target dir may be redirected (src-tauri/.cargo/config.toml). Asked
 // from inside src-tauri: that config only applies there, and asked from the
 // root cargo answered the default folder, where no installer was.
@@ -100,6 +103,19 @@ try {
 const bundle = path.join(targetDir, "release", "bundle", "nsis");
 const installerName = `${conf.productName}_${version}_x64-setup.exe`;
 const installer = path.join(bundle, installerName);
+const usbName = `${conf.productName}_${version}_x64-usb.exe`;
+const usbInstaller = path.join(bundle, usbName);
+const signing = { ...process.env, TAURI_SIGNING_PRIVATE_KEY: key, TAURI_SIGNING_PRIVATE_KEY_PASSWORD: "" };
+
+// The USB one first, set aside under its own name: both builds write the same file.
+console.log(`\n▶ Building ${tag} for USB (WebView2 inside)…`);
+run("npx", ["tauri", "build", "--config", "src-tauri/tauri.usb.conf.json"], { env: signing });
+if (!fs.existsSync(installer)) fail(`USB installer missing in ${bundle}`);
+fs.renameSync(installer, usbInstaller);
+fs.rmSync(`${installer}.sig`, { force: true });
+
+console.log(`\n▶ Building ${tag} for updates…`);
+run("npx", ["tauri", "build"], { env: signing });
 const signatureFile = `${installer}.sig`;
 if (!fs.existsSync(installer) || !fs.existsSync(signatureFile))
   fail(`Installer or signature missing in ${bundle}`);
@@ -116,7 +132,14 @@ const latest = {
 };
 const latestFile = path.join(bundle, "latest.json");
 fs.writeFileSync(latestFile, JSON.stringify(latest, null, 2));
-console.log(`\n✓ Built ${installerName} (${(fs.statSync(installer).size / 1048576).toFixed(2)} MB), signed.`);
+const mb = (file) => `${(fs.statSync(file).size / 1048576).toFixed(2)} MB`;
+console.log(`\n✓ Built ${installerName} (${mb(installer)}), signed: for updates.`);
+console.log(`✓ Built ${usbName} (${mb(usbInstaller)}): for USB.`);
+const desktop = path.join(os.homedir(), "Desktop");
+if (fs.existsSync(desktop)) {
+  fs.copyFileSync(usbInstaller, path.join(desktop, usbName));
+  console.log(`  Copied to ${path.join(desktop, usbName)}`);
+}
 
 if (dry) {
   console.log(`\n(dry run) Nothing uploaded. Files in ${bundle}`);
@@ -133,7 +156,7 @@ gh(
     "--target", read("git", ["rev-parse", "HEAD"]),
     "--title", `Rokhsa ${version}`,
     "--notes", "Nouvelle version de Rokhsa.",
-    installer, signatureFile, latestFile,
+    installer, signatureFile, latestFile, usbInstaller,
   ],
   { stdio: "inherit" },
 );
