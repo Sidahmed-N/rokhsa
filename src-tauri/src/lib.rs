@@ -118,6 +118,7 @@ pub fn run() {
             commands::candidates::list_candidates,
             commands::candidates::get_candidate,
             commands::candidates::create_candidate,
+            commands::candidates::register_candidate,
             commands::candidates::update_candidate,
             commands::candidates::delete_candidate,
             commands::candidates::set_candidates_archived,

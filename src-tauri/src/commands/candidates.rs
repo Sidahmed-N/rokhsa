@@ -60,6 +60,17 @@ pub async fn create_candidate(
     Ok(repo::create(&state.pool, &input).await?)
 }
 
+/// A new candidate with their price and first payment, saved as one. See
+/// `db::registration`.
+#[tauri::command]
+pub async fn register_candidate(
+    state: State<'_, AppState>,
+    registration: crate::db::registration::Registration,
+) -> CommandResult<Candidate> {
+    state.require_unlocked()?;
+    Ok(crate::db::registration::register(&state.pool, &registration).await?)
+}
+
 #[tauri::command]
 pub async fn update_candidate(
     state: State<'_, AppState>,

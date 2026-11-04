@@ -2,7 +2,7 @@
 
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, SqlitePool};
+use sqlx::{FromRow, Sqlite, SqliteConnection, SqlitePool};
 
 use crate::db::{fees, lessons, payments};
 use crate::domain::money::{balance, extra_hour_charge, progress, Centimes, Charges, Progress};
@@ -99,11 +99,14 @@ fn validate(input: &EnrollmentInput) -> Result<(), AppError> {
     Ok(())
 }
 
-pub async fn get(pool: &SqlitePool, id: i64) -> Result<Enrollment, AppError> {
+pub async fn get<'e, E>(exec: E, id: i64) -> Result<Enrollment, AppError>
+where
+    E: sqlx::Executor<'e, Database = Sqlite>,
+{
     let sql = format!("SELECT {COLUMNS} FROM enrollments WHERE id = ?1 AND deleted_at IS NULL");
     sqlx::query_as::<_, Enrollment>(&sql)
         .bind(id)
-        .fetch_optional(pool)
+        .fetch_optional(exec)
         .await?
         .ok_or(AppError::NotFound)
 }
@@ -126,17 +129,20 @@ pub async fn list_for_candidate(
 /// Defaults from the school's price list, for pre-filling the enrolment form.
 ///
 /// These are COPIED into the enrolment on save, never referenced afterwards.
-async fn category_defaults(
-    pool: &SqlitePool,
+async fn category_defaults<'e, E>(
+    exec: E,
     code: &str,
-) -> Result<(String, String, i64, i64, i64), AppError> {
+) -> Result<(String, String, i64, i64, i64), AppError>
+where
+    E: sqlx::Executor<'e, Database = Sqlite>,
+{
     sqlx::query_as::<_, (String, String, i64, i64, i64)>(
         "SELECT name_fr, name_ar, theory_hours_target, practical_hours_target,
                 default_price_centimes
          FROM licence_categories WHERE code = ?1",
     )
     .bind(code)
-    .fetch_optional(pool)
+    .fetch_optional(exec)
     .await?
     .ok_or(AppError::field(
         "enrollments.error.categoryUnknown",
@@ -149,11 +155,22 @@ pub async fn create(
     candidate_id: i64,
     input: &EnrollmentInput,
 ) -> Result<Enrollment, AppError> {
+    let mut conn = pool.acquire().await?;
+    create_in(&mut conn, candidate_id, input).await
+}
+
+/// `create` on a connection the caller owns: inside the transaction that
+/// registers a new candidate (`registration::register`).
+pub(crate) async fn create_in(
+    conn: &mut SqliteConnection,
+    candidate_id: i64,
+    input: &EnrollmentInput,
+) -> Result<Enrollment, AppError> {
     validate(input)?;
 
     let code = input.category_code.trim();
     let (_, _, default_theory, default_practical, default_price) =
-        category_defaults(pool, code).await?;
+        category_defaults(&mut *conn, code).await?;
 
     // Snapshot: fall back to the price list only where the form left a field
     // at zero, then never consult it again for this enrolment.
@@ -205,7 +222,7 @@ pub async fn create(
     .bind(&status)
     .bind(input.notes.trim())
     .bind(&now)
-    .fetch_one(pool)
+    .fetch_one(&mut *conn)
     .await
     .map_err(|e| {
         if e.to_string().contains("UNIQUE") {
@@ -215,7 +232,7 @@ pub async fn create(
         }
     })?;
 
-    get(pool, row.0).await
+    get(&mut *conn, row.0).await
 }
 
 pub async fn update(

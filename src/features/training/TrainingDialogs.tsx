@@ -20,6 +20,7 @@ import {
   reviseEnrollment,
   scheduleGroup,
   type Enrollment,
+  type EnrollmentInput,
   type Payment,
   type PaymentMethod,
 } from "@/lib/training";
@@ -49,6 +50,29 @@ function useErrorText() {
 }
 
 /* ------------------------------ enrolment ------------------------------ */
+
+/**
+ * A new enrolment at an agreed price, starting today. Shared by "Inscrire" and
+ * the new-candidate form, so the two cannot drift apart.
+ */
+export function newEnrollmentInput(agreedPriceCentimes: number): EnrollmentInput {
+  return {
+    categoryCode: CATEGORY,
+    enrolledOn: today(),
+    agreedPriceCentimes,
+    // The price is the whole deal (Q23): the school trains until the
+    // instructor judges a candidate ready, it does not sell hours. With no
+    // allowance and no extra-hour price, no extra hour is ever charged.
+    // The columns stay, so a school that sells hours is a form to put back.
+    extraHourPriceCentimes: 0,
+    theoryHoursTarget: 0,
+    practicalHoursTarget: 0,
+    discountCentimes: 0,
+    discountReason: "",
+    status: "forming",
+    notes: "",
+  };
+}
 
 export function NewEnrollmentDialog({
   candidateId,
@@ -83,22 +107,7 @@ export function NewEnrollmentDialog({
     setSaving(true);
     setError(null);
     try {
-      await createEnrollment(candidateId, {
-        categoryCode: CATEGORY,
-        enrolledOn: today(),
-        agreedPriceCentimes: agreed,
-        // The price is the whole deal (Q23): the school trains until the
-        // instructor judges a candidate ready, it does not sell hours. With no
-        // allowance and no extra-hour price, no extra hour is ever charged.
-        // The columns stay, so a school that sells hours is a form to put back.
-        extraHourPriceCentimes: 0,
-        theoryHoursTarget: 0,
-        practicalHoursTarget: 0,
-        discountCentimes: 0,
-        discountReason: "",
-        status: "forming",
-        notes: "",
-      });
+      await createEnrollment(candidateId, newEnrollmentInput(agreed));
       onDone();
     } catch (e: unknown) {
       setError(errorText(e));

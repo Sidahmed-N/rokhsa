@@ -7,6 +7,7 @@
  */
 
 import { call } from "@/lib/tauri";
+import type { Candidate, CandidateInput } from "@/lib/candidates";
 import type { Centimes } from "@/lib/money";
 
 export interface PaymentMethod {
@@ -237,6 +238,19 @@ export const getEnrollment = (id: number) =>
 
 export const createEnrollment = (candidateId: number, input: EnrollmentInput) =>
   call<Enrollment>("create_enrollment", { candidateId, input });
+
+/**
+ * A new candidate, their price and what they paid today (in cash; 0 for
+ * nothing), saved as one: a candidate is never left without a price.
+ */
+export const registerCandidate = (
+  candidate: CandidateInput,
+  enrollment: EnrollmentInput,
+  firstPaymentCentimes: Centimes,
+) =>
+  call<Candidate>("register_candidate", {
+    registration: { candidate, enrollment, firstPaymentCentimes },
+  });
 
 /** What the owner can correct on an enrolment. Rust validates and logs it. */
 export interface EnrollmentRevision {

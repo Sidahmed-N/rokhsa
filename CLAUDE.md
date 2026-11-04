@@ -72,6 +72,12 @@ These are not style preferences. Breaking them causes data loss, legal problems,
 - **Paying more than is owed is allowed but asked twice** ("Encaisser quand même"): an extra
   zero once took 350 000 DA for 35 000 without a word. The file then says **Trop-perçu**,
   never a negative "reste à payer".
+- **A new candidate is registered with their price** (`register_candidate`,
+  `db::registration`): the form asks "Prix convenu" (required) and "Premier versement"
+  (optional, cash, today), and the candidate, enrolment and payment are saved in ONE
+  transaction. Before, the price was two screens away and a candidate could be saved owing
+  nothing. The `create_in` functions in `candidates`, `enrollments` and `payments` exist for
+  this; a new multi-row save should reuse them rather than chain three commands from the UI.
 - **An enrolment is corrected with "Modifier"** (`enrollments::revise`): price, discount, start
   date, and "abandoned". It touches only those columns — `update` sends the whole row and would
   overwrite the hour targets. Abandoned (`status = 'withdrawn'`) leaves Créances; its payments

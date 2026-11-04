@@ -10,7 +10,7 @@
 
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, SqlitePool};
+use sqlx::{FromRow, Sqlite, SqliteConnection, SqlitePool};
 
 use crate::domain::money::Centimes;
 use crate::error::AppError;
@@ -91,16 +91,19 @@ pub async fn total_for_enrollment(
     Ok(row.0)
 }
 
-pub async fn get(pool: &SqlitePool, id: i64) -> Result<Payment, AppError> {
+pub async fn get<'e, E>(exec: E, id: i64) -> Result<Payment, AppError>
+where
+    E: sqlx::Executor<'e, Database = Sqlite>,
+{
     let sql = format!("SELECT {COLUMNS} FROM payments WHERE id = ?1");
     sqlx::query_as::<_, Payment>(&sql)
         .bind(id)
-        .fetch_optional(pool)
+        .fetch_optional(exec)
         .await?
         .ok_or(AppError::NotFound)
 }
 
-fn validate(input: &PaymentInput) -> Result<(), AppError> {
+pub(crate) fn validate(input: &PaymentInput) -> Result<(), AppError> {
     if input.amount_centimes <= 0 {
         return Err(AppError::field("payments.error.amountPositive", "amount"));
     }
@@ -196,8 +199,50 @@ async fn insert(
     notes: &str,
     reverses: Option<i64>,
 ) -> Result<Payment, AppError> {
-    let now = Utc::now().to_rfc3339();
     let mut tx = pool.begin().await?;
+    let payment = insert_in(
+        &mut tx, enrollment_id, amount, paid_on, method_code, reference, notes, reverses,
+    )
+    .await?;
+    tx.commit().await?;
+    Ok(payment)
+}
+
+/// A payment taken as the candidate is registered: the same number and audit
+/// row as `create`, inside the registration's own transaction.
+pub(crate) async fn create_in(
+    conn: &mut SqliteConnection,
+    enrollment_id: i64,
+    input: &PaymentInput,
+) -> Result<Payment, AppError> {
+    validate(input)?;
+    insert_in(
+        conn,
+        enrollment_id,
+        input.amount_centimes,
+        input.paid_on.trim(),
+        input.method_code.trim(),
+        input.reference.trim(),
+        input.notes.trim(),
+        None,
+    )
+    .await
+}
+
+/// The number and the row go on one connection, which must already be inside
+/// a transaction: see `insert`.
+#[allow(clippy::too_many_arguments)]
+async fn insert_in(
+    tx: &mut SqliteConnection,
+    enrollment_id: i64,
+    amount: i64,
+    paid_on: &str,
+    method_code: &str,
+    reference: &str,
+    notes: &str,
+    reverses: Option<i64>,
+) -> Result<Payment, AppError> {
+    let now = Utc::now().to_rfc3339();
 
     // Allocate the receipt number under the transaction, so a failed insert
     // cannot leave a hole in the sequence.
@@ -251,7 +296,5 @@ async fn insert(
     .execute(&mut *tx)
     .await?;
 
-    tx.commit().await?;
-
-    get(pool, row.0).await
+    get(&mut *tx, row.0).await
 }

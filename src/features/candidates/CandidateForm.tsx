@@ -3,16 +3,18 @@ import { useTranslation } from "react-i18next";
 
 import FreeText from "@/components/FreeText";
 import { Num } from "@/components/Num";
+import { newEnrollmentInput } from "@/features/training/TrainingDialogs";
 import {
   CANDIDATE_STATUSES,
-  createCandidate,
   findCandidateDuplicates,
   isAppError,
   updateCandidate,
   type Candidate,
   type CandidateInput,
 } from "@/lib/candidates";
+import { parseDZD } from "@/lib/money";
 import { personName } from "@/lib/names";
+import { registerCandidate } from "@/lib/training";
 
 interface Props {
   initial: CandidateInput;
@@ -30,6 +32,7 @@ function Field({
   dir,
   type = "text",
   placeholder,
+  hint,
 }: {
   label: string;
   value: string;
@@ -38,6 +41,7 @@ function Field({
   dir?: "ltr" | "rtl" | "auto" | undefined;
   type?: string;
   placeholder?: string | undefined;
+  hint?: string | undefined;
 }) {
   return (
     <label className="block">
@@ -54,7 +58,11 @@ function Field({
           error ? "border-owed" : "border-line",
         ].join(" ")}
       />
-      {error && <span className="mt-1 block text-xs text-owed">{error}</span>}
+      {error ? (
+        <span className="mt-1 block text-xs text-owed">{error}</span>
+      ) : (
+        hint && <span className="mt-1 block text-xs text-muted">{hint}</span>
+      )}
     </label>
   );
 }
@@ -67,6 +75,13 @@ export default function CandidateForm({ initial, editingId, onSaved, onCancel }:
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const [errorField, setErrorField] = useState<string | null>(null);
   const [duplicates, setDuplicates] = useState<Candidate[]>([]);
+  // Only when registering: the price and what is paid today. Before these
+  // were here, a candidate could be saved with no price and owe nothing.
+  const [price, setPrice] = useState("");
+  const [firstPayment, setFirstPayment] = useState("");
+  // Paying more than the price is allowed but asked twice, as in "Encaisser":
+  // one extra zero turns 35 000 into 350 000.
+  const [overConfirmed, setOverConfirmed] = useState(false);
 
   const set = <K extends keyof CandidateInput>(key: K, value: CandidateInput[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -100,14 +115,37 @@ export default function CandidateForm({ initial, editingId, onSaved, onCancel }:
   const fieldError = (field: string): string | undefined =>
     errorField === field && errorCode ? t(errorCode, { defaultValue: errorCode }) : undefined;
 
+  function fail(code: string, field: string | null) {
+    setErrorCode(code);
+    setErrorField(field);
+  }
+
   async function save() {
-    setSaving(true);
     setErrorCode(null);
     setErrorField(null);
+
+    let agreed = 0;
+    let paid = 0;
+    if (!editingId) {
+      // Never guessed: an empty price is a question, not a free enrolment.
+      if (price.trim() === "") return fail("enrollments.error.priceRequired", "agreedPrice");
+      const parsedPrice = parseDZD(price);
+      if (parsedPrice === null || parsedPrice < 0) return fail("common.amountInvalid", "agreedPrice");
+      const parsedPaid = firstPayment.trim() === "" ? 0 : parseDZD(firstPayment);
+      if (parsedPaid === null || parsedPaid < 0) return fail("common.amountInvalid", "firstPayment");
+      agreed = parsedPrice;
+      paid = parsedPaid;
+      if (paid > agreed && !overConfirmed) {
+        setOverConfirmed(true);
+        return;
+      }
+    }
+
+    setSaving(true);
     try {
       const saved = editingId
         ? await updateCandidate(editingId, form)
-        : await createCandidate(form);
+        : await registerCandidate(form, newEnrollmentInput(agreed), paid);
       onSaved(saved);
     } catch (raw: unknown) {
       if (isAppError(raw)) {
@@ -268,6 +306,44 @@ export default function CandidateForm({ initial, editingId, onSaved, onCancel }:
             </div>
           </fieldset>
 
+          {!editingId && (
+            <fieldset className="mb-5">
+              <legend className="mb-2 text-xs uppercase tracking-wide text-muted">
+                {t("candidates.sectionMoney")}
+              </legend>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field
+                  label={t("enrollments.agreedPrice")}
+                  value={price}
+                  onChange={(v) => {
+                    setPrice(v);
+                    setOverConfirmed(false);
+                  }}
+                  error={fieldError("agreedPrice")}
+                  dir="ltr"
+                  placeholder="35000"
+                />
+                <Field
+                  label={t("candidates.firstPayment")}
+                  value={firstPayment}
+                  onChange={(v) => {
+                    setFirstPayment(v);
+                    setOverConfirmed(false);
+                  }}
+                  error={fieldError("firstPayment")}
+                  dir="ltr"
+                  placeholder="0"
+                  hint={t("candidates.firstPaymentHint")}
+                />
+              </div>
+              {overConfirmed && (
+                <p className="mt-3 rounded-md border border-warn/30 bg-warn-soft px-3 py-2 text-sm text-warn">
+                  {t("candidates.overPrice")}
+                </p>
+              )}
+            </fieldset>
+          )}
+
           <label className="block">
             <span className="mb-1 block text-xs text-muted">{t("candidates.notes")}</span>
             <textarea
@@ -286,7 +362,11 @@ export default function CandidateForm({ initial, editingId, onSaved, onCancel }:
             disabled={saving}
             className="rounded-md bg-brand px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
           >
-            {saving ? t("common.loading") : t("common.save")}
+            {saving
+              ? t("common.loading")
+              : overConfirmed
+                ? t("candidates.saveAnyway")
+                : t("common.save")}
           </button>
           <button
             type="button"
@@ -295,7 +375,7 @@ export default function CandidateForm({ initial, editingId, onSaved, onCancel }:
           >
             {t("common.cancel")}
           </button>
-          <span className="ms-auto text-xs text-muted">{t("candidates.requiredHint")}</span>
+          <span className="ms-auto text-xs text-muted">{editingId ? t("candidates.requiredHint") : t("candidates.requiredHintNew")}</span>
         </footer>
       </div>
     </div>

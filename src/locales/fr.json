@@ -218,7 +218,13 @@
     "archivedMatches": "Des candidats archivés correspondent aussi à cette recherche.",
     "showArchived": "Voir les archivés",
     "archivedEmpty": "Aucun candidat archivé.",
-    "archivedEmptyHint": "Archivez un candidat qui a terminé depuis sa fiche, ou toute la colonne « Terminé » du tableau."
+    "archivedEmptyHint": "Archivez un candidat qui a terminé depuis sa fiche, ou toute la colonne « Terminé » du tableau.",
+    "sectionMoney": "Inscription et paiement",
+    "firstPayment": "Premier versement (DA)",
+    "firstPaymentHint": "Payé aujourd’hui en espèces. Laissez vide s’il ne paie rien maintenant.",
+    "requiredHintNew": "Le nom et le prix sont obligatoires.",
+    "overPrice": "Ce versement est plus élevé que le prix. Vérifiez qu’il n’y a pas un zéro de trop, puis cliquez sur « Enregistrer quand même ».",
+    "saveAnyway": "Enregistrer quand même"
   },
   "school": {
     "unnamed": "Auto-école (nom à renseigner)"
@@ -516,7 +522,7 @@
         "day": "Après chaque séance : Fait, Absent ou Annulé. Les heures du candidat se comptent toutes seules."
       },
       "candidates": {
-        "new": "Inscrivez un nouveau candidat. Seul le nom est obligatoire.",
+        "new": "Inscrivez un nouveau candidat, avec son prix et ce qu’il paie aujourd’hui. Le nom et le prix sont obligatoires.",
         "searchTitle": "Recherche",
         "search": "Retrouvez un candidat par son nom, son téléphone ou son NIN.",
         "viewsTitle": "Liste ou tableau",

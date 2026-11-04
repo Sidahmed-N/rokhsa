@@ -18,6 +18,7 @@ pub mod fees;
 pub mod health;
 pub mod lessons;
 pub mod payments;
+pub mod registration;
 pub mod reports;
 pub mod school;
 

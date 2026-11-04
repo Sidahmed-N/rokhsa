@@ -2,7 +2,7 @@
 
 use chrono::Utc;
 use serde::Serialize;
-use sqlx::{FromRow, SqlitePool};
+use sqlx::{FromRow, Sqlite, SqliteConnection, SqlitePool};
 
 use crate::domain::candidate::CandidateInput;
 use crate::domain::text::fold_query;
@@ -115,11 +115,14 @@ pub async fn count(pool: &SqlitePool, query: &str) -> Result<i64, AppError> {
     Ok(row.0)
 }
 
-pub async fn get(pool: &SqlitePool, id: i64) -> Result<Candidate, AppError> {
+pub async fn get<'e, E>(exec: E, id: i64) -> Result<Candidate, AppError>
+where
+    E: sqlx::Executor<'e, Database = Sqlite>,
+{
     let sql = format!("SELECT {COLUMNS} FROM candidates WHERE id = ?1 AND deleted_at IS NULL");
     sqlx::query_as::<_, Candidate>(&sql)
         .bind(id)
-        .fetch_optional(pool)
+        .fetch_optional(exec)
         .await?
         .ok_or(AppError::NotFound)
 }
@@ -202,6 +205,18 @@ fn map_unique_violation(error: sqlx::Error) -> AppError {
 }
 
 pub async fn create(pool: &SqlitePool, input: &CandidateInput) -> Result<Candidate, AppError> {
+    let mut tx = pool.begin().await?;
+    let created = create_in(&mut tx, input).await?;
+    tx.commit().await?;
+    Ok(created)
+}
+
+/// `create` inside a transaction the caller owns, so registering a candidate
+/// saves their price and first payment in the same one.
+pub(crate) async fn create_in(
+    conn: &mut SqliteConnection,
+    input: &CandidateInput,
+) -> Result<Candidate, AppError> {
     let input = input.trimmed();
     crate::domain::candidate::validate(&input)?;
 
@@ -257,12 +272,12 @@ pub async fn create(pool: &SqlitePool, input: &CandidateInput) -> Result<Candida
     .bind(&now)
     .bind(&now)
     .bind(input.normalised_nin()) // ?22 — nin_digits
-    .fetch_one(pool)
+    .fetch_one(&mut *conn)
     .await
     .map_err(map_unique_violation)?;
 
-    let created = get(pool, row.0).await?;
-    audit(pool, "candidate", row.0, "create", None, Some(&created)).await?;
+    let created = get(&mut *conn, row.0).await?;
+    audit(&mut *conn, "candidate", row.0, "create", None, Some(&created)).await?;
     Ok(created)
 }
 
@@ -433,14 +448,17 @@ pub async fn set_archived(pool: &SqlitePool, ids: &[i64], archived: bool) -> Res
     Ok(())
 }
 
-async fn audit(
-    pool: &SqlitePool,
+async fn audit<'e, E>(
+    exec: E,
     entity_type: &str,
     entity_id: i64,
     action: &str,
     before: Option<&Candidate>,
     after: Option<&Candidate>,
-) -> Result<(), AppError> {
+) -> Result<(), AppError>
+where
+    E: sqlx::Executor<'e, Database = Sqlite>,
+{
     let to_json = |value: Option<&Candidate>| {
         value.and_then(|v| serde_json::to_string(v).ok())
     };
@@ -455,7 +473,7 @@ async fn audit(
     .bind(action)
     .bind(to_json(before))
     .bind(to_json(after))
-    .execute(pool)
+    .execute(exec)
     .await?;
 
     Ok(())
