@@ -72,6 +72,8 @@ export interface EnrollmentSummary {
   totalDueCentimes: Centimes;
   paidCentimes: Centimes;
   balanceCentimes: Centimes;
+  /** The balance said by where it comes from. Both 0 when nothing is owed. */
+  owed: { training: Centimes; exams: Centimes };
 }
 
 export interface Lesson {
@@ -155,6 +157,8 @@ export interface Payment {
   reversesPaymentId: number | null;
   notes: string;
   createdAt: string;
+  /** Set when this paid an exam fee, taken from the exam sitting. */
+  examFeeChargeId: number | null;
 }
 
 export interface School {
@@ -203,6 +207,8 @@ export interface PaymentInput {
   methodCode: string;
   reference: string;
   notes: string;
+  /** The exam fee this pays; null for training money. */
+  examFeeChargeId: number | null;
 }
 
 export const listPaymentMethods = () => call<PaymentMethod[]>("list_payment_methods");

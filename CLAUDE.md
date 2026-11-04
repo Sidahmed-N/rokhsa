@@ -78,6 +78,12 @@ These are not style preferences. Breaking them causes data loss, legal problems,
   transaction. Before, the price was two screens away and a candidate could be saved owing
   nothing. The `create_in` functions in `candidates`, `enrollments` and `payments` exist for
   this; a new multi-row save should reuse them rather than chain three commands from the UI.
+- **An exam fee is paid from the sitting** (Examens, "Encaisser" on the candidate's row): the
+  payment carries `exam_fee_charge_id` (migration 0012), and its reversal copies it. That link
+  is the ONLY thing that makes a fee paid — never infer it from amounts or dates. The file
+  splits "Reste à payer" into Formation / Examens with `domain::money::split_owed`, whose
+  parts always add up to the balance. A fee whose entry is removed keeps its payment, which
+  still counts in what the candidate paid.
 - **An enrolment is corrected with "Modifier"** (`enrollments::revise`): price, discount, start
   date, and "abandoned". It touches only those columns — `update` sends the whole row and would
   overwrite the hour targets. Abandoned (`status = 'withdrawn'`) leaves Créances; its payments

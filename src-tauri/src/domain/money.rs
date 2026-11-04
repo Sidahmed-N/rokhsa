@@ -55,6 +55,45 @@ pub fn balance(charges: &Charges, paid: Centimes) -> Centimes {
     charges.total_due() - paid
 }
 
+/// What is left of one exam fee once the payments made for it are counted.
+/// Never negative: paying a fee twice does not make the school owe the fee.
+pub fn fee_still_due(fee: Centimes, paid_for_it: Centimes) -> Centimes {
+    (fee - paid_for_it).max(0)
+}
+
+/// What the candidate still owes, said by where it comes from.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OwedSplit {
+    /// The registration price (and any extra hours) not yet paid.
+    pub training: Centimes,
+    /// Exam fees not yet paid with a payment taken for them.
+    pub exams: Centimes,
+}
+
+/// Split what is owed into training and exam money.
+///
+/// `exam_fees_unpaid` is the sum of `fee_still_due` over his exam fees, which
+/// is known exactly because an exam fee is paid from the sitting with a
+/// payment that names it. Nothing is guessed from amounts or dates.
+///
+/// The two always add up to the balance, so the file never shows parts that
+/// disagree with "Reste à payer". When he owes nothing overall (paid ahead
+/// for training, say), both are zero: telling him an exam fee is due while
+/// the school owes him money would read as a demand for money he has paid.
+/// When the balance is smaller than the unpaid fees, what he still owes is
+/// all exam money and the training is settled.
+pub fn split_owed(balance: Centimes, exam_fees_unpaid: Centimes) -> OwedSplit {
+    if balance <= 0 {
+        return OwedSplit::default();
+    }
+    let exams = exam_fees_unpaid.clamp(0, balance);
+    OwedSplit {
+        training: balance - exams,
+        exams,
+    }
+}
+
 /// Charge for practical hours beyond the agreed allowance.
 ///
 /// Charged per STARTED hour: a candidate who runs eleven minutes over pays for
@@ -313,5 +352,61 @@ mod tests {
         let p = progress(15 * 90, 30);
         assert_eq!(p.done_minutes, 1_350);
         assert_eq!(p.percent, Some(75));
+    }
+
+    #[test]
+    fn a_fee_is_due_until_paid_and_never_below_zero() {
+        assert_eq!(fee_still_due(3_000 * DA, 0), 3_000 * DA);
+        assert_eq!(fee_still_due(3_000 * DA, 1_000 * DA), 2_000 * DA);
+        assert_eq!(fee_still_due(3_000 * DA, 3_000 * DA), 0);
+        assert_eq!(fee_still_due(3_000 * DA, 5_000 * DA), 0);
+    }
+
+    #[test]
+    fn owed_splits_into_training_and_exams() {
+        // 35 000 price, 25 000 paid at registration, 3 000 exam unpaid.
+        assert_eq!(
+            split_owed(13_000 * DA, 3_000 * DA),
+            OwedSplit { training: 10_000 * DA, exams: 3_000 * DA }
+        );
+        // Exam paid on the day: only training left.
+        assert_eq!(
+            split_owed(10_000 * DA, 0),
+            OwedSplit { training: 10_000 * DA, exams: 0 }
+        );
+        // Training fully paid, exam not yet.
+        assert_eq!(
+            split_owed(3_000 * DA, 3_000 * DA),
+            OwedSplit { training: 0, exams: 3_000 * DA }
+        );
+    }
+
+    #[test]
+    fn the_parts_always_add_up_to_the_balance() {
+        for balance in [-5_000, 0, 1, 2_999, 3_000, 3_001, 40_000] {
+            for unpaid in [0, 1, 3_000, 9_000] {
+                let s = split_owed(balance * DA, unpaid * DA);
+                assert!(s.training >= 0 && s.exams >= 0);
+                assert_eq!(s.training + s.exams, (balance * DA).max(0));
+            }
+        }
+    }
+
+    #[test]
+    fn nothing_is_owed_when_the_balance_is_settled_or_in_credit() {
+        // Paid 5 000 more than the training: the unpaid exam fee is covered
+        // by the credit, and the file must not ask for it.
+        assert_eq!(split_owed(-2_000 * DA, 3_000 * DA), OwedSplit::default());
+        assert_eq!(split_owed(0, 3_000 * DA), OwedSplit::default());
+    }
+
+    #[test]
+    fn exam_money_cannot_exceed_what_is_owed() {
+        // Owes 1 000 overall although 3 000 of fees are unpaid: the training
+        // is in credit, so all of the 1 000 is exam money.
+        assert_eq!(
+            split_owed(1_000 * DA, 3_000 * DA),
+            OwedSplit { training: 0, exams: 1_000 * DA }
+        );
     }
 }

@@ -28,6 +28,9 @@ pub struct Payment {
     pub reverses_payment_id: Option<i64>,
     pub notes: String,
     pub created_at: String,
+    /// The exam fee this pays, when taken from the exam sitting. None is an
+    /// ordinary payment toward the training. See migration 0012.
+    pub exam_fee_charge_id: Option<i64>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -38,6 +41,8 @@ pub struct PaymentInput {
     pub method_code: String,
     pub reference: String,
     pub notes: String,
+    /// Set when the payment is the exam fee of one entry in a sitting.
+    pub exam_fee_charge_id: Option<i64>,
 }
 
 #[derive(Debug, Clone, FromRow, Serialize)]
@@ -51,7 +56,8 @@ pub struct PaymentMethod {
 }
 
 const COLUMNS: &str = "id, enrollment_id, amount_centimes, paid_on, method_code, \
-                       reference, receipt_number, reverses_payment_id, notes, created_at";
+                       reference, receipt_number, reverses_payment_id, notes, created_at, \
+                       exam_fee_charge_id";
 
 pub async fn methods(pool: &SqlitePool) -> Result<Vec<PaymentMethod>, AppError> {
     Ok(sqlx::query_as::<_, PaymentMethod>(
@@ -137,24 +143,66 @@ pub async fn create(
     enrollment_id: i64,
     input: &PaymentInput,
 ) -> Result<Payment, AppError> {
+    let mut tx = pool.begin().await?;
+    let payment = create_in(&mut tx, enrollment_id, input).await?;
+    tx.commit().await?;
+    Ok(payment)
+}
+
+/// `create` inside a transaction the caller owns: registering a candidate
+/// takes the first payment in the same one.
+pub(crate) async fn create_in(
+    conn: &mut SqliteConnection,
+    enrollment_id: i64,
+    input: &PaymentInput,
+) -> Result<Payment, AppError> {
     validate(input)?;
-    insert(
-        pool,
-        enrollment_id,
-        input.amount_centimes,
-        input.paid_on.trim(),
-        input.method_code.trim(),
-        input.reference.trim(),
-        input.notes.trim(),
-        None,
+    if let Some(charge_id) = input.exam_fee_charge_id {
+        check_fee_belongs(&mut *conn, charge_id, enrollment_id).await?;
+    }
+    insert_in(
+        conn,
+        &NewRow {
+            enrollment_id,
+            amount: input.amount_centimes,
+            paid_on: input.paid_on.trim(),
+            method_code: input.method_code.trim(),
+            reference: input.reference.trim(),
+            notes: input.notes.trim(),
+            reverses: None,
+            exam_fee_charge_id: input.exam_fee_charge_id,
+        },
     )
     .await
+}
+
+/// A payment for an exam fee must be for a live fee of the same enrolment.
+/// Anything else would mark one candidate's exam paid with another's money.
+async fn check_fee_belongs(
+    conn: &mut SqliteConnection,
+    charge_id: i64,
+    enrollment_id: i64,
+) -> Result<(), AppError> {
+    let found: Option<(i64,)> = sqlx::query_as(
+        "SELECT id FROM exam_fee_charges
+         WHERE id = ?1 AND enrollment_id = ?2 AND deleted_at IS NULL",
+    )
+    .bind(charge_id)
+    .bind(enrollment_id)
+    .fetch_optional(&mut *conn)
+    .await?;
+    match found {
+        Some(_) => Ok(()),
+        None => Err(AppError::validation("payments.error.feeNotFound")),
+    }
 }
 
 /// Reverse a payment by inserting a linked negative row.
 ///
 /// The original is never touched. The reversal gets its own receipt number, so
-/// the sequence stays gapless and the audit trail shows both sides.
+/// the sequence stays gapless and the audit trail shows both sides. It keeps
+/// the exam fee the original paid, so cancelling an exam payment makes that
+/// fee unpaid again.
 pub async fn reverse(
     pool: &SqlitePool,
     payment_id: i64,
@@ -168,15 +216,19 @@ pub async fn reverse(
 
     let today = Utc::now().date_naive().format("%Y-%m-%d").to_string();
 
-    insert(
-        pool,
-        original.enrollment_id,
-        -original.amount_centimes,
-        &today,
-        &original.method_code,
-        &original.reference,
-        reason.trim(),
-        Some(payment_id),
+    let mut tx = pool.begin().await?;
+    let reversal = insert_in(
+        &mut tx,
+        &NewRow {
+            enrollment_id: original.enrollment_id,
+            amount: -original.amount_centimes,
+            paid_on: &today,
+            method_code: &original.method_code,
+            reference: &original.reference,
+            notes: reason.trim(),
+            reverses: Some(payment_id),
+            exam_fee_charge_id: original.exam_fee_charge_id,
+        },
     )
     .await
     .map_err(|e| match e {
@@ -185,63 +237,36 @@ pub async fn reverse(
             AppError::validation("payments.error.alreadyReversed")
         }
         other => other,
-    })
+    })?;
+    tx.commit().await?;
+    Ok(reversal)
 }
 
-#[allow(clippy::too_many_arguments)]
-async fn insert(
-    pool: &SqlitePool,
+/// One payment row as it is written.
+struct NewRow<'a> {
     enrollment_id: i64,
     amount: i64,
-    paid_on: &str,
-    method_code: &str,
-    reference: &str,
-    notes: &str,
+    paid_on: &'a str,
+    method_code: &'a str,
+    reference: &'a str,
+    notes: &'a str,
     reverses: Option<i64>,
-) -> Result<Payment, AppError> {
-    let mut tx = pool.begin().await?;
-    let payment = insert_in(
-        &mut tx, enrollment_id, amount, paid_on, method_code, reference, notes, reverses,
-    )
-    .await?;
-    tx.commit().await?;
-    Ok(payment)
-}
-
-/// A payment taken as the candidate is registered: the same number and audit
-/// row as `create`, inside the registration's own transaction.
-pub(crate) async fn create_in(
-    conn: &mut SqliteConnection,
-    enrollment_id: i64,
-    input: &PaymentInput,
-) -> Result<Payment, AppError> {
-    validate(input)?;
-    insert_in(
-        conn,
-        enrollment_id,
-        input.amount_centimes,
-        input.paid_on.trim(),
-        input.method_code.trim(),
-        input.reference.trim(),
-        input.notes.trim(),
-        None,
-    )
-    .await
+    exam_fee_charge_id: Option<i64>,
 }
 
 /// The number and the row go on one connection, which must already be inside
-/// a transaction: see `insert`.
-#[allow(clippy::too_many_arguments)]
-async fn insert_in(
-    tx: &mut SqliteConnection,
-    enrollment_id: i64,
-    amount: i64,
-    paid_on: &str,
-    method_code: &str,
-    reference: &str,
-    notes: &str,
-    reverses: Option<i64>,
-) -> Result<Payment, AppError> {
+/// a transaction: if the insert fails, the counter must not have moved.
+async fn insert_in(tx: &mut SqliteConnection, new: &NewRow<'_>) -> Result<Payment, AppError> {
+    let NewRow {
+        enrollment_id,
+        amount,
+        paid_on,
+        method_code,
+        reference,
+        notes,
+        reverses,
+        exam_fee_charge_id,
+    } = *new;
     let now = Utc::now().to_rfc3339();
 
     // Allocate the receipt number under the transaction, so a failed insert
@@ -261,8 +286,8 @@ async fn insert_in(
     let row: (i64,) = sqlx::query_as(
         "INSERT INTO payments
             (enrollment_id, amount_centimes, paid_on, method_code, reference,
-             receipt_number, reverses_payment_id, notes, created_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+             receipt_number, reverses_payment_id, notes, created_at, exam_fee_charge_id)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
          RETURNING id",
     )
     .bind(enrollment_id)
@@ -274,6 +299,7 @@ async fn insert_in(
     .bind(reverses)
     .bind(notes)
     .bind(&now)
+    .bind(exam_fee_charge_id)
     .fetch_one(&mut *tx)
     .await?;
 
@@ -290,6 +316,7 @@ async fn insert_in(
             "amountCentimes": amount,
             "receiptNumber": receipt_number,
             "methodCode": method_code,
+            "examFeeChargeId": exam_fee_charge_id,
         })
         .to_string(),
     )

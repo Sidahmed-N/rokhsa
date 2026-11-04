@@ -268,7 +268,9 @@
     "withdrawnHint": "L'inscription sort des créances : on ne lui réclame plus rien. Ses versements restent comptés.",
     "editNote": "Chaque modification est gardée dans l'historique.",
     "overpaid": "Trop-perçu",
-    "overpaidHint": "Versé en plus du total dû. À rendre ou à garder pour plus tard."
+    "overpaidHint": "Versé en plus du total dû. À rendre ou à garder pour plus tard.",
+    "owedTraining": "Formation",
+    "owedExams": "Examens"
   },
   "lessons": {
     "add": "Ajouter des heures",
@@ -329,11 +331,18 @@
       "dateTooOld": "Cette date est trop ancienne. Vérifiez l'année.",
       "methodRequired": "Choisissez un mode de paiement.",
       "cannotReverseReversal": "Une annulation ne peut pas être annulée.",
-      "alreadyReversed": "Ce versement a déjà été annulé."
+      "alreadyReversed": "Ce versement a déjà été annulé.",
+      "feeNotFound": "Ces frais d’examen n’existent plus : il a peut-être été retiré de la session. Rechargez la page."
     },
     "settleFull": "Tout régler",
     "takeAnyway": "Encaisser quand même",
-    "overWarning": "Ce montant est plus élevé que le reste à payer. Vérifiez qu'il n'y a pas un zéro de trop, puis cliquez sur « Encaisser quand même »."
+    "overWarning": "Ce montant est plus élevé que le reste à payer. Vérifiez qu'il n'y a pas un zéro de trop, puis cliquez sur « Encaisser quand même ».",
+    "takeExamFeeTitle": "Encaisser les frais d’examen",
+    "examFeeDue": "Frais à payer",
+    "overFeeWarning": "Ce montant est plus élevé que les frais. Vérifiez qu’il n’y a pas un zéro de trop, puis cliquez sur « Encaisser quand même ».",
+    "forExam": "Examen",
+    "examFeeElsewhere": "Il doit aussi des frais d’examen :",
+    "examFeeElsewhereHow": "encaissez-les depuis la session, page Examens."
   },
   "receipt": {
     "title": "REÇU DE VERSEMENT",
@@ -441,7 +450,7 @@
     "standing_failed": "Ajourné",
     "standing_passed": "Admis",
     "confirmDeleteTitle": "Supprimer cette session d’examen ?",
-    "confirmDeleteBody": "Les candidats encore « présentés » en sont retirés et leurs frais annulés. Les résultats déjà notés (admis, ajourné, absent) restent dans leur dossier.",
+    "confirmDeleteBody": "Les candidats encore « présentés » en sont retirés et leurs frais annulés. Les résultats déjà notés (admis, ajourné, absent) restent dans leur dossier. Les frais déjà payés ne sont pas perdus : ils restent comptés dans ce que le candidat a versé.",
     "confirmRemoveTitle": "Retirer ce candidat de la session ?",
     "confirmRemoveBody": "Son inscription à cette session est annulée, ainsi que les frais demandés pour elle.",
     "confirmRemoveSettled": "Attention : un résultat est déjà noté ({{outcome}}). Il sera effacé de son dossier, avec les frais.",
@@ -450,7 +459,13 @@
       "outcomeInvalid": "Résultat inconnu.",
       "alreadyInSession": "Ce candidat est déjà dans cette session."
     },
-    "resultsLater": "Les résultats se notent à partir du jour de l’examen."
+    "resultsLater": "Les résultats se notent à partir du jour de l’examen.",
+    "feesPaidCount": "Frais : {{paid}} sur {{total}} ont payé",
+    "feesMissing": "manque",
+    "feesAllPaid": "Frais : tous ont payé",
+    "feePaid": "Payé",
+    "collectFee": "Encaisser",
+    "confirmRemovePaid": "Il a déjà payé ses frais pour cette session. Ce versement n’est pas perdu : il reste compté dans ce qu’il a versé."
   },
   "board": {
     "col_awaiting": "En attente",

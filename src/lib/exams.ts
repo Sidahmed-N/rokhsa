@@ -5,6 +5,7 @@
  * their results and arrives here as `ExamProgress` — the frontend must never
  * derive it, or there are two answers to the same question.
  */
+import type { Centimes } from "@/lib/money";
 import { call } from "@/lib/tauri";
 
 /** The three exams, in the order they are taken. */
@@ -52,6 +53,19 @@ export interface ExamEntry {
   notes: string;
   /** 2 means a repassage. */
   attempt: number;
+  /** null when he pays nothing for this sitting. */
+  feeChargeId: number | null;
+  feeCentimes: Centimes;
+  feePaidCentimes: Centimes;
+  /** What is left to pay of the fee, worked out in Rust. */
+  feeDueCentimes: Centimes;
+}
+
+/** Who has paid the exam fee in one sitting. */
+export interface SessionFees {
+  withFee: number;
+  paid: number;
+  missingCentimes: Centimes;
 }
 
 export interface ExamResult {
@@ -133,6 +147,9 @@ export const createExamSession = (input: ExamSessionInput) =>
   call<ExamSession>("create_exam_session", { input });
 
 export const deleteExamSession = (id: number) => call<void>("delete_exam_session", { id });
+
+export const examSessionFees = (sessionId: number) =>
+  call<SessionFees>("exam_session_fees", { sessionId });
 
 export const listExamEntries = (sessionId: number) =>
   call<ExamEntry[]>("list_exam_entries", { sessionId });

@@ -5,7 +5,9 @@ use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Sqlite, SqliteConnection, SqlitePool};
 
 use crate::db::{fees, lessons, payments};
-use crate::domain::money::{balance, extra_hour_charge, progress, Centimes, Charges, Progress};
+use crate::domain::money::{
+    balance, extra_hour_charge, progress, split_owed, Centimes, Charges, OwedSplit, Progress,
+};
 use crate::error::AppError;
 
 #[derive(Debug, Clone, FromRow, Serialize)]
@@ -62,6 +64,8 @@ pub struct EnrollmentSummary {
     pub total_due_centimes: Centimes,
     pub paid_centimes: Centimes,
     pub balance_centimes: Centimes,
+    /// The balance said by where it comes from: training or exam fees.
+    pub owed: OwedSplit,
 }
 
 pub const STATUSES: [&str; 6] = [
@@ -440,14 +444,16 @@ pub async fn summary(pool: &SqlitePool, id: i64) -> Result<EnrollmentSummary, Ap
         ),
         exam_fees: fees::total_for_enrollment(pool, id).await?,
     };
+    let owed_now = balance(&charges, paid);
 
     Ok(EnrollmentSummary {
+        owed: split_owed(owed_now, fees::unpaid_for_enrollment(pool, id).await?),
         theory: progress(minutes.theory, enrollment.theory_hours_target),
         practical: progress(minutes.practical(), enrollment.practical_hours_target),
         category_name_fr: names.0,
         category_name_ar: names.1,
         minutes,
-        balance_centimes: balance(&charges, paid),
+        balance_centimes: owed_now,
         total_due_centimes: charges.total_due(),
         charges,
         paid_centimes: paid,

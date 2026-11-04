@@ -42,6 +42,16 @@ pub async fn list_exam_entries(
     Ok(exams::entries_for_session(&state.pool, session_id).await?)
 }
 
+/// Who has paid the exam fee in a sitting, for the line above its list.
+#[tauri::command]
+pub async fn exam_session_fees(
+    state: State<'_, AppState>,
+    session_id: i64,
+) -> CommandResult<exams::SessionFees> {
+    let entries = exams::entries_for_session(&state.pool, session_id).await?;
+    Ok(exams::session_fees(&entries))
+}
+
 #[tauri::command]
 pub async fn add_to_exam_session(
     state: State<'_, AppState>,

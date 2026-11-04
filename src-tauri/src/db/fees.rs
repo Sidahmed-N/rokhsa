@@ -121,6 +121,32 @@ pub async fn totals_by_enrollment(
     Ok(rows.into_iter().collect())
 }
 
+/// What is left unpaid of this enrolment's exam fees.
+///
+/// A fee counts as paid only through payments taken for it (migration 0012),
+/// reversals included, so cancelling an exam payment makes the fee due again.
+/// Each fee is settled on its own: paying one fee twice does not pay another.
+pub async fn unpaid_for_enrollment(
+    pool: &SqlitePool,
+    enrollment_id: i64,
+) -> Result<Centimes, AppError> {
+    let rows: Vec<(i64, i64)> = sqlx::query_as(
+        "SELECT f.amount_centimes,
+                COALESCE((SELECT SUM(p.amount_centimes) FROM payments p
+                          WHERE p.exam_fee_charge_id = f.id), 0)
+         FROM exam_fee_charges f
+         WHERE f.enrollment_id = ?1 AND f.deleted_at IS NULL",
+    )
+    .bind(enrollment_id)
+    .fetch_all(pool)
+    .await?;
+
+    Ok(rows
+        .into_iter()
+        .map(|(fee, paid)| crate::domain::money::fee_still_due(fee, paid))
+        .sum())
+}
+
 /// The individual charges, for the breakdown on a candidate's file.
 pub async fn list_for_enrollment(
     pool: &SqlitePool,
@@ -403,5 +429,175 @@ mod tests {
         assert_eq!(charges.len(), 1);
         assert_eq!(charges[0].result_id, Some(entry.id));
         assert_eq!(charges[0].kind, "theory");
+    }
+
+    /* ----------------- paying the fee from the sitting ----------------- */
+
+    use crate::db::payments;
+    use crate::domain::money::OwedSplit;
+
+    async fn pay(
+        pool: &SqlitePool,
+        enrollment: i64,
+        amount: i64,
+        fee: Option<i64>,
+    ) -> Result<payments::Payment, AppError> {
+        payments::create(
+            pool,
+            enrollment,
+            &payments::PaymentInput {
+                amount_centimes: amount * DA,
+                paid_on: "2026-10-18".into(),
+                method_code: "cash".into(),
+                exam_fee_charge_id: fee,
+                ..Default::default()
+            },
+        )
+        .await
+    }
+
+    /// Enrolled at 35 000, paid 25 000 at registration, entered for the code
+    /// at 3 000. Returns (enrolment, sitting, the entry).
+    async fn on_exam_day(pool: &SqlitePool) -> (i64, i64, exams::ExamEntry) {
+        let enrollment = enrol(pool, "Benaissa").await;
+        pay(pool, enrollment, 25_000, None).await.unwrap();
+        let session = sitting(pool, "theory", "2026-08-10").await;
+        let entry = exams::add_to_session(pool, session, enrollment, 3_000 * DA)
+            .await
+            .unwrap();
+        (enrollment, session, entry)
+    }
+
+    async fn entry_now(pool: &SqlitePool, session: i64) -> exams::ExamEntry {
+        exams::entries_for_session(pool, session).await.unwrap().remove(0)
+    }
+
+    #[tokio::test]
+    async fn an_unpaid_fee_shows_as_exam_money_on_the_file() {
+        let pool = test_pool().await;
+        let (enrollment, session, entry) = on_exam_day(&pool).await;
+
+        assert_eq!(entry.fee_centimes, 3_000 * DA);
+        assert_eq!(entry.fee_due_centimes, 3_000 * DA);
+        assert_eq!(
+            exams::session_fees(&exams::entries_for_session(&pool, session).await.unwrap()),
+            exams::SessionFees { with_fee: 1, paid: 0, missing_centimes: 3_000 * DA }
+        );
+
+        let s = enrollments::summary(&pool, enrollment).await.unwrap();
+        assert_eq!(s.balance_centimes, 13_000 * DA);
+        assert_eq!(s.owed, OwedSplit { training: 10_000 * DA, exams: 3_000 * DA });
+    }
+
+    #[tokio::test]
+    async fn paying_from_the_sitting_marks_it_paid() {
+        let pool = test_pool().await;
+        let (enrollment, session, entry) = on_exam_day(&pool).await;
+
+        pay(&pool, enrollment, 3_000, entry.fee_charge_id).await.unwrap();
+
+        let entry = entry_now(&pool, session).await;
+        assert_eq!(entry.fee_paid_centimes, 3_000 * DA);
+        assert_eq!(entry.fee_due_centimes, 0);
+        assert_eq!(
+            exams::session_fees(&[entry]),
+            exams::SessionFees { with_fee: 1, paid: 1, missing_centimes: 0 }
+        );
+        let s = enrollments::summary(&pool, enrollment).await.unwrap();
+        assert_eq!(s.balance_centimes, 10_000 * DA);
+        assert_eq!(s.owed, OwedSplit { training: 10_000 * DA, exams: 0 });
+    }
+
+    #[tokio::test]
+    async fn a_training_payment_does_not_pay_the_exam() {
+        let pool = test_pool().await;
+        let (enrollment, session, _) = on_exam_day(&pool).await;
+
+        pay(&pool, enrollment, 4_000, None).await.unwrap();
+
+        assert_eq!(entry_now(&pool, session).await.fee_due_centimes, 3_000 * DA);
+        let s = enrollments::summary(&pool, enrollment).await.unwrap();
+        assert_eq!(s.owed, OwedSplit { training: 6_000 * DA, exams: 3_000 * DA });
+    }
+
+    #[tokio::test]
+    async fn part_of_a_fee_leaves_the_rest_due() {
+        let pool = test_pool().await;
+        let (enrollment, session, entry) = on_exam_day(&pool).await;
+
+        pay(&pool, enrollment, 1_000, entry.fee_charge_id).await.unwrap();
+
+        let entry = entry_now(&pool, session).await;
+        assert_eq!(entry.fee_due_centimes, 2_000 * DA);
+        assert_eq!(exams::session_fees(&[entry]).paid, 0);
+    }
+
+    #[tokio::test]
+    async fn cancelling_the_exam_payment_makes_the_fee_due_again() {
+        let pool = test_pool().await;
+        let (enrollment, session, entry) = on_exam_day(&pool).await;
+        let paid = pay(&pool, enrollment, 3_000, entry.fee_charge_id).await.unwrap();
+
+        let reversal = payments::reverse(&pool, paid.id, "erreur").await.unwrap();
+        assert_eq!(reversal.exam_fee_charge_id, entry.fee_charge_id);
+
+        assert_eq!(entry_now(&pool, session).await.fee_due_centimes, 3_000 * DA);
+        let s = enrollments::summary(&pool, enrollment).await.unwrap();
+        assert_eq!(s.owed, OwedSplit { training: 10_000 * DA, exams: 3_000 * DA });
+    }
+
+    #[tokio::test]
+    async fn another_candidates_fee_cannot_be_paid_with_this_money() {
+        let pool = test_pool().await;
+        let (_, _, entry) = on_exam_day(&pool).await;
+        let someone_else = enrol(&pool, "Hamdi").await;
+
+        let error = pay(&pool, someone_else, 3_000, entry.fee_charge_id).await.unwrap_err();
+        assert!(matches!(error, AppError::Validation("payments.error.feeNotFound", _)));
+        // Refused before anything was written: no receipt number used up.
+        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM payments")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(count, 1);
+    }
+
+    #[tokio::test]
+    async fn a_withdrawn_fee_cannot_be_paid() {
+        let pool = test_pool().await;
+        let (enrollment, _, entry) = on_exam_day(&pool).await;
+        exams::remove_result(&pool, entry.id).await.unwrap();
+
+        let error = pay(&pool, enrollment, 3_000, entry.fee_charge_id).await.unwrap_err();
+        assert!(matches!(error, AppError::Validation("payments.error.feeNotFound", _)));
+    }
+
+    #[tokio::test]
+    async fn removing_a_candidate_who_paid_keeps_his_money() {
+        let pool = test_pool().await;
+        let (enrollment, _, entry) = on_exam_day(&pool).await;
+        pay(&pool, enrollment, 3_000, entry.fee_charge_id).await.unwrap();
+
+        exams::remove_result(&pool, entry.id).await.unwrap();
+
+        // The fee is gone, the 3 000 he handed over still counts: he owes
+        // 7 000 of training instead of 10 000.
+        let s = enrollments::summary(&pool, enrollment).await.unwrap();
+        assert_eq!(s.charges.exam_fees, 0);
+        assert_eq!(s.paid_centimes, 28_000 * DA);
+        assert_eq!(s.owed, OwedSplit { training: 7_000 * DA, exams: 0 });
+    }
+
+    #[tokio::test]
+    async fn a_free_repassage_is_not_counted_as_owing() {
+        let pool = test_pool().await;
+        let enrollment = enrol(&pool, "Benaissa").await;
+        let session = sitting(&pool, "theory", "2026-08-10").await;
+        exams::add_to_session(&pool, session, enrollment, 0).await.unwrap();
+
+        let entry = entry_now(&pool, session).await;
+        assert_eq!(entry.fee_charge_id, None);
+        assert_eq!(entry.fee_due_centimes, 0);
+        assert_eq!(exams::session_fees(&[entry]), exams::SessionFees::default());
     }
 }

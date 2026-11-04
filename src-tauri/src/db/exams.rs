@@ -18,6 +18,7 @@ use crate::domain::dates::{parse_optional_time, parse_planned, parse_recorded, D
 use crate::domain::exams::{
     column, plan_move, progress, Attempt, BoardColumn, BoardMove, ExamProgress,
 };
+use crate::domain::money::Centimes;
 use crate::error::AppError;
 
 use super::fees;
@@ -66,6 +67,39 @@ pub struct ExamEntry {
     /// Which go this is for that candidate at that exam — 2 means a
     /// repassage. Counted at read time so it cannot drift from the rows.
     pub attempt: i64,
+    /// The fee typed when he was entered, if any. None: nothing to pay.
+    pub fee_charge_id: Option<i64>,
+    pub fee_centimes: Centimes,
+    /// Paid with payments taken for this fee, reversals included.
+    pub fee_paid_centimes: Centimes,
+    /// What is left to pay of it. Worked out in Rust, never in the screen.
+    #[sqlx(default)]
+    pub fee_due_centimes: Centimes,
+}
+
+/// Who has paid the exam fee in one sitting, for the line above its list.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionFees {
+    /// Entries with a fee to pay. A free repassage is not counted.
+    pub with_fee: i64,
+    /// Of those, how many have paid it in full.
+    pub paid: i64,
+    /// What is still to collect, all entries together.
+    pub missing_centimes: Centimes,
+}
+
+/// Tally a sitting's fees from its entries.
+pub fn session_fees(entries: &[ExamEntry]) -> SessionFees {
+    let mut tally = SessionFees::default();
+    for entry in entries.iter().filter(|e| e.fee_centimes > 0) {
+        tally.with_fee += 1;
+        if entry.fee_due_centimes == 0 {
+            tally.paid += 1;
+        }
+        tally.missing_centimes += entry.fee_due_centimes;
+    }
+    tally
 }
 
 /// One line of a candidate's own exam history.
@@ -372,17 +406,31 @@ pub async fn entries_for_session(
                      AND prior.deleted_at IS NULL
                      AND (prior.sat_on < r.sat_on
                           OR (prior.sat_on = r.sat_on AND prior.id <= r.id))
-                ) AS attempt
+                ) AS attempt,
+                f.id AS fee_charge_id,
+                COALESCE(f.amount_centimes, 0) AS fee_centimes,
+                COALESCE((SELECT SUM(p.amount_centimes) FROM payments p
+                          WHERE p.exam_fee_charge_id = f.id), 0) AS fee_paid_centimes
          FROM exam_results r
          JOIN enrollments e ON e.id = r.enrollment_id
          JOIN candidates  c ON c.id = e.candidate_id
+         LEFT JOIN exam_fee_charges f
+                ON f.id = (SELECT MAX(x.id) FROM exam_fee_charges x
+                           WHERE x.result_id = r.id AND x.deleted_at IS NULL)
          WHERE r.session_id = ?1 AND r.deleted_at IS NULL
          ORDER BY c.last_name COLLATE NOCASE, c.first_name COLLATE NOCASE",
     )
     .bind(session_id)
     .fetch_all(pool)
     .await?;
-    Ok(rows)
+    Ok(rows
+        .into_iter()
+        .map(|mut entry: ExamEntry| {
+            entry.fee_due_centimes =
+                crate::domain::money::fee_still_due(entry.fee_centimes, entry.fee_paid_centimes);
+            entry
+        })
+        .collect())
 }
 
 /// One candidate's exam history, oldest first.

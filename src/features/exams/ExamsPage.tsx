@@ -1,21 +1,32 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Check, GraduationCap, Plus, Trash2, UserMinus, UserPlus, X } from "lucide-react";
+import {
+  Check,
+  GraduationCap,
+  Plus,
+  Trash2,
+  UserMinus,
+  UserPlus,
+  Wallet,
+  X,
+} from "lucide-react";
 
 import FreeText from "@/components/FreeText";
 import Modal from "@/components/Modal";
 import { Pager, usePaged } from "@/components/ui/Pager";
-import { Num } from "@/components/Num";
+import { Money, Num } from "@/components/Num";
 import { SelectField, TextField } from "@/components/FormField";
 import Button, { IconButton } from "@/components/ui/Button";
 import { Badge, Card, EmptyState, ErrorNote, PageHeader, type Tone } from "@/components/ui/Surface";
 import CandidatePicker from "@/features/training/CandidatePicker";
+import { TakePaymentDialog } from "@/features/training/TrainingDialogs";
 import { isAppError } from "@/lib/candidates";
 import {
   addToExamSession,
   createExamSession,
   deleteExamSession,
+  examSessionFees,
   listExamEntries,
   listExamSessions,
   removeExamResult,
@@ -23,6 +34,7 @@ import {
   EXAM_KINDS,
   type ExamEntry,
   type ExamSession,
+  type SessionFees,
 } from "@/lib/exams";
 import { kindStyle } from "@/lib/kinds";
 import { parseDZD } from "@/lib/money";
@@ -69,6 +81,10 @@ export default function ExamsPage() {
   // candidate's pass and his fee.
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [removing, setRemoving] = useState<ExamEntry | null>(null);
+  // Exam day: the candidate hands over the fee and it is taken from his row,
+  // so "who has paid for this exam?" is answered by opening the sitting.
+  const [fees, setFees] = useState<SessionFees | null>(null);
+  const [paying, setPaying] = useState<ExamEntry | null>(null);
 
   const errorText = useCallback(
     (raw: unknown): string =>
@@ -95,10 +111,16 @@ export default function ExamsPage() {
   const loadEntries = useCallback(async () => {
     if (selected === null || !isDesktop()) {
       setEntries([]);
+      setFees(null);
       return;
     }
     try {
-      setEntries(await listExamEntries(selected));
+      const [list, tally] = await Promise.all([
+        listExamEntries(selected),
+        examSessionFees(selected),
+      ]);
+      setEntries(list);
+      setFees(tally);
     } catch (raw: unknown) {
       setError(errorText(raw));
     }
@@ -221,6 +243,24 @@ export default function ExamsPage() {
                     ? t("exams.resultsLater")
                     : t("exams.settledCount", { settled, total: entries.length })}
                 </span>
+                {fees && fees.withFee > 0 && (
+                  <span
+                    className={[
+                      "text-xs font-medium",
+                      fees.missingCentimes > 0 ? "text-owed" : "text-ok",
+                    ].join(" ")}
+                  >
+                    {fees.missingCentimes > 0 ? (
+                      <>
+                        {t("exams.feesPaidCount", { paid: fees.paid, total: fees.withFee })}
+                        {" · "}
+                        {t("exams.feesMissing")} <Money centimes={fees.missingCentimes} />
+                      </>
+                    ) : (
+                      t("exams.feesAllPaid")
+                    )}
+                  </span>
+                )}
                 <div className="ms-auto flex gap-2">
                   <Button
                     size="sm"
@@ -261,6 +301,23 @@ export default function ExamsPage() {
                         <Badge tone="warn">
                           {t("exams.attempt", { n: entry.attempt })}
                         </Badge>
+                      )}
+                      {/* The fee: paid, or a button to take it now. Nothing
+                          when he pays nothing for this sitting. */}
+                      {entry.feeChargeId !== null && entry.feeDueCentimes === 0 && (
+                        <Badge tone="ok" className="gap-1">
+                          <Check className="size-3" aria-hidden="true" />
+                          {t("exams.feePaid")} <Money centimes={entry.feeCentimes} />
+                        </Badge>
+                      )}
+                      {entry.feeChargeId !== null && entry.feeDueCentimes > 0 && (
+                        <Button
+                          size="sm"
+                          icon={<Wallet className="size-3.5" aria-hidden="true" />}
+                          onClick={() => setPaying(entry)}
+                        >
+                          {t("exams.collectFee")} <Money centimes={entry.feeDueCentimes} />
+                        </Button>
                       )}
 
                       <div className="ms-auto flex flex-wrap items-center gap-1.5">
@@ -349,6 +406,11 @@ export default function ExamsPage() {
             <FreeText as="span">{personName(removing)}</FreeText>
           </p>
           <p className="mt-2 text-sm text-ink-soft">{t("exams.confirmRemoveBody")}</p>
+          {removing.feePaidCentimes > 0 && (
+            <p className="mt-3 rounded-md border border-warn/30 bg-warn-soft px-3 py-2 text-sm text-warn">
+              {t("exams.confirmRemovePaid")}
+            </p>
+          )}
           {removing.outcome !== "presented" && (
             <p className="mt-3 rounded-md border border-owed/30 bg-owed-soft px-3 py-2 text-sm text-owed">
               {t("exams.confirmRemoveSettled", {
@@ -366,6 +428,19 @@ export default function ExamsPage() {
             setCreating(false);
             setSelected(created.id);
             void loadSessions();
+          }}
+        />
+      )}
+
+      {paying && paying.feeChargeId !== null && (
+        <TakePaymentDialog
+          enrollmentId={paying.enrollmentId}
+          balanceCentimes={paying.feeDueCentimes}
+          examFee={{ chargeId: paying.feeChargeId, dueCentimes: paying.feeDueCentimes }}
+          onClose={() => setPaying(null)}
+          onDone={() => {
+            setPaying(null);
+            void run(async () => {});
           }}
         />
       )}

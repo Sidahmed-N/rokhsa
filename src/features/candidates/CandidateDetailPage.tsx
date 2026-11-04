@@ -399,6 +399,28 @@ export default function CandidateDetailPage() {
                           strong
                           // Not red once he has dropped out: nobody is chasing it.
                           tone={summary.enrollment.status === "withdrawn" ? undefined : owes ? "owed" : "ok"}
+                          extra={
+                            // Where the debt comes from: the registration, or
+                            // an exam fee not yet paid from the sitting. Only
+                            // the parts that are owed; Rust makes them add up
+                            // to the figure above.
+                            owes && (
+                              <p className="mt-1 text-xs text-muted">
+                                {summary.owed.training > 0 && (
+                                  <span className="inline-block me-3">
+                                    {t("enrollments.owedTraining")}{" "}
+                                    <Money centimes={summary.owed.training} className="font-medium text-ink-soft" />
+                                  </span>
+                                )}
+                                {summary.owed.exams > 0 && (
+                                  <span className="inline-block">
+                                    {t("enrollments.owedExams")}{" "}
+                                    <Money centimes={summary.owed.exams} className="font-medium text-owed" />
+                                  </span>
+                                )}
+                              </p>
+                            )
+                          }
                         >
                           <Money centimes={summary.balanceCentimes} />
                         </Figure>
@@ -635,6 +657,11 @@ export default function CandidateDetailPage() {
                                     {t(`methods.${payment.methodCode}`, {
                                       defaultValue: payment.methodCode,
                                     })}
+                                    {payment.examFeeChargeId !== null && (
+                                      <span className="ms-1 text-brand">
+                                        · {t("payments.forExam")}
+                                      </span>
+                                    )}
                                     {isReversal && (
                                       <span className="ms-1 text-warn">
                                         ({t("payments.reversal")})
@@ -762,6 +789,7 @@ export default function CandidateDetailPage() {
         <TakePaymentDialog
           enrollmentId={payingFor.enrollment.id}
           balanceCentimes={payingFor.balanceCentimes}
+          examFeesOwedCentimes={payingFor.owed.exams}
           onClose={() => setPayingFor(null)}
           onDone={onPaymentTaken}
         />

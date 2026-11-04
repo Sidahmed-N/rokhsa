@@ -538,11 +538,25 @@ export function ScheduleSessionDialog({
 export function TakePaymentDialog({
   enrollmentId,
   balanceCentimes,
+  examFee,
+  examFeesOwedCentimes = 0,
   onDone,
   onClose,
 }: {
   enrollmentId: number;
+  /** What he owes overall. Ignored when paying an exam fee. */
   balanceCentimes: number;
+  /**
+   * Set when the payment is an exam fee, taken from the sitting on exam day:
+   * the payment is recorded against that fee, and "what is left" is the fee.
+   */
+  examFee?: { chargeId: number; dueCentimes: number } | undefined;
+  /**
+   * Exam fees he has not paid yet, when this is an ordinary payment. Said in
+   * the dialog because money taken here counts as training: an exam fee taken
+   * here would still show as unpaid on the sitting, and be taken twice.
+   */
+  examFeesOwedCentimes?: number | undefined;
   onDone: (payment: Payment) => void;
   onClose: () => void;
 }) {
@@ -551,7 +565,14 @@ export function TakePaymentDialog({
   const errorText = useErrorText();
 
   const [methods, setMethods] = useState<PaymentMethod[]>([]);
-  const [amount, setAmount] = useState("");
+  // What this payment is measured against: the fee, or the whole balance.
+  const dueCentimes = examFee ? examFee.dueCentimes : balanceCentimes;
+  // An exam fee is usually paid whole on the day, so it starts filled in.
+  const [amount, setAmount] = useState(
+    examFee && examFee.dueCentimes > 0
+      ? formatDZD(examFee.dueCentimes, { withSuffix: false })
+      : "",
+  );
   const [paidOn, setPaidOn] = useState(today());
   const [methodCode, setMethodCode] = useState("cash");
   const [reference, setReference] = useState("");
@@ -584,7 +605,7 @@ export function TakePaymentDialog({
       setError(t("payments.error.amountPositive"));
       return;
     }
-    if (parsed > balanceCentimes && !overConfirmed) {
+    if (parsed > dueCentimes && !overConfirmed) {
       setOverConfirmed(true);
       return;
     }
@@ -597,6 +618,7 @@ export function TakePaymentDialog({
         methodCode,
         reference,
         notes,
+        examFeeChargeId: examFee ? examFee.chargeId : null,
       });
       onDone(payment);
     } catch (e: unknown) {
@@ -608,7 +630,7 @@ export function TakePaymentDialog({
 
   return (
     <Modal
-      title={t("payments.takeTitle")}
+      title={examFee ? t("payments.takeExamFeeTitle") : t("payments.takeTitle")}
       onClose={onClose}
       onSubmit={() => void save()}
       submitting={saving}
@@ -618,14 +640,14 @@ export function TakePaymentDialog({
       <div className="grid gap-3">
         <div className="flex flex-wrap items-center gap-2 rounded-md border border-line bg-brand-soft px-3 py-2 text-sm">
           <span>
-            {t("payments.currentBalance")}:{" "}
-            <Money centimes={balanceCentimes} className="font-bold" />
+            {examFee ? t("payments.examFeeDue") : t("payments.currentBalance")}:{" "}
+            <Money centimes={dueCentimes} className="font-bold" />
           </span>
-          {balanceCentimes > 0 && (
+          {dueCentimes > 0 && (
             <button
               type="button"
               onClick={() =>
-                setAmount(formatDZD(balanceCentimes, { withSuffix: false }))
+                setAmount(formatDZD(dueCentimes, { withSuffix: false }))
               }
               className="ms-auto rounded-md border border-brand bg-surface px-2 py-1 text-xs font-medium text-brand transition-colors hover:bg-brand hover:text-white"
             >
@@ -634,6 +656,14 @@ export function TakePaymentDialog({
           )}
         </div>
 
+        {!examFee && examFeesOwedCentimes > 0 && (
+          <p className="rounded-md border border-line bg-sunken px-3 py-2 text-xs text-ink-soft">
+            {t("payments.examFeeElsewhere")}{" "}
+            <Money centimes={examFeesOwedCentimes} className="font-medium" />
+            {" · "}
+            {t("payments.examFeeElsewhereHow")}
+          </p>
+        )}
         <TextField
           label={t("payments.amount")}
           value={amount}
@@ -647,7 +677,7 @@ export function TakePaymentDialog({
         />
         {overConfirmed && (
           <p className="rounded-md border border-warn/30 bg-warn-soft px-3 py-2 text-sm text-warn">
-            {t("payments.overWarning")}
+            {examFee ? t("payments.overFeeWarning") : t("payments.overWarning")}
           </p>
         )}
         <TextField

@@ -688,3 +688,23 @@ filled in and then never shown anywhere.
 **The question was:** remove the three boxes (the price alone is enough), or keep
 them for schools that do sell a fixed number of hours and charge extra ones?
 Removing them is safe: left empty, no extra hour is ever charged.
+
+---
+
+## Q24. Who has paid the exam fee — **ANSWERED 2026-11-04** 🟢
+
+**How it works (owner):** the candidate pays at registration (all or part of the
+price) so he can start training. Weeks later the exam is set, the owner enters him
+for the sitting with the fee, and tells him to bring the money on the day.
+
+**The problem:** every payment went into one pot, so "who has paid for this exam?"
+had no answer, and a candidate's debt could not say whether it was training or
+exam money.
+
+**Decision, built:** the exam fee is collected from the sitting. Each candidate's
+row has **Encaisser** (the fee, prefilled) or **✓ Payé**, and the sitting says
+"Frais : 1 sur 2 ont payé · manque 3 000 DA". That payment names the fee it pays
+(migration 0012), so the file splits "Reste à payer" into **Formation** and
+**Examens** exactly, without guessing from amounts or dates. Payments taken from
+the file stay training money; the dialog there reminds that an unpaid exam fee is
+taken from the sitting, so it is not taken twice.
