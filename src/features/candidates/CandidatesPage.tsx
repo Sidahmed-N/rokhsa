@@ -294,8 +294,8 @@ export default function CandidatesPage() {
                     )}
                   </td>
                   <td>
-                    <Badge tone={STATUS_TONE[candidate.status] ?? "neutral"}>
-                      {t(`candidates.status_${candidate.status}`)}
+                    <Badge tone={STATUS_TONE[candidate.shownStatus ?? candidate.status] ?? "neutral"}>
+                      {t(`candidates.status_${candidate.shownStatus ?? candidate.status}`)}
                     </Badge>
                   </td>
                   <td>

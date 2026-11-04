@@ -34,6 +34,12 @@ export interface Candidate {
   /** When the file was archived, or null. Archived files leave the list, the
    * board and the session picker; nothing about their money changes. */
   archivedAt: string | null;
+  /**
+   * The status the list shows, decided in Rust: "completed" once all three
+   * exams are passed, unless the school set "inactive" or "withdrawn". Only
+   * the candidate list sends it.
+   */
+  shownStatus?: string;
 }
 
 /** What the form sends. Every field is a string; Rust parses and validates. */

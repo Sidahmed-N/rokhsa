@@ -220,6 +220,10 @@ These are not style preferences. Breaking them causes data loss, legal problems,
   a file from the list, the board and the session picker (typing the name still finds it) and
   changes nothing else: Créances and Caisse still count it. Any new list of "current"
   candidates must filter on `archived_at IS NULL`; any money query must not.
+- **"Terminé" on the candidate list is read, not stored.** Once all three exams are passed
+  (`exams::finished_enrollment_ids`, the board's own rule) the list shows "completed", via
+  `domain::candidate::shown_status`; a pass undone puts it back. The status in the form is never
+  overwritten, and "inactive" / "withdrawn" set by the school still win.
 - Every write path must be safe to interrupt: wrap multi-row operations in a transaction.
   The user *will* lose power mid-save.
 - **Never open the database with ad-hoc connection options — always `db::connect`.**

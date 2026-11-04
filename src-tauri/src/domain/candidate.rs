@@ -104,6 +104,22 @@ impl CandidateInput {
 /// Statuses a candidate may hold. Mirrors the CHECK constraint in 0001.
 pub const STATUSES: [&str; 5] = ["prospect", "active", "inactive", "completed", "withdrawn"];
 
+/// The status the candidate list shows.
+///
+/// `stored` is what the school picked in the form; `finished` is true once all
+/// three exams are passed, worked out from the results exactly as the board
+/// does. A candidate who has passed everything shows "completed" without anyone
+/// having to remember to change the form, and goes back to what was stored if
+/// a pass is undone, because nothing is written. Only the two statuses the
+/// school sets for a reason of its own win over it: "inactive" and "withdrawn".
+pub fn shown_status(stored: &str, finished: bool) -> &str {
+    if finished && stored != "inactive" && stored != "withdrawn" {
+        "completed"
+    } else {
+        stored
+    }
+}
+
 /// Validate input.
 ///
 /// Deliberately permissive about everything except identity. A secretary must
@@ -164,6 +180,26 @@ pub fn validate(input: &CandidateInput) -> Result<(), AppError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn passing_everything_shows_completed() {
+        assert_eq!(shown_status("active", true), "completed");
+        assert_eq!(shown_status("prospect", true), "completed");
+        assert_eq!(shown_status("completed", true), "completed");
+    }
+
+    #[test]
+    fn the_schools_own_reasons_win() {
+        assert_eq!(shown_status("inactive", true), "inactive");
+        assert_eq!(shown_status("withdrawn", true), "withdrawn");
+    }
+
+    #[test]
+    fn not_finished_shows_what_was_stored() {
+        for s in STATUSES {
+            assert_eq!(shown_status(s, false), s);
+        }
+    }
 
     fn valid() -> CandidateInput {
         CandidateInput {

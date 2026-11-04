@@ -35,6 +35,12 @@ pub struct Candidate {
     pub updated_at: String,
     /// When the file was archived, or None. See migration 0011.
     pub archived_at: Option<String>,
+    /// The status the list shows: "completed" once all three exams are
+    /// passed, see `domain::candidate::shown_status`. Filled by `list` only;
+    /// empty elsewhere, and then left out of the JSON (and the audit log).
+    #[sqlx(default)]
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub shown_status: String,
 }
 
 const COLUMNS: &str = "id, nin, first_name, last_name, \
@@ -76,6 +82,38 @@ pub async fn list(
         .fetch_all(pool)
         .await?;
 
+    with_shown_status(pool, rows).await
+}
+
+/// Fill `shown_status` from each candidate's exam results.
+///
+/// Uses the same "passed all three" as the board, so the list and the board
+/// cannot disagree about who has finished.
+async fn with_shown_status(
+    pool: &SqlitePool,
+    mut rows: Vec<Candidate>,
+) -> Result<Vec<Candidate>, AppError> {
+    let finished = crate::db::exams::finished_enrollment_ids(pool).await?;
+    let finished_candidates: std::collections::HashSet<i64> = if finished.is_empty() {
+        Default::default()
+    } else {
+        let pairs: Vec<(i64, i64)> =
+            sqlx::query_as("SELECT id, candidate_id FROM enrollments WHERE deleted_at IS NULL")
+                .fetch_all(pool)
+                .await?;
+        pairs
+            .into_iter()
+            .filter(|(enrollment, _)| finished.contains(enrollment))
+            .map(|(_, candidate)| candidate)
+            .collect()
+    };
+    for row in &mut rows {
+        row.shown_status = crate::domain::candidate::shown_status(
+            &row.status,
+            finished_candidates.contains(&row.id),
+        )
+        .to_string();
+    }
     Ok(rows)
 }
 
@@ -747,5 +785,73 @@ mod tests {
         let bad = CandidateInput { nin: "123".into(), ..input("BENALI", "Yacine") };
         assert!(create(&pool, &bad).await.is_err());
         assert_eq!(count(&pool, "").await.unwrap(), 0);
+    }
+
+    /* ------------- "Terminé" once all three exams are passed ------------- */
+
+    /// Enrol a candidate and put him through the three exams, passing each.
+    /// Returns (candidate, the circulation entry) so a test can undo the last.
+    async fn through_all_three(pool: &SqlitePool, status: &str) -> (i64, i64) {
+        use crate::db::{enrollments, exams};
+        let c = create(pool, &CandidateInput { status: status.into(), ..input("BENALI", "Yacine") })
+            .await
+            .unwrap();
+        let e = enrollments::create(
+            pool,
+            c.id,
+            &enrollments::EnrollmentInput { category_code: "B".into(), ..Default::default() },
+        )
+        .await
+        .unwrap();
+        let mut last = 0;
+        for (kind, day) in [("theory", "2026-08-10"), ("maneuvers", "2026-09-10"), ("road", "2026-10-10")] {
+            let session = exams::create_session(
+                pool,
+                &exams::ExamSessionInput { kind: kind.into(), held_on: day.into(), ..Default::default() },
+            )
+            .await
+            .unwrap();
+            let entry = exams::add_to_session(pool, session.id, e.id, 0).await.unwrap();
+            exams::set_outcome(pool, entry.id, "passed", "").await.unwrap();
+            last = entry.id;
+        }
+        (c.id, last)
+    }
+
+    async fn shown(pool: &SqlitePool, id: i64) -> String {
+        list(pool, "", false, 50, 0)
+            .await
+            .unwrap()
+            .into_iter()
+            .find(|c| c.id == id)
+            .unwrap()
+            .shown_status
+    }
+
+    #[tokio::test]
+    async fn the_list_says_completed_once_all_three_are_passed() {
+        let pool = test_pool().await;
+        let (id, road) = through_all_three(&pool, "active").await;
+        assert_eq!(shown(&pool, id).await, "completed");
+        // Nothing was written: the form still holds what the school chose.
+        assert_eq!(get(&pool, id).await.unwrap().status, "active");
+
+        // A pass undone puts it back.
+        crate::db::exams::set_outcome(&pool, road, "failed", "").await.unwrap();
+        assert_eq!(shown(&pool, id).await, "active");
+    }
+
+    #[tokio::test]
+    async fn abandon_set_by_the_school_still_shows() {
+        let pool = test_pool().await;
+        let (id, _) = through_all_three(&pool, "withdrawn").await;
+        assert_eq!(shown(&pool, id).await, "withdrawn");
+    }
+
+    #[tokio::test]
+    async fn someone_still_training_shows_what_was_chosen() {
+        let pool = test_pool().await;
+        let c = create(&pool, &input("HAMDI", "Sara")).await.unwrap();
+        assert_eq!(shown(&pool, c.id).await, "active");
     }
 }
