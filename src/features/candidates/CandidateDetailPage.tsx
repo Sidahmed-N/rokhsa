@@ -6,6 +6,7 @@ import {
   ArchiveRestore,
   BadgeCheck,
   Banknote,
+  CalendarCheck,
   CalendarPlus,
   Check,
   ChevronLeft,
@@ -470,15 +471,41 @@ export default function CandidateDetailPage() {
                           progress={examProgressBy[id]}
                         />
                       </div>
+                    </div>
+
+                    {/* Séances, a section of their own like Versements. They
+                        used to follow the exam dates with no title between,
+                        and both can say "Code", so the two read as one table. */}
+                    <div className="border-b border-line px-4 py-4">
+                      <h3 className="mb-2.5 flex items-center gap-2 text-xs font-medium tracking-wide text-muted uppercase">
+                        <CalendarCheck className="size-3.5" aria-hidden="true" />
+                        {t("lessons.title")}
+                        {lessons.length > 0 && (
+                          <span className="rounded-full bg-sunken px-2 py-0.5 tracking-normal">
+                            <Num>{lessons.length}</Num>
+                          </span>
+                        )}
+                      </h3>
 
                       {/* A candidate trained over months has dozens of
                           séances; past a page they push the payments off
                           the screen. Upcoming ones sort first, so page one
                           is always what is next. */}
-                      {lessons.length > 0 && (
+                      {lessons.length === 0 ? (
+                        <p className="text-xs text-muted">{t("lessons.none")}</p>
+                      ) : (
                         <Paged items={lessons} pageSize={LESSON_PAGE_SIZE}>
                           {(pageLessons) => (
-                        <table className="mt-4 w-full text-xs">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="text-muted">
+                              <th className="py-1 text-start font-medium">{t("lessons.colDate")}</th>
+                              <th className="py-1 text-start font-medium">{t("lessons.colKind")}</th>
+                              <th className="py-1 text-start font-medium">{t("lessons.colLength")}</th>
+                              <th className="py-1 text-start font-medium">{t("lessons.colStatus")}</th>
+                              <th className="py-1 font-medium" />
+                            </tr>
+                          </thead>
                           <tbody>
                             {pageLessons.map((lesson) => {
                               const upcoming = lesson.status === "planned";

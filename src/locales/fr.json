@@ -301,7 +301,13 @@
       "duplicateCandidate": "Ce candidat est déjà dans cette séance.",
       "notYet": "Cette séance n’a pas encore eu lieu : elle se marque le jour même ou après.",
       "notReopenable": "Seule une séance programmée et déjà pointée peut être rétablie. Des heures ajoutées après coup se suppriment."
-    }
+    },
+    "title": "Séances",
+    "none": "Aucune séance pour l’instant.",
+    "colDate": "Date",
+    "colKind": "Séance",
+    "colLength": "Durée",
+    "colStatus": "État"
   },
   "payments": {
     "title": "Versements",
