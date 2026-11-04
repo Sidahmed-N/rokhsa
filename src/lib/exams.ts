@@ -148,6 +148,16 @@ export const createExamSession = (input: ExamSessionInput) =>
 
 export const deleteExamSession = (id: number) => call<void>("delete_exam_session", { id });
 
+/** The next sitting from today on, for the box on Accueil. */
+export interface NextExam {
+  session: ExamSession;
+  candidates: number;
+  fees: SessionFees;
+}
+
+export const nextExamSession = (today: string) =>
+  call<NextExam | null>("next_exam_session", { today });
+
 export const examSessionFees = (sessionId: number) =>
   call<SessionFees>("exam_session_fees", { sessionId });
 

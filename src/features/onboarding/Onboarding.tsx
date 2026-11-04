@@ -375,7 +375,7 @@ const PAGE_STEPS: Record<PageTourId, Step[]> = {
   home: [
     { target: "home-owed", titleKey: "receivables.totalOwed", textKey: "tour.page.home.owed" },
     { target: "home-today", titleKey: "home.todayTitle", textKey: "tour.page.home.today" },
-    { target: "home-chase", titleKey: "home.chaseTitle", textKey: "tour.page.home.chase" },
+    { target: "home-exam", titleKey: "home.examTitle", textKey: "tour.page.home.exam" },
     { target: "home-overdue", titleKey: "home.overdueTitle", textKey: "tour.page.home.overdue" },
   ],
   calendar: [

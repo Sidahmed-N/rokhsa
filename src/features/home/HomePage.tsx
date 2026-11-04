@@ -8,26 +8,24 @@ import {
   ArrowUpRight,
   Check,
   ChevronRight,
-  Phone,
   Users,
 } from "lucide-react";
 
 import FreeText from "@/components/FreeText";
 import { Money, Num } from "@/components/Num";
 import Button from "@/components/ui/Button";
-import { Card, ErrorNote, Hero, PageHeader } from "@/components/ui/Surface";
+import { Badge, Card, ErrorNote, Hero, PageHeader } from "@/components/ui/Surface";
 import RuntimeBadge from "@/features/home/RuntimeBadge";
 import { isAppError, listCandidates } from "@/lib/candidates";
 import { useToday } from "@/lib/today";
 import { kindStyle } from "@/lib/kinds";
 import { personName } from "@/lib/names";
+import { nextExamSession, type NextExam } from "@/lib/exams";
 import {
   getCashFlow,
   getReceivables,
-  STALE_DAYS,
   thisMonth,
   type CashFlow,
-  type ReceivableRow,
   type Receivables,
 } from "@/lib/reports";
 import { isDesktop } from "@/lib/tauri";
@@ -163,6 +161,7 @@ export default function HomePage() {
   const [candidateCount, setCandidateCount] = useState<number | null>(null);
   const [today, setToday] = useState<DayEntry[]>([]);
   const [overdue, setOverdue] = useState<DayEntry[]>([]);
+  const [next, setNext] = useState<NextExam | null>(null);
   /**
    * Today, kept true while the app stays open. Both lists below are asked
    * FOR a date, so pinning it at mount meant that after midnight the panel
@@ -176,18 +175,20 @@ export default function HomePage() {
     if (!isDesktop()) return;
     const range = thisMonth();
     try {
-      const [r, f, page, day, late] = await Promise.all([
+      const [r, f, page, day, late, exam] = await Promise.all([
         getReceivables(),
         getCashFlow(range.from, range.to),
         listCandidates("", false, 1, 0),
         listDay(today$),
         listOverdue(today$),
+        nextExamSession(today$),
       ]);
       setReceivables(r);
       setFlow(f);
       setCandidateCount(page.total);
       setToday(day);
       setOverdue(late);
+      setNext(exam);
       setError(null);
     } catch (raw: unknown) {
       setError(isAppError(raw) ? t(raw.code, { defaultValue: raw.message }) : String(raw));
@@ -206,22 +207,6 @@ export default function HomePage() {
       setError(isAppError(raw) ? t(raw.code, { defaultValue: raw.message }) : String(raw));
     }
   }
-
-  // Worst first: the biggest balance that has been quiet longest is the call
-  // worth making before the others. Only the quiet ones: every candidate in
-  // training owes something, and a list of all of them — including someone
-  // who enrolled this morning — is not a list of calls to make.
-  const stale = (receivables?.rows ?? []).filter(
-    (r) => (r.daysSincePayment ?? 0) >= STALE_DAYS,
-  );
-  const chase: ReceivableRow[] = [...stale]
-    .sort(
-      (a, b) =>
-        (b.daysSincePayment ?? Number.MAX_SAFE_INTEGER) -
-          (a.daysSincePayment ?? Number.MAX_SAFE_INTEGER) ||
-        b.balanceCentimes - a.balanceCentimes,
-    )
-    .slice(0, PANEL_ROWS);
 
   return (
     <div>
@@ -343,63 +328,68 @@ export default function HomePage() {
           )}
         </Panel>
 
-        {/* Who to call */}
+        {/* The next exam sitting. It replaced "À relancer", which repeated
+            Créances cut to five names and showed the same people every
+            morning until they paid. This one changes week to week, has a
+            date, and says whose fee is still to collect. */}
         <Panel
-          tourId="home-chase"
-          title={t("home.chaseTitle")}
-          count={stale.length}
-          to="/receivables"
-          linkLabel={t("nav.receivables")}
+          tourId="home-exam"
+          title={t("home.examTitle")}
+          count={next?.candidates ?? 0}
+          to={next ? `/exams?session=${next.session.id}` : "/exams"}
+          linkLabel={t("nav.exams")}
         >
-          {chase.length === 0 ? (
-            <p className="px-4 py-8 text-center text-sm text-muted">
-              {(receivables?.enrollmentsOwing ?? 0) > 0
-                ? t("home.chaseNone", { n: STALE_DAYS })
-                : t("receivables.nobodyOwes")}
-            </p>
+          {next === null ? (
+            <p className="px-4 py-8 text-center text-sm text-muted">{t("home.examNone")}</p>
           ) : (
-            <>
-            <ul className="divide-y divide-line">
-              {chase.map((row) => (
-                <li
-                  key={row.enrollmentId}
-                  className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5"
+            <Link
+              to={`/exams?session=${next.session.id}`}
+              className="block px-4 py-4 transition-colors hover:bg-sunken"
+            >
+              <span className="flex flex-wrap items-center gap-2">
+                <span
+                  className={[
+                    "rounded px-1.5 py-0.5 text-xs font-semibold",
+                    kindStyle(next.session.kind).chip,
+                  ].join(" ")}
                 >
-                  <Link
-                    to={`/candidates/${row.candidateId}`}
-                    className="text-sm font-medium text-ink hover:text-brand hover:underline"
-                  >
-                    {personName(row)}
-                  </Link>
-                  {row.phone && (
-                    <span className="inline-flex items-center gap-1 text-xs text-muted">
-                      <Phone className="size-3 text-faint" aria-hidden="true" />
-                      <Num>{row.phone}</Num>
-                    </span>
+                  {t(`lessons.kind_${next.session.kind}`)}
+                </span>
+                <Num className="text-sm font-semibold text-ink">{next.session.heldOn}</Num>
+                {next.session.heldAt && (
+                  <Num className="text-xs text-muted">{next.session.heldAt}</Num>
+                )}
+                {next.session.heldOn === today$ && (
+                  <Badge tone="brand">{t("home.examToday")}</Badge>
+                )}
+              </span>
+              {next.session.place && (
+                <FreeText as="span" className="mt-1 block truncate text-xs text-muted">
+                  {next.session.place}
+                </FreeText>
+              )}
+              <span className="mt-3 block text-sm text-ink-soft">
+                {t("home.examCandidates", { n: next.candidates })}
+              </span>
+              {next.fees.withFee > 0 && (
+                <span
+                  className={[
+                    "mt-1 block text-sm font-medium",
+                    next.fees.missingCentimes > 0 ? "text-owed" : "text-ok",
+                  ].join(" ")}
+                >
+                  {next.fees.missingCentimes > 0 ? (
+                    <>
+                      {t("exams.feesPaidCount", { paid: next.fees.paid, total: next.fees.withFee })}
+                      {" · "}
+                      {t("exams.feesMissing")} <Money centimes={next.fees.missingCentimes} />
+                    </>
+                  ) : (
+                    t("exams.feesAllPaid")
                   )}
-                  <span className="ms-auto flex items-center gap-3">
-                    {/* Days since his last payment, or since he enrolled when
-                        he has paid nothing: Rust counts from the enrolment
-                        then, so "40 j" alone read as "paid 40 days ago". */}
-                    <span className="text-xs text-muted">
-                      {row.lastPaymentOn === null && <>{t("home.neverPaid")} · </>}
-                      {row.daysSincePayment !== null && (
-                        <>
-                          <Num>{row.daysSincePayment}</Num> {t("receivables.daysAgo")}
-                        </>
-                      )}
-                    </span>
-                    <Money
-                      centimes={row.balanceCentimes}
-                      whole
-                      className="text-sm font-semibold text-owed"
-                    />
-                  </span>
-                </li>
-              ))}
-            </ul>
-            <MoreRows shown={chase.length} total={stale.length} to="/receivables" />
-            </>
+                </span>
+              )}
+            </Link>
           )}
         </Panel>
       </div>

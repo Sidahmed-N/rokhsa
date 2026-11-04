@@ -42,6 +42,15 @@ pub async fn list_exam_entries(
     Ok(exams::entries_for_session(&state.pool, session_id).await?)
 }
 
+/// The next sitting from `today` on, for the box on Accueil.
+#[tauri::command]
+pub async fn next_exam_session(
+    state: State<'_, AppState>,
+    today: String,
+) -> CommandResult<Option<exams::NextExam>> {
+    Ok(exams::next_session(&state.pool, &today).await?)
+}
+
 /// Who has paid the exam fee in a sitting, for the line above its list.
 #[tauri::command]
 pub async fn exam_session_fees(

@@ -209,6 +209,43 @@ pub async fn list_sessions(pool: &SqlitePool) -> Result<Vec<ExamSession>, AppErr
     Ok(rows)
 }
 
+/// The next sitting, for the "Prochain examen" box on Accueil.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NextExam {
+    pub session: ExamSession,
+    /// Candidates entered for it.
+    pub candidates: i64,
+    /// Who has paid the fee, as above the sitting's own list.
+    pub fees: SessionFees,
+}
+
+/// The first sitting on or after `today`, soonest first. Today counts: on
+/// the morning of the exam it is the one the owner is collecting fees for.
+/// None when nothing is planned.
+pub async fn next_session(pool: &SqlitePool, today: &str) -> Result<Option<NextExam>, AppError> {
+    let session = sqlx::query_as::<_, ExamSession>(
+        "SELECT id, kind, held_on, held_at, place, notes, created_at, updated_at
+         FROM exam_sessions
+         WHERE deleted_at IS NULL AND held_on >= ?1
+         ORDER BY held_on ASC, held_at ASC, id ASC
+         LIMIT 1",
+    )
+    .bind(today.trim())
+    .fetch_optional(pool)
+    .await?;
+
+    let Some(session) = session else {
+        return Ok(None);
+    };
+    let entries = entries_for_session(pool, session.id).await?;
+    Ok(Some(NextExam {
+        candidates: entries.len() as i64,
+        fees: session_fees(&entries),
+        session,
+    }))
+}
+
 /// Soft-delete a sitting.
 ///
 /// Two kinds of entry, two fates:

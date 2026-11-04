@@ -143,13 +143,14 @@
     "runtimeBrowser": "Navigateur (développement) — la partie Rust n'est pas disponible",
     "version": "version",
     "todayTitle": "Aujourd'hui",
-    "chaseTitle": "À relancer",
-    "chaseNone": "Personne à relancer pour l’instant : aucun reste à payer n’attend depuis plus de {{n}} jours.",
     "overdueTitle": "Séances non pointées",
     "overdueHint": "Leur jour est passé et personne n’a dit ce qui s’est passé.",
     "moreRows_one": "Voir {{count}} autre",
     "moreRows": "Voir les {{count}} autres",
-    "neverPaid": "Jamais payé"
+    "examTitle": "Prochain examen",
+    "examNone": "Aucun examen prévu. Créez la prochaine session dans Examens.",
+    "examToday": "Aujourd’hui",
+    "examCandidates": "Candidats inscrits : {{n}}"
   },
   "candidates": {
     "title": "Candidats",
@@ -532,8 +533,8 @@
       "home": {
         "owed": "Ce que tous vos candidats doivent encore à l’école.",
         "today": "Les séances prévues aujourd’hui.",
-        "chase": "Ceux qui n’ont rien payé depuis longtemps : à appeler en premier.",
-        "overdue": "Des séances passées jamais pointées. Marquez-les Fait ou Absent pour que les heures restent justes."
+        "overdue": "Des séances passées jamais pointées. Marquez-les Fait ou Absent pour que les heures restent justes.",
+        "exam": "La prochaine session d’examen : combien de candidats, et qui n’a pas encore payé ses frais."
       },
       "calendar": {
         "viewsTitle": "Jour, semaine, mois",

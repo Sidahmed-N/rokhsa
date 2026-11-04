@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   Check,
@@ -71,7 +71,12 @@ export default function ExamsPage() {
   // Sittings accumulate for as long as the school exists, a batch or two a
   // month. The column is narrow, so a shorter page than the tables.
   const { pageItems: sessionPage, pager: sessionPager } = usePaged(sessions, SESSION_PAGE_SIZE);
-  const [selected, setSelected] = useState<number | null>(null);
+  // ?session=12 opens that sitting: Accueil's "Prochain examen" links here.
+  const [params] = useSearchParams();
+  const [selected, setSelected] = useState<number | null>(() => {
+    const asked = Number(params.get("session"));
+    return Number.isInteger(asked) && asked > 0 ? asked : null;
+  });
   const [entries, setEntries] = useState<ExamEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);

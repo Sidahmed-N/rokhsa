@@ -600,4 +600,57 @@ mod tests {
         assert_eq!(entry.fee_due_centimes, 0);
         assert_eq!(exams::session_fees(&[entry]), exams::SessionFees::default());
     }
+
+    /* ---------------------- the next sitting on Accueil ---------------------- */
+
+    #[tokio::test]
+    async fn the_next_sitting_is_the_soonest_from_today() {
+        let pool = test_pool().await;
+        assert!(exams::next_session(&pool, "2026-11-04").await.unwrap().is_none());
+
+        sitting(&pool, "theory", "2026-10-20").await; // past: not next
+        let soon = sitting(&pool, "maneuvers", "2026-11-12").await;
+        sitting(&pool, "road", "2026-12-01").await;
+
+        let next = exams::next_session(&pool, "2026-11-04").await.unwrap().unwrap();
+        assert_eq!(next.session.id, soon);
+        assert_eq!(next.candidates, 0);
+    }
+
+    #[tokio::test]
+    async fn a_sitting_today_is_still_the_next_one() {
+        let pool = test_pool().await;
+        let today = sitting(&pool, "theory", "2026-11-04").await;
+        sitting(&pool, "theory", "2026-11-20").await;
+        let next = exams::next_session(&pool, "2026-11-04").await.unwrap().unwrap();
+        assert_eq!(next.session.id, today);
+    }
+
+    #[tokio::test]
+    async fn the_next_sitting_says_who_has_paid() {
+        let pool = test_pool().await;
+        let session = sitting(&pool, "theory", "2026-11-12").await;
+        let a = enrol(&pool, "Benaissa").await;
+        let b = enrol(&pool, "Hamdi").await;
+        let c = enrol(&pool, "Kaci").await;
+        let paid = exams::add_to_session(&pool, session, a, 3_000 * DA).await.unwrap();
+        exams::add_to_session(&pool, session, b, 3_000 * DA).await.unwrap();
+        exams::add_to_session(&pool, session, c, 0).await.unwrap();
+        pay(&pool, a, 3_000, paid.fee_charge_id).await.unwrap();
+
+        let next = exams::next_session(&pool, "2026-11-04").await.unwrap().unwrap();
+        assert_eq!(next.candidates, 3);
+        assert_eq!(
+            next.fees,
+            exams::SessionFees { with_fee: 2, paid: 1, missing_centimes: 3_000 * DA }
+        );
+    }
+
+    #[tokio::test]
+    async fn a_deleted_sitting_is_not_next() {
+        let pool = test_pool().await;
+        let gone = sitting(&pool, "theory", "2026-11-10").await;
+        exams::delete_session(&pool, gone).await.unwrap();
+        assert!(exams::next_session(&pool, "2026-11-04").await.unwrap().is_none());
+    }
 }

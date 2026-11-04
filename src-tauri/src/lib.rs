@@ -129,6 +129,7 @@ pub fn run() {
             commands::exams::delete_exam_session,
             commands::exams::list_exam_entries,
             commands::exams::exam_session_fees,
+            commands::exams::next_exam_session,
             commands::exams::add_to_exam_session,
             commands::exams::set_exam_outcome,
             commands::exams::remove_exam_result,
