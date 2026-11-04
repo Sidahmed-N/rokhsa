@@ -305,6 +305,15 @@ export function localDate(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
+/** Shift an ISO date by whole months, keeping the day where the month has it. */
+export function shiftMonth(iso: string, months: number): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  const target = new Date(y ?? 1970, (m ?? 1) - 1 + months, 1);
+  const last = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+  target.setDate(Math.min(d ?? 1, last));
+  return localDate(target);
+}
+
 /** Shift an ISO date by whole days, for the Today screen's arrows. */
 export function shiftIso(iso: string, days: number): string {
   const [y, m, d] = iso.split("-").map(Number);

@@ -39,8 +39,24 @@ import {
   type DayEntry,
 } from "@/lib/training";
 
-/** How many rows each panel shows before deferring to its own screen. */
+/** How many rows each panel shows before deferring to its own screen.
+ * Not the unmarked-sessions panel: no other screen lists those across days,
+ * so it shows every one of them. */
 const PANEL_ROWS = 5;
+
+/** "3 more" under a panel that stopped at PANEL_ROWS, linking to its screen. */
+function MoreRows({ shown, total, to }: { shown: number; total: number; to: string }) {
+  const { t } = useTranslation();
+  if (total <= shown) return null;
+  return (
+    <Link
+      to={to}
+      className="block border-t border-line px-4 py-2.5 text-sm font-medium text-brand hover:bg-sunken"
+    >
+      {t("home.moreRows", { count: total - shown })}
+    </Link>
+  );
+}
 
 /**
  * One headline number, as a link to the screen that explains it.
@@ -269,6 +285,7 @@ export default function HomePage() {
           {today.length === 0 ? (
             <p className="px-4 py-8 text-center text-sm text-muted">{t("calendar.empty")}</p>
           ) : (
+            <>
             <ul className="divide-y divide-line">
               {today.slice(0, PANEL_ROWS).map((row) => (
                 <li key={row.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5">
@@ -321,6 +338,8 @@ export default function HomePage() {
                 </li>
               ))}
             </ul>
+            <MoreRows shown={Math.min(today.length, PANEL_ROWS)} total={today.length} to="/calendar" />
+            </>
           )}
         </Panel>
 
@@ -339,6 +358,7 @@ export default function HomePage() {
                 : t("receivables.nobodyOwes")}
             </p>
           ) : (
+            <>
             <ul className="divide-y divide-line">
               {chase.map((row) => (
                 <li
@@ -376,6 +396,8 @@ export default function HomePage() {
                 </li>
               ))}
             </ul>
+            <MoreRows shown={chase.length} total={stale.length} to="/receivables" />
+            </>
           )}
         </Panel>
       </div>
@@ -408,7 +430,7 @@ export default function HomePage() {
             </header>
 
             <ul className="divide-y divide-line">
-              {overdue.slice(0, PANEL_ROWS).map((row) => (
+              {overdue.map((row) => (
                 <li
                   key={row.id}
                   className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5"

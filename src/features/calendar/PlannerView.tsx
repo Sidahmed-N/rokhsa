@@ -9,13 +9,24 @@ import frLocale from "@fullcalendar/core/locales/fr";
 import type { EventApi, EventDropArg, EventInput } from "@fullcalendar/core";
 import type { EventResizeDoneArg } from "@fullcalendar/interaction";
 
+import { ChevronLeft, ChevronRight } from "lucide-react";
+
+import Button, { IconButton } from "@/components/ui/Button";
+import DateField from "@/components/ui/DateField";
 import { ErrorNote } from "@/components/ui/Surface";
 import { currentLanguage } from "@/i18n";
 import { isAppError } from "@/lib/candidates";
 import { KINDS } from "@/lib/kinds";
 import { personName } from "@/lib/names";
 import { isDesktop } from "@/lib/tauri";
-import { listRange, rescheduleLesson, type DayEntry } from "@/lib/training";
+import {
+  listRange,
+  rescheduleLesson,
+  shiftIso,
+  shiftMonth,
+  todayIso,
+  type DayEntry,
+} from "@/lib/training";
 
 
 /**
@@ -270,8 +281,35 @@ export default function PlannerView({
     );
   }
 
+  // One click is one page of the view: a week, or a month.
+  const step = (direction: 1 | -1) =>
+    setDate(view === "week" ? shiftIso(date, 7 * direction) : shiftMonth(date, direction));
+
   return (
     <div>
+      {/* The same controls as the day view, so the three tabs move the same
+          way. Without them the week and the month could not be left at all. */}
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <IconButton
+          aria-label={t(view === "week" ? "calendar.previousWeek" : "calendar.previousMonth")}
+          onClick={() => step(-1)}
+          variant="secondary"
+        >
+          <ChevronLeft className="size-4 rtl:rotate-180" aria-hidden="true" />
+        </IconButton>
+        <DateField value={date} onChange={setDate} aria-label={t("calendar.day")} />
+        <IconButton
+          aria-label={t(view === "week" ? "calendar.nextWeek" : "calendar.nextMonth")}
+          onClick={() => step(1)}
+          variant="secondary"
+        >
+          <ChevronRight className="size-4 rtl:rotate-180" aria-hidden="true" />
+        </IconButton>
+        {date !== todayIso() && (
+          <Button onClick={() => setDate(todayIso())}>{t("calendar.backToToday")}</Button>
+        )}
+      </div>
+
       {/* Kind filters. None selected means all — the common case costs no
           clicks, and there is no "All" state to keep in sync. */}
       <div className="mb-4 flex flex-wrap items-center gap-1.5">
@@ -395,8 +433,13 @@ export default function PlannerView({
             // FullCalendar's end is exclusive; the query's is inclusive.
             const last = new Date(arg.end.getTime() - 86_400_000);
             setRange({ from, to: localParts(last).day });
-            const shown = localParts(arg.view.currentStart).day;
-            if (shown !== date) setDate(shown);
+            // Follow the calendar only when it has moved away from the shared
+            // date. Copying the first day of the view every time pinned the
+            // date to Saturday 31 October, so the month tab then opened on
+            // October on the 4th of November.
+            const first = localParts(arg.view.currentStart).day;
+            const end = localParts(arg.view.currentEnd).day;
+            if (date < first || date >= end) setDate(first);
           }}
           eventContent={(arg) => {
             const names = (arg.event.extendedProps["names"] as string[]) ?? [

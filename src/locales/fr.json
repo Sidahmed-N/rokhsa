@@ -147,7 +147,9 @@
     "chaseNone": "Personne à relancer pour l’instant : aucun reste à payer n’attend depuis plus de {{n}} jours.",
     "overdueTitle": "Séances non pointées",
     "overdueHint": "Leur jour est passé et personne n’a dit ce qui s’est passé.",
-    "overdueMore": "et {{n}} autres."
+    "overdueMore": "et {{n}} autres.",
+    "moreRows_one": "Voir {{count}} autre",
+    "moreRows": "Voir les {{count}} autres"
   },
   "candidates": {
     "title": "Candidats",
@@ -357,8 +359,8 @@
     "title": "Calendrier",
     "tabDay": "Jour",
     "tabWeek": "Semaine",
-    "previousWeek": "Précédente",
-    "nextWeek": "Suivante",
+    "previousWeek": "Semaine précédente",
+    "nextWeek": "Semaine suivante",
     "thisWeek": "Cette semaine",
     "weekSummary": "{{planned}} séance(s) encore à faire sur {{total}} cette semaine.",
     "todayBadge": "Aujourd'hui",
@@ -391,7 +393,9 @@
     "pickCandidate": "Choisissez un candidat.",
     "chosenCount": "{{n}} candidats dans cette séance.",
     "rebook": "Reprogrammer",
-    "reopen": "Rétablir"
+    "reopen": "Rétablir",
+    "previousMonth": "Mois précédent",
+    "nextMonth": "Mois suivant"
   },
   "exams": {
     "title": "Examens",

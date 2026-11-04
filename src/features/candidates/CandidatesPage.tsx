@@ -129,6 +129,9 @@ export default function CandidatesPage() {
       setConfirmDelete(null);
       void refresh();
     } catch (raw: unknown) {
+      // Closed on a refusal too: left open, it hid the reason behind it and
+      // "Supprimer" looked like it did nothing.
+      setConfirmDelete(null);
       setError(isAppError(raw) ? t(raw.code, { defaultValue: raw.message }) : String(raw));
     }
   }
