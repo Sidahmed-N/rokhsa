@@ -231,7 +231,7 @@ pub async fn write_backup(pool: &SqlitePool, dest: &Path) -> Result<BackupInfo, 
 
     // Proven good: now, and only now, it takes the real name — replacing an
     // older file of the same name in one step.
-    if let Err(e) = retry(|| std::fs::rename(&partial, dest)) {
+    if let Err(e) = retry(|| std::fs::rename(&partial, dest)).await {
         std::fs::remove_file(&partial).ok();
         eprintln!("[tariqi] could not put the backup in place at {}: {e}", dest.display());
         return Err(AppError::validation("backup.error.writeFailed"));
@@ -377,7 +377,7 @@ pub async fn stage_restore(data_dir: &Path, source: &Path) -> Result<BackupInfo,
         std::fs::remove_file(&partial).ok();
         return Err(e);
     }
-    retry(|| std::fs::rename(&partial, &staged)).map_err(|e| {
+    retry(|| std::fs::rename(&partial, &staged)).await.map_err(|e| {
         std::fs::remove_file(&partial).ok();
         io_err("staging the restore", e)
     })?;
@@ -415,9 +415,16 @@ fn remove_if_present(path: &Path) -> std::io::Result<()> {
 /// after the connection reports closed, and a delete or rename in that window
 /// fails. Seen in the tests: the restore's own checkpoint connection still
 /// held the `-wal` when the old code deleted it, the delete failed silently,
-/// and the sidecar stayed next to the restored file. Startup only, so a
-/// blocking sleep is fine.
-fn retry<T>(mut op: impl FnMut() -> std::io::Result<T>) -> std::io::Result<T> {
+/// and the sidecar stayed next to the restored file.
+///
+/// The wait must NOT block the thread. Part of closing a pool finishes in the
+/// background, a moment after `close()` returns; a blocking sleep on a
+/// single-threaded runtime kept that from ever running, so the file stayed
+/// held for the whole two seconds and the restore was postponed. Measured: 3
+/// closes in 150 on a single-threaded runtime, 0 in 200 on a multi-threaded
+/// one, which is why the app (multi-threaded) never showed it and only the
+/// tests (single-threaded) failed now and then.
+async fn retry<T>(mut op: impl FnMut() -> std::io::Result<T>) -> std::io::Result<T> {
     let mut attempts = 0;
     loop {
         match op() {
@@ -425,7 +432,7 @@ fn retry<T>(mut op: impl FnMut() -> std::io::Result<T>) -> std::io::Result<T> {
             Err(e) if attempts >= 40 => return Err(e),
             Err(_) => {
                 attempts += 1;
-                std::thread::sleep(std::time::Duration::from_millis(50));
+                tokio::time::sleep(std::time::Duration::from_millis(50)).await;
             }
         }
     }
@@ -460,9 +467,9 @@ pub async fn apply_pending_restore(
         ));
         eprintln!("[tariqi] staged restore failed its check ({e}); kept aside as {}", rejected.display());
         // Retried: the check just above has only now let go of the file.
-        retry(|| std::fs::rename(&staged, &rejected))
-            .or_else(|_| retry(|| remove_if_present(&staged)))
-            .ok();
+        if retry(|| std::fs::rename(&staged, &rejected)).await.is_err() {
+            retry(|| remove_if_present(&staged)).await.ok();
+        }
         return Ok(None);
     }
 
@@ -500,15 +507,16 @@ pub async fn apply_pending_restore(
         let wal = sidecar(db_path, "-wal");
         let shm = sidecar(db_path, "-shm");
         let wal_has_data = std::fs::metadata(&wal).map(|m| m.len() > 0).unwrap_or(false);
-        let cleared = (if wal_has_data {
-            retry(|| std::fs::rename(&wal, &kept_wal)).or_else(|_| {
+        let cleared: std::io::Result<()> = async {
+            if !wal_has_data {
+                retry(|| remove_if_present(&wal)).await?;
+            } else if retry(|| std::fs::rename(&wal, &kept_wal)).await.is_err() {
                 std::fs::copy(&wal, &kept_wal)?;
-                retry(|| remove_if_present(&wal))
-            })
-        } else {
-            retry(|| remove_if_present(&wal))
-        })
-        .and_then(|_| retry(|| remove_if_present(&shm)));
+                retry(|| remove_if_present(&wal)).await?;
+            }
+            retry(|| remove_if_present(&shm)).await
+        }
+        .await;
 
         if let Err(e) = cleared {
             // The live database has not been touched: postpone, never half-do.
@@ -518,6 +526,7 @@ pub async fn apply_pending_restore(
         }
 
         retry(|| std::fs::rename(db_path, &kept))
+            .await
             .or_else(|_| std::fs::copy(db_path, &kept).map(|_| ()))
             .map_err(|e| io_err("setting the current database aside", e))?;
     }

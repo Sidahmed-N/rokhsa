@@ -32,7 +32,9 @@ sqlx = { version = "0.8", default-features = false, features = [
     "macros",
     "chrono",
 ] }
-tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+# "time": the backup code waits for Windows to release a file without
+# blocking the thread (backup::retry).
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
 chrono = { version = "0.4", features = ["serde"] }
 thiserror = "2"
 tauri-plugin-dialog = "2.7.3"
