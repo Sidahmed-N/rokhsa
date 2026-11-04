@@ -378,10 +378,12 @@ export default function HomePage() {
                     </span>
                   )}
                   <span className="ms-auto flex items-center gap-3">
+                    {/* Days since his last payment, or since he enrolled when
+                        he has paid nothing: Rust counts from the enrolment
+                        then, so "40 j" alone read as "paid 40 days ago". */}
                     <span className="text-xs text-muted">
-                      {row.daysSincePayment === null ? (
-                        t("receivables.never")
-                      ) : (
+                      {row.lastPaymentOn === null && <>{t("home.neverPaid")} · </>}
+                      {row.daysSincePayment !== null && (
                         <>
                           <Num>{row.daysSincePayment}</Num> {t("receivables.daysAgo")}
                         </>
@@ -476,12 +478,6 @@ export default function HomePage() {
                 </li>
               ))}
             </ul>
-
-            {overdue.length > PANEL_ROWS && (
-              <p className="border-t border-line px-4 py-2 text-xs text-muted">
-                {t("home.overdueMore", { n: overdue.length - PANEL_ROWS })}
-              </p>
-            )}
           </Card>
         </div>
       )}

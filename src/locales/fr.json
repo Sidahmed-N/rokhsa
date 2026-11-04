@@ -147,9 +147,9 @@
     "chaseNone": "Personne à relancer pour l’instant : aucun reste à payer n’attend depuis plus de {{n}} jours.",
     "overdueTitle": "Séances non pointées",
     "overdueHint": "Leur jour est passé et personne n’a dit ce qui s’est passé.",
-    "overdueMore": "et {{n}} autres.",
     "moreRows_one": "Voir {{count}} autre",
-    "moreRows": "Voir les {{count}} autres"
+    "moreRows": "Voir les {{count}} autres",
+    "neverPaid": "Jamais payé"
   },
   "candidates": {
     "title": "Candidats",
