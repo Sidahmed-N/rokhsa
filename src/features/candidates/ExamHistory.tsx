@@ -3,6 +3,7 @@ import { Check, Clock, GraduationCap, Minus, X } from "lucide-react";
 
 import FreeText from "@/components/FreeText";
 import { Num } from "@/components/Num";
+import { Paged } from "@/components/ui/Pager";
 import { Badge, type Tone } from "@/components/ui/Surface";
 import { EXAM_KINDS, type ExamProgress, type ExamResult, type Standing } from "@/lib/exams";
 import { kindStyle } from "@/lib/kinds";
@@ -21,6 +22,9 @@ import { kindStyle } from "@/lib/kinds";
  * where the date comes from. Letting it be typed here as well would be a
  * second way to create the same row.
  */
+
+/** Exam dates per page. Rarely reached: three exams and a few repassages. */
+const RESULT_PAGE_SIZE = 10;
 
 const STANDING_TONE: Record<Standing, Tone> = {
   notSat: "neutral",
@@ -114,13 +118,16 @@ export default function ExamHistory({
         })}
       </div>
 
-      {/* How they got here. */}
+      {/* How they got here. Newest first, like the séances and payments, so
+          that once there is more than a page, page one has the latest. */}
       {results.length === 0 ? (
         <p className="mt-3 text-xs text-muted">{t("exams.noneForCandidate")}</p>
       ) : (
+        <Paged items={[...results].reverse()} pageSize={RESULT_PAGE_SIZE}>
+          {(pageResults) => (
         <table className="mt-3 w-full text-xs">
           <tbody>
-            {results.map((row) => (
+            {pageResults.map((row) => (
               <tr key={row.id} className="border-t border-line">
                 <td className="py-2">
                   <Num className="font-medium text-ink">{row.satOn}</Num>
@@ -149,6 +156,8 @@ export default function ExamHistory({
             ))}
           </tbody>
         </table>
+          )}
+        </Paged>
       )}
     </div>
   );

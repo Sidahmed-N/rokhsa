@@ -318,8 +318,13 @@ export default function CandidateDetailPage() {
                 const payments = paymentsBy[id] ?? [];
                 const owes = summary.balanceCentimes > 0;
 
+                // One enrolment is four cards: the inscription (money and the
+                // actions), then exams, séances and payments, each on its own.
+                // In one frame with thin rules between them they read as one
+                // long block, and the exam dates as part of the séance log.
                 return (
-                  <Card key={id} flush>
+                  <div key={id} className="grid gap-4">
+                  <Card flush>
                     <header className="flex flex-wrap items-center gap-3 border-b border-line px-4 py-3">
                       <h2 className="text-base font-semibold tracking-tight text-ink">
                         {t("enrollments.heading")}
@@ -436,7 +441,7 @@ export default function CandidateDetailPage() {
                         percentage of a quota was a confident answer to a
                         question nobody asks. What the candidate has actually
                         done is the séance log below. */}
-                    <div className="border-b border-line px-4 py-4">
+                    <div className="px-4 py-4">
                       <div className="flex flex-wrap gap-2">
                         <Button
                           variant="primary"
@@ -462,21 +467,22 @@ export default function CandidateDetailPage() {
                         </Button>
                       </div>
 
-                      {/* Exams, above the lesson log on purpose: "where is
-                          this candidate up to" is the question, and twenty
-                          rows of séances is the answer to a different one. */}
-                      <div className="mt-4 border-t border-line pt-4">
-                        <ExamHistory
-                          results={examsBy[id] ?? []}
-                          progress={examProgressBy[id]}
-                        />
-                      </div>
                     </div>
+                  </Card>
 
-                    {/* Séances, a section of their own like Versements. They
-                        used to follow the exam dates with no title between,
-                        and both can say "Code", so the two read as one table. */}
-                    <div className="border-b border-line px-4 py-4">
+                  {/* Exams, above the lesson log on purpose: "where is this
+                      candidate up to" is the question, and twenty rows of
+                      séances is the answer to a different one. */}
+                  <Card>
+                    <ExamHistory
+                      results={examsBy[id] ?? []}
+                      progress={examProgressBy[id]}
+                    />
+                  </Card>
+
+                  {/* Séances. Both lists can say "Code", so they are kept
+                      apart and titled. */}
+                  <Card>
                       <h3 className="mb-2.5 flex items-center gap-2 text-xs font-medium tracking-wide text-muted uppercase">
                         <CalendarCheck className="size-3.5" aria-hidden="true" />
                         {t("lessons.title")}
@@ -638,10 +644,10 @@ export default function CandidateDetailPage() {
                           )}
                         </Paged>
                       )}
-                    </div>
+                  </Card>
 
-                    {/* Payments */}
-                    <div className="px-4 py-4">
+                  {/* Payments */}
+                  <Card>
                       <h3 className="mb-2.5 flex items-center gap-2 text-xs font-medium tracking-wide text-muted uppercase">
                         <CreditCard className="size-3.5" aria-hidden="true" />
                         {t("payments.title")}
@@ -725,8 +731,8 @@ export default function CandidateDetailPage() {
                         </Paged>
                       )}
                       <p className="mt-2.5 text-xs text-faint">{t("payments.appendOnlyNote")}</p>
-                    </div>
                   </Card>
+                  </div>
                 );
               })}
             </div>
