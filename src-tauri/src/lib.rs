@@ -120,6 +120,7 @@ pub fn run() {
             commands::candidates::create_candidate,
             commands::candidates::update_candidate,
             commands::candidates::delete_candidate,
+            commands::candidates::set_candidates_archived,
             commands::candidates::find_candidate_duplicates,
             commands::training::list_payment_methods,
             commands::exams::list_exam_sessions,

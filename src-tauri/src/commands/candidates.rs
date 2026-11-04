@@ -15,6 +15,9 @@ use crate::error::CommandResult;
 pub struct CandidatePage {
     pub items: Vec<Candidate>,
     pub total: i64,
+    /// Archived candidates matching a search of the current ones, so a name
+    /// that is "not found" can say it is in the archive instead.
+    pub archived_matches: i64,
 }
 
 /// Cap on page size. Guards against a mistyped limit dragging the whole table
@@ -25,16 +28,22 @@ const MAX_LIMIT: i64 = 200;
 pub async fn list_candidates(
     state: State<'_, AppState>,
     query: String,
+    archived: bool,
     limit: i64,
     offset: i64,
 ) -> CommandResult<CandidatePage> {
     let limit = limit.clamp(1, MAX_LIMIT);
     let offset = offset.max(0);
 
-    let items = repo::list(&state.pool, &query, limit, offset).await?;
-    let total = repo::count(&state.pool, &query).await?;
+    let items = repo::list(&state.pool, &query, archived, limit, offset).await?;
+    let total = repo::count_in(&state.pool, &query, archived).await?;
+    let archived_matches = if archived || query.trim().is_empty() {
+        0
+    } else {
+        repo::count_in(&state.pool, &query, true).await?
+    };
 
-    Ok(CandidatePage { items, total })
+    Ok(CandidatePage { items, total, archived_matches })
 }
 
 #[tauri::command]
@@ -65,6 +74,18 @@ pub async fn update_candidate(
 pub async fn delete_candidate(state: State<'_, AppState>, id: i64) -> CommandResult<()> {
     state.require_unlocked()?;
     Ok(repo::soft_delete(&state.pool, id).await?)
+}
+
+/// Archive candidates (`archived` true) or bring them back. Nothing but the
+/// flag changes: see `set_archived`.
+#[tauri::command]
+pub async fn set_candidates_archived(
+    state: State<'_, AppState>,
+    ids: Vec<i64>,
+    archived: bool,
+) -> CommandResult<()> {
+    state.require_unlocked()?;
+    Ok(repo::set_archived(&state.pool, &ids, archived).await?)
 }
 
 /// Candidates that resemble the one being entered.

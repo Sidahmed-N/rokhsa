@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
+  Archive,
+  ArchiveRestore,
   BadgeCheck,
   Banknote,
   CalendarPlus,
@@ -21,7 +23,12 @@ import ExamHistory from "@/features/candidates/ExamHistory";
 import { Duration, Money, Num } from "@/components/Num";
 import Button, { IconButton } from "@/components/ui/Button";
 import { Badge, Card, EmptyState, ErrorNote, type Tone } from "@/components/ui/Surface";
-import { getCandidate, isAppError, type Candidate } from "@/lib/candidates";
+import {
+  getCandidate,
+  isAppError,
+  setCandidatesArchived,
+  type Candidate,
+} from "@/lib/candidates";
 import { personName } from "@/lib/names";
 import { isDesktop } from "@/lib/tauri";
 import {
@@ -30,6 +37,7 @@ import {
   listEnrollments,
   listLessons,
   listPayments,
+  localDate,
   reopenLesson,
   reversePayment,
   todayIso,
@@ -178,6 +186,16 @@ export default function CandidateDetailPage() {
   // append-only), and the button sits one row away from the next payment.
   const [reversing, setReversing] = useState<Payment | null>(null);
 
+  // No confirmation: archiving takes nothing away and Restaurer undoes it.
+  async function setArchived(archived: boolean) {
+    try {
+      await setCandidatesArchived([candidateId], archived);
+      await refresh();
+    } catch (raw: unknown) {
+      setError(errorText(raw));
+    }
+  }
+
   async function doReverse(payment: Payment) {
     const reason = t("payments.reversedByUser");
     try {
@@ -211,6 +229,27 @@ export default function CandidateDetailPage() {
 
         {candidate && (
           <>
+            {candidate.archivedAt && (
+              <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-line bg-sunken px-4 py-3">
+                <Archive className="size-4 shrink-0 text-muted" aria-hidden="true" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-ink">
+                    {t("candidates.archivedBanner")}
+                    <span className="ms-2 font-normal text-muted">
+                      <Num>{localDate(new Date(candidate.archivedAt))}</Num>
+                    </span>
+                  </p>
+                  <p className="mt-0.5 text-xs text-muted">{t("candidates.archivedHint")}</p>
+                </div>
+                <Button
+                  icon={<ArchiveRestore className="size-4" aria-hidden="true" />}
+                  onClick={() => void setArchived(false)}
+                >
+                  {t("candidates.unarchive")}
+                </Button>
+              </div>
+            )}
+
             <header className="mt-3 mb-5 flex flex-wrap items-center gap-x-4 gap-y-2">
               <div>
                 <h1 className="text-[1.375rem] font-semibold tracking-tight text-ink">
@@ -232,14 +271,23 @@ export default function CandidateDetailPage() {
                 </div>
               </div>
 
-              <Button
-                className="ms-auto"
-                variant="primary"
-                icon={<Plus className="size-4" aria-hidden="true" />}
-                onClick={() => setNewEnrollment(true)}
-              >
-                {t("enrollments.new")}
-              </Button>
+              <div className="ms-auto flex flex-wrap gap-2">
+                {!candidate.archivedAt && (
+                  <Button
+                    icon={<Archive className="size-4" aria-hidden="true" />}
+                    onClick={() => void setArchived(true)}
+                  >
+                    {t("candidates.archive")}
+                  </Button>
+                )}
+                <Button
+                  variant="primary"
+                  icon={<Plus className="size-4" aria-hidden="true" />}
+                  onClick={() => setNewEnrollment(true)}
+                >
+                  {t("enrollments.new")}
+                </Button>
+              </div>
             </header>
 
             {summaries.length === 0 && !loading && (

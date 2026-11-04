@@ -163,7 +163,7 @@ export default function HomePage() {
       const [r, f, page, day, late] = await Promise.all([
         getReceivables(),
         getCashFlow(range.from, range.to),
-        listCandidates("", 1, 0),
+        listCandidates("", false, 1, 0),
         listDay(today$),
         listOverdue(today$),
       ]);

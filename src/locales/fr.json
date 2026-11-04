@@ -193,7 +193,7 @@
     "status_completed": "Terminé",
     "status_withdrawn": "Abandon",
     "error": {
-      "hasPayments": "Impossible de supprimer : des versements ont été encaissés pour ce candidat. Passez son inscription en « Abandon » pour le retirer des créances tout en gardant l'historique.",
+      "hasPayments": "Impossible de supprimer : des versements ont été encaissés pour ce candidat. Archivez-le plutôt : il quitte la liste et ses versements restent comptés.",
       "nameRequired": "Indiquez au moins un nom, en latin ou en arabe.",
       "ninLength": "Le NIN doit comporter 18 chiffres.",
       "ninDuplicate": "Ce NIN est déjà enregistré pour un autre candidat.",
@@ -205,7 +205,18 @@
       "phoneInvalid": "Numéro de téléphone invalide."
     },
     "viewList": "Liste",
-    "viewBoard": "Tableau"
+    "viewBoard": "Tableau",
+    "viewCurrent": "Actuels",
+    "viewArchived": "Archivés",
+    "archivedBadge": "Archivé",
+    "archive": "Archiver",
+    "unarchive": "Restaurer",
+    "archivedBanner": "Dossier archivé",
+    "archivedHint": "Il n'apparaît plus dans la liste, le tableau ni le choix des séances. Ses versements restent comptés.",
+    "archivedMatches": "Des candidats archivés correspondent aussi à cette recherche.",
+    "showArchived": "Voir les archivés",
+    "archivedEmpty": "Aucun candidat archivé.",
+    "archivedEmptyHint": "Archivez un candidat qui a terminé depuis sa fiche, ou toute la colonne « Terminé » du tableau."
   },
   "school": {
     "unnamed": "Auto-école (nom à renseigner)"
@@ -445,7 +456,10 @@
       "date": "Date de l’examen",
       "submit": "Confirmer",
       "withdraw": "Placé ici par erreur ? Annuler la présentation"
-    }
+    },
+    "archiveFinished": "Archiver",
+    "archiveTitle": "Archiver les candidats terminés ?",
+    "archiveBody": "Ils quittent la liste et le tableau. Leurs versements restent comptés, et vous pouvez les restaurer depuis Candidats → Archivés."
   },
   "fees": {
     "amount": "Frais d’examen (DA)",

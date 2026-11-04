@@ -195,6 +195,12 @@ These are not style preferences. Breaking them causes data loss, legal problems,
 - Migrations are **forward-only**. Never edit a migration that has shipped; add a new one.
 - **Soft-delete** anything with legal or financial significance (candidates, enrolments,
   payments, lessons, exam results). Hard delete is reserved for genuinely transient rows.
+- **A finished candidate is archived, not deleted** (`candidates.archived_at`, migration 0011).
+  A candidate who has paid cannot be deleted (it would shrink past months' takings), and old
+  files cost almost no disk, so what the owner wants is to stop *seeing* them. Archiving hides
+  a file from the list, the board and the session picker (typing the name still finds it) and
+  changes nothing else: Créances and Caisse still count it. Any new list of "current"
+  candidates must filter on `archived_at IS NULL`; any money query must not.
 - Every write path must be safe to interrupt: wrap multi-row operations in a transaction.
   The user *will* lose power mid-save.
 - **Never open the database with ad-hoc connection options — always `db::connect`.**
@@ -509,7 +515,7 @@ an installer by USB: installing over the old version keeps its data.
 WebView2 from the internet if a PC lacks it. `-usb.exe` (~210 MB, `src-tauri/tauri.usb.conf.json`,
 also copied to the Desktop) carries the offline WebView2 installer, because a new school may have
 no internet and "lite" Windows copies sold locally can strip WebView2 out. Both install WebView2
-only when it is missing. Do not make the offline one the default: every update would then be 130 MB.
+only when it is missing. Do not make the offline one the default: every update would then be 210 MB.
 
 ### The one-code lock (`src-tauri/src/license`)
 The owner installs every copy himself and types one code, known only to him, the first time the

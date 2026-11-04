@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useState, type DragEvent } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Phone } from "lucide-react";
+import { Archive, Phone } from "lucide-react";
 
 import FreeText from "@/components/FreeText";
 import Modal from "@/components/Modal";
 import { Num } from "@/components/Num";
 import DateField from "@/components/ui/DateField";
 import { Badge, Card, ErrorNote } from "@/components/ui/Surface";
-import { isAppError } from "@/lib/candidates";
+import { isAppError, setCandidatesArchived } from "@/lib/candidates";
 import {
   getExamBoard,
   moveOnBoard,
@@ -106,6 +106,27 @@ export default function ProgressBoard() {
 
   const withdrawn = cards.filter((c) => c.column === "withdrawn");
 
+  // Everyone who has finished, at once: that column only ever grows.
+  const [archiving, setArchiving] = useState<BoardCard[] | null>(null);
+  const [archiveBusy, setArchiveBusy] = useState(false);
+  const [archiveError, setArchiveError] = useState<string | null>(null);
+
+  async function archiveAll(finished: BoardCard[]) {
+    setArchiveBusy(true);
+    try {
+      // A candidate with two enrolments would otherwise be sent twice.
+      const ids = [...new Set(finished.map((c) => c.candidateId))];
+      await setCandidatesArchived(ids, true);
+      setArchiving(null);
+      setArchiveError(null);
+      void load();
+    } catch (raw: unknown) {
+      setArchiveError(errorText(raw));
+    } finally {
+      setArchiveBusy(false);
+    }
+  }
+
   return (
     <div>
       {error && <ErrorNote>{error}</ErrorNote>}
@@ -165,6 +186,17 @@ export default function ProgressBoard() {
                 <span className="ms-auto rounded-full bg-sunken px-1.5 text-xs font-medium text-muted">
                   <Num>{mine.length}</Num>
                 </span>
+                {column === "finished" && mine.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setArchiving(mine)}
+                    title={t("board.archiveTitle")}
+                    className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium text-muted transition-colors hover:bg-sunken hover:text-ink"
+                  >
+                    <Archive className="size-3.5" aria-hidden="true" />
+                    {t("board.archiveFinished")}
+                  </button>
+                )}
               </header>
 
               <div className="grid gap-2">
@@ -270,6 +302,30 @@ export default function ProgressBoard() {
             ))}
           </div>
         </section>
+      )}
+
+      {archiving && (
+        <Modal
+          title={t("board.archiveTitle")}
+          onClose={() => {
+            setArchiving(null);
+            setArchiveError(null);
+          }}
+          onSubmit={() => void archiveAll(archiving)}
+          submitLabel={t("board.archiveFinished")}
+          submitting={archiveBusy}
+          error={archiveError}
+        >
+          <p className="text-sm text-ink-soft">{t("board.archiveBody")}</p>
+          {/* Each name on its own line, in its own script: see ConfirmMove. */}
+          <ul className="mt-3 max-h-56 overflow-y-auto rounded-md border border-line bg-sunken px-3 py-2 text-sm text-ink">
+            {archiving.map((card) => (
+              <li key={card.enrollmentId} className="truncate py-0.5">
+                <span dir="auto">{personName(card)}</span>
+              </li>
+            ))}
+          </ul>
+        </Modal>
       )}
 
       {pending && (

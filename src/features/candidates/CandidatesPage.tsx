@@ -1,7 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Columns3, List, Pencil, Plus, Search, Trash2, Users } from "lucide-react";
+import {
+  Archive,
+  ArchiveRestore,
+  Columns3,
+  List,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+  Users,
+} from "lucide-react";
 
 import { Num } from "@/components/Num";
 import { Pager } from "@/components/ui/Pager";
@@ -12,6 +22,7 @@ import {
   emptyCandidateInput,
   isAppError,
   listCandidates,
+  setCandidatesArchived,
   toInput,
   type Candidate,
   type CandidateInput,
@@ -33,6 +44,8 @@ const STATUS_TONE: Record<string, Tone> = {
 };
 
 type View = "list" | "board";
+/** Which candidates the list shows: the current ones, or the archive. */
+type Shelf = "current" | "archived";
 
 export default function CandidatesPage() {
   const { t } = useTranslation();
@@ -48,6 +61,8 @@ export default function CandidatesPage() {
   const [page, setPage] = useState(0);
   const [items, setItems] = useState<Candidate[]>([]);
   const [total, setTotal] = useState(0);
+  const [shelf, setShelf] = useState<Shelf>("current");
+  const [archivedMatches, setArchivedMatches] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -66,7 +81,7 @@ export default function CandidatesPage() {
   // shows an empty list and looks like "no results".
   useEffect(() => {
     setPage(0);
-  }, [debounced]);
+  }, [debounced, shelf]);
 
   const refresh = useCallback(async () => {
     if (!isDesktop()) {
@@ -78,19 +93,35 @@ export default function CandidatesPage() {
     try {
       // Named `result`, not `page`: that would shadow the page state and
       // silently pin the offset to zero.
-      const result = await listCandidates(debounced, PAGE_SIZE, page * PAGE_SIZE);
+      const result = await listCandidates(
+        debounced,
+        shelf === "archived",
+        PAGE_SIZE,
+        page * PAGE_SIZE,
+      );
       setItems(result.items);
       setTotal(result.total);
+      setArchivedMatches(result.archivedMatches);
     } catch (raw: unknown) {
       setError(isAppError(raw) ? t(raw.code, { defaultValue: raw.message }) : String(raw));
     } finally {
       setLoading(false);
     }
-  }, [debounced, page, t]);
+  }, [debounced, page, shelf, t]);
 
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  // No confirmation: archiving takes nothing away and Restaurer undoes it.
+  async function setArchived(candidate: Candidate, archived: boolean) {
+    try {
+      await setCandidatesArchived([candidate.id], archived);
+      void refresh();
+    } catch (raw: unknown) {
+      setError(isAppError(raw) ? t(raw.code, { defaultValue: raw.message }) : String(raw));
+    }
+  }
 
   async function doDelete(candidate: Candidate) {
     try {
@@ -158,19 +189,57 @@ export default function CandidatesPage() {
             className="h-9 w-full rounded-md border border-line-strong bg-surface ps-9 pe-3 text-sm shadow-card outline-none transition-colors placeholder:text-faint focus:border-brand focus:ring-2 focus:ring-brand-soft"
           />
         </div>
+        <Segmented<Shelf>
+          value={shelf}
+          onChange={setShelf}
+          label={t("candidates.viewArchived")}
+          options={[
+            { id: "current", label: t("candidates.viewCurrent") },
+            {
+              id: "archived",
+              label: t("candidates.viewArchived"),
+              icon: <Archive className="size-4" aria-hidden="true" />,
+            },
+          ]}
+        />
         <p className="text-sm text-muted">
           {loading ? t("common.loading") : t("candidates.count", { n: total })}
         </p>
       </div>
+
+      {/* A name that is "not found" because it was archived must say so, or
+          the owner registers the same person twice. */}
+      {shelf === "current" && debounced && archivedMatches > 0 && (
+        <p className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink-soft">
+          <Archive className="size-4 text-faint" aria-hidden="true" />
+          {t("candidates.archivedMatches")}
+          <button
+            type="button"
+            onClick={() => setShelf("archived")}
+            className="font-medium text-brand hover:underline"
+          >
+            {t("candidates.showArchived")}
+          </button>
+        </p>
+      )}
 
       {error && <ErrorNote>{error}</ErrorNote>}
 
       {items.length === 0 && !loading ? (
         <EmptyState
           icon={<Users className="size-5" aria-hidden="true" />}
-          title={debounced ? t("candidates.noMatches") : t("candidates.empty")}
+          title={
+            debounced
+              ? t("candidates.noMatches")
+              : shelf === "archived"
+                ? t("candidates.archivedEmpty")
+                : t("candidates.empty")
+          }
+          description={
+            shelf === "archived" && !debounced ? t("candidates.archivedEmptyHint") : undefined
+          }
           action={
-            debounced ? undefined : (
+            debounced || shelf === "archived" ? undefined : (
               <Button
                 variant="primary"
                 icon={<Plus className="size-4" aria-hidden="true" />}
@@ -231,6 +300,25 @@ export default function CandidatesPage() {
                         something in it has keyboard focus, so fifty rows do
                         not read as a hundred buttons. */}
                     <div className="flex justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                      {shelf === "archived" ? (
+                        <IconButton
+                          aria-label={t("candidates.unarchive")}
+                          title={t("candidates.unarchive")}
+                          onClick={() => void setArchived(candidate, false)}
+                          className="size-8"
+                        >
+                          <ArchiveRestore className="size-3.5" aria-hidden="true" />
+                        </IconButton>
+                      ) : (
+                        <IconButton
+                          aria-label={t("candidates.archive")}
+                          title={t("candidates.archive")}
+                          onClick={() => void setArchived(candidate, true)}
+                          className="size-8"
+                        >
+                          <Archive className="size-3.5" aria-hidden="true" />
+                        </IconButton>
+                      )}
                       <IconButton
                         aria-label={t("common.edit")}
                         onClick={() =>

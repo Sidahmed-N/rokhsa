@@ -732,6 +732,7 @@ pub async fn board(pool: &SqlitePool) -> Result<Vec<BoardCard>, AppError> {
          FROM enrollments e
          JOIN candidates c ON c.id = e.candidate_id
          WHERE e.deleted_at IS NULL AND c.deleted_at IS NULL
+           AND c.archived_at IS NULL
          ORDER BY c.last_name COLLATE NOCASE, c.first_name COLLATE NOCASE",
     )
     .fetch_all(pool)

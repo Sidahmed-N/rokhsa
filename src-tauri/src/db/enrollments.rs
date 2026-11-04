@@ -1061,6 +1061,9 @@ pub struct BookableEnrollment {
     /// somebody searches their name.
     #[sqlx(default)]
     pub finished: bool,
+    /// The candidate's file is archived. Hidden the same way as `finished`:
+    /// out of the list the picker opens on, found by typing the name.
+    pub archived: bool,
 }
 
 /// Every live enrolment, for picking one to book a session against.
@@ -1079,7 +1082,8 @@ pub async fn bookable(
     let rows = sqlx::query_as::<_, BookableEnrollment>(
         "SELECT e.id AS enrollment_id, c.id AS candidate_id,
                 c.last_name, c.first_name,
-                e.category_code, e.status, c.search_text
+                e.category_code, e.status, c.search_text,
+                c.archived_at IS NOT NULL AS archived
          FROM enrollments e
          JOIN candidates c ON c.id = e.candidate_id
          WHERE e.deleted_at IS NULL AND c.deleted_at IS NULL
@@ -1103,7 +1107,7 @@ pub async fn bookable(
             row.finished = finished.contains(&row.enrollment_id);
             row
         })
-        .filter(|row| !row.finished || !folded.is_empty())
+        .filter(|row| !(row.finished || row.archived) || !folded.is_empty())
         .collect();
 
     Ok(rows)
@@ -1264,5 +1268,123 @@ mod bookable_tests {
         exams::set_outcome(&pool, entry.id, "failed", "").await.unwrap();
 
         assert_eq!(bookable(&pool, "").await.unwrap().len(), 1);
+    }
+
+    /// The candidate of an enrolment, for archiving.
+    async fn candidate_of(pool: &SqlitePool, enrollment_id: i64) -> i64 {
+        get(pool, enrollment_id).await.unwrap().candidate_id
+    }
+
+    #[tokio::test]
+    async fn an_archived_candidate_leaves_the_list_the_board_and_the_picker() {
+        let pool = test_pool().await;
+        let kept = enrol(&pool, "BENALI").await;
+        let archived = enrol(&pool, "KACI").await;
+        let who = candidate_of(&pool, archived).await;
+
+        candidates::set_archived(&pool, &[who], true).await.unwrap();
+
+        let current = candidates::list(&pool, "", false, 50, 0).await.unwrap();
+        assert_eq!(current.len(), 1);
+        assert_eq!(current[0].id, candidate_of(&pool, kept).await);
+        let in_archive = candidates::list(&pool, "", true, 50, 0).await.unwrap();
+        assert_eq!(in_archive.len(), 1);
+        assert_eq!(in_archive[0].id, who);
+        assert!(in_archive[0].archived_at.is_some());
+        assert_eq!(candidates::count_in(&pool, "", false).await.unwrap(), 1);
+        assert_eq!(candidates::count_in(&pool, "kaci", true).await.unwrap(), 1);
+        // Still in the books: backups compare this count.
+        assert_eq!(candidates::count(&pool, "").await.unwrap(), 2);
+
+        let board = exams::board(&pool).await.unwrap();
+        assert_eq!(board.len(), 1);
+        assert_eq!(board[0].enrollment_id, kept);
+
+        let offered = bookable(&pool, "").await.unwrap();
+        assert_eq!(offered.len(), 1);
+        assert_eq!(offered[0].enrollment_id, kept);
+        // Typing the name still finds them, flagged, as for somebody finished.
+        let found = bookable(&pool, "kaci").await.unwrap();
+        assert_eq!(found.len(), 1);
+        assert!(found[0].archived);
+    }
+
+    #[tokio::test]
+    async fn archiving_changes_no_money() {
+        let pool = test_pool().await;
+        let enrollment = enrol(&pool, "BENALI").await;
+        crate::db::payments::create(
+            &pool,
+            enrollment,
+            &crate::db::payments::PaymentInput {
+                amount_centimes: 10_000_00,
+                paid_on: "2026-10-18".into(),
+                method_code: "cash".into(),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+
+        let owed_before = crate::db::reports::receivables(&pool).await.unwrap();
+        let cash_before = crate::db::reports::cash_flow(&pool, "2026-10-01", "2026-10-31")
+            .await
+            .unwrap();
+
+        let who = candidate_of(&pool, enrollment).await;
+        candidates::set_archived(&pool, &[who], true).await.unwrap();
+
+        // A candidate who still owes money is still owed it.
+        let owed = crate::db::reports::receivables(&pool).await.unwrap();
+        assert_eq!(owed.total_owed_centimes, owed_before.total_owed_centimes);
+        assert_eq!(owed.total_owed_centimes, 25_000_00);
+        // And last month's takings do not shrink.
+        let cash = crate::db::reports::cash_flow(&pool, "2026-10-01", "2026-10-31")
+            .await
+            .unwrap();
+        assert_eq!(cash.in_centimes, cash_before.in_centimes);
+        assert_eq!(cash.in_centimes, 10_000_00);
+        // The file itself still opens, payments and all.
+        assert_eq!(summary(&pool, enrollment).await.unwrap().paid_centimes, 10_000_00);
+    }
+
+    #[tokio::test]
+    async fn restoring_brings_a_candidate_back_and_both_are_logged() {
+        let pool = test_pool().await;
+        let enrollment = enrol(&pool, "BENALI").await;
+        let who = candidate_of(&pool, enrollment).await;
+
+        candidates::set_archived(&pool, &[who], true).await.unwrap();
+        let first = candidates::get(&pool, who).await.unwrap().archived_at;
+        // Archiving twice keeps the first date and logs nothing new.
+        candidates::set_archived(&pool, &[who], true).await.unwrap();
+        assert_eq!(candidates::get(&pool, who).await.unwrap().archived_at, first);
+
+        candidates::set_archived(&pool, &[who], false).await.unwrap();
+        assert!(candidates::get(&pool, who).await.unwrap().archived_at.is_none());
+        assert_eq!(bookable(&pool, "").await.unwrap().len(), 1);
+        assert_eq!(exams::board(&pool).await.unwrap().len(), 1);
+
+        let actions: Vec<(String,)> = sqlx::query_as(
+            "SELECT action FROM audit_log WHERE entity_type = 'candidate' AND entity_id = ?1
+             AND action IN ('archive', 'unarchive') ORDER BY id",
+        )
+        .bind(who.to_string())
+        .fetch_all(&pool)
+        .await
+        .unwrap();
+        let actions: Vec<&str> = actions.iter().map(|(a,)| a.as_str()).collect();
+        assert_eq!(actions, ["archive", "unarchive"]);
+    }
+
+    #[tokio::test]
+    async fn archiving_an_unknown_candidate_changes_nothing() {
+        let pool = test_pool().await;
+        let enrollment = enrol(&pool, "BENALI").await;
+        let who = candidate_of(&pool, enrollment).await;
+
+        // One bad id in a batch: the whole batch is refused, nobody archived.
+        assert!(candidates::set_archived(&pool, &[who, 9_999], true).await.is_err());
+        assert!(candidates::get(&pool, who).await.unwrap().archived_at.is_none());
     }
 }

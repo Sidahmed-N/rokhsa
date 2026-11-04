@@ -33,21 +33,25 @@ pub struct Candidate {
     pub registered_at: String,
     pub created_at: String,
     pub updated_at: String,
+    /// When the file was archived, or None. See migration 0011.
+    pub archived_at: Option<String>,
 }
 
 const COLUMNS: &str = "id, nin, first_name, last_name, \
      father_name, mother_name, birth_date, \
      birth_place, gender, blood_group, phone, phone_alt, \
      address_fr, address_ar, commune, wilaya_code, photo_path, status, notes, \
-     registered_at, created_at, updated_at";
+     registered_at, created_at, updated_at, archived_at";
 
-/// A page of candidates, optionally filtered by a free-text query.
+/// A page of candidates, optionally filtered by a free-text query: the
+/// current ones, or with `archived` the archived ones.
 ///
 /// The query is folded the same way `search_text` was built, so Arabic matches
 /// regardless of vowelling and a phone matches however it was spaced.
 pub async fn list(
     pool: &SqlitePool,
     query: &str,
+    archived: bool,
     limit: i64,
     offset: i64,
 ) -> Result<Vec<Candidate>, AppError> {
@@ -58,6 +62,7 @@ pub async fn list(
         "SELECT {COLUMNS} FROM candidates
          WHERE deleted_at IS NULL
            AND (?1 = '' OR search_text LIKE ?2)
+           AND (archived_at IS NOT NULL) = ?5
          ORDER BY last_name COLLATE NOCASE, first_name COLLATE NOCASE, id
          LIMIT ?3 OFFSET ?4"
     );
@@ -67,13 +72,33 @@ pub async fn list(
         .bind(&pattern)
         .bind(limit)
         .bind(offset)
+        .bind(archived)
         .fetch_all(pool)
         .await?;
 
     Ok(rows)
 }
 
-/// Total matching the same filter, so the UI can show "12 of 240".
+/// Total matching the same filter as `list`, so the UI can show "12 of 240".
+pub async fn count_in(pool: &SqlitePool, query: &str, archived: bool) -> Result<i64, AppError> {
+    let folded = fold_query(query);
+    let pattern = format!("%{folded}%");
+
+    let row: (i64,) = sqlx::query_as(
+        "SELECT COUNT(*) FROM candidates
+         WHERE deleted_at IS NULL AND (?1 = '' OR search_text LIKE ?2)
+           AND (archived_at IS NOT NULL) = ?3",
+    )
+    .bind(&folded)
+    .bind(&pattern)
+    .bind(archived)
+    .fetch_one(pool)
+    .await?;
+
+    Ok(row.0)
+}
+
+/// Every candidate in the books, archived or not.
 pub async fn count(pool: &SqlitePool, query: &str) -> Result<i64, AppError> {
     let folded = fold_query(query);
     let pattern = format!("%{folded}%");
@@ -371,6 +396,43 @@ pub async fn soft_delete(pool: &SqlitePool, id: i64) -> Result<(), AppError> {
     Ok(())
 }
 
+/// Archive candidates, or bring them back.
+///
+/// Only the flag changes. Enrolments, sessions, payments and exam results are
+/// untouched, so the money history, Créances and Caisse read exactly what they
+/// read before. All in one transaction: archiving a whole board column must
+/// not stop halfway through. Already-archived files keep their original date.
+pub async fn set_archived(pool: &SqlitePool, ids: &[i64], archived: bool) -> Result<(), AppError> {
+    let mut befores = Vec::with_capacity(ids.len());
+    for &id in ids {
+        befores.push(get(pool, id).await?);
+    }
+
+    let now = Utc::now().to_rfc3339();
+    let mut tx = pool.begin().await?;
+    for &id in ids {
+        let sql = if archived {
+            "UPDATE candidates SET archived_at = ?1, updated_at = ?1
+             WHERE id = ?2 AND deleted_at IS NULL AND archived_at IS NULL"
+        } else {
+            "UPDATE candidates SET archived_at = NULL, updated_at = ?1
+             WHERE id = ?2 AND deleted_at IS NULL AND archived_at IS NOT NULL"
+        };
+        sqlx::query(sql).bind(&now).bind(id).execute(&mut *tx).await?;
+    }
+    tx.commit().await?;
+
+    let action = if archived { "archive" } else { "unarchive" };
+    for before in befores {
+        if before.archived_at.is_some() == archived {
+            continue;
+        }
+        let after = get(pool, before.id).await?;
+        audit(pool, "candidate", before.id, action, Some(&before), Some(&after)).await?;
+    }
+    Ok(())
+}
+
 async fn audit(
     pool: &SqlitePool,
     entity_type: &str,
@@ -446,7 +508,7 @@ mod tests {
         .await
         .unwrap();
 
-        let found = list(&pool, "بن علي", 20, 0).await.unwrap();
+        let found = list(&pool, "بن علي", false, 20, 0).await.unwrap();
         assert_eq!(found.len(), 1, "vowelled name should match bare query");
     }
 
@@ -463,16 +525,16 @@ mod tests {
         .await
         .unwrap();
 
-        assert_eq!(list(&pool, "0551234567", 20, 0).await.unwrap().len(), 1);
-        assert_eq!(list(&pool, "0551 23", 20, 0).await.unwrap().len(), 1);
+        assert_eq!(list(&pool, "0551234567", false, 20, 0).await.unwrap().len(), 1);
+        assert_eq!(list(&pool, "0551 23", false, 20, 0).await.unwrap().len(), 1);
     }
 
     #[tokio::test]
     async fn search_is_case_and_accent_insensitive() {
         let pool = test_pool().await;
         create(&pool, &input("Benaïssa", "Léïla")).await.unwrap();
-        assert_eq!(list(&pool, "BENAISSA", 20, 0).await.unwrap().len(), 1);
-        assert_eq!(list(&pool, "leila", 20, 0).await.unwrap().len(), 1);
+        assert_eq!(list(&pool, "BENAISSA", false, 20, 0).await.unwrap().len(), 1);
+        assert_eq!(list(&pool, "leila", false, 20, 0).await.unwrap().len(), 1);
     }
 
     #[tokio::test]
@@ -480,7 +542,7 @@ mod tests {
         let pool = test_pool().await;
         create(&pool, &input("BENALI", "Yacine")).await.unwrap();
         create(&pool, &input("KADRI", "Amine")).await.unwrap();
-        assert_eq!(list(&pool, "", 20, 0).await.unwrap().len(), 2);
+        assert_eq!(list(&pool, "", false, 20, 0).await.unwrap().len(), 2);
         assert_eq!(count(&pool, "").await.unwrap(), 2);
     }
 
@@ -556,7 +618,7 @@ mod tests {
         )
         .await
         .unwrap();
-        assert_eq!(list(&pool, "109200416005482130", 20, 0).await.unwrap().len(), 1);
+        assert_eq!(list(&pool, "109200416005482130", false, 20, 0).await.unwrap().len(), 1);
     }
 
     #[tokio::test]
@@ -616,8 +678,8 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(list(&pool, "BENALI", 20, 0).await.unwrap().len(), 0);
-        assert_eq!(list(&pool, "KADRI", 20, 0).await.unwrap().len(), 1);
+        assert_eq!(list(&pool, "BENALI", false, 20, 0).await.unwrap().len(), 0);
+        assert_eq!(list(&pool, "KADRI", false, 20, 0).await.unwrap().len(), 1);
     }
 
     #[tokio::test]

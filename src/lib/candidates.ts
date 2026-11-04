@@ -31,6 +31,9 @@ export interface Candidate {
   registeredAt: string;
   createdAt: string;
   updatedAt: string;
+  /** When the file was archived, or null. Archived files leave the list, the
+   * board and the session picker; nothing about their money changes. */
+  archivedAt: string | null;
 }
 
 /** What the form sends. Every field is a string; Rust parses and validates. */
@@ -109,6 +112,8 @@ export function toInput(candidate: Candidate): CandidateInput {
 export interface CandidatePage {
   items: Candidate[];
   total: number;
+  /** Archived candidates matching a search of the current ones. */
+  archivedMatches: number;
 }
 
 /** The shape Rust sends when a command fails. */
@@ -127,8 +132,13 @@ export function isAppError(value: unknown): value is AppErrorPayload {
   );
 }
 
-export function listCandidates(query: string, limit = 50, offset = 0): Promise<CandidatePage> {
-  return call<CandidatePage>("list_candidates", { query, limit, offset });
+export function listCandidates(
+  query: string,
+  archived = false,
+  limit = 50,
+  offset = 0,
+): Promise<CandidatePage> {
+  return call<CandidatePage>("list_candidates", { query, archived, limit, offset });
 }
 
 export function getCandidate(id: number): Promise<Candidate> {
@@ -141,6 +151,11 @@ export function createCandidate(input: CandidateInput): Promise<Candidate> {
 
 export function updateCandidate(id: number, input: CandidateInput): Promise<Candidate> {
   return call<Candidate>("update_candidate", { id, input });
+}
+
+/** Archive candidates, or bring them back with `archived` false. */
+export function setCandidatesArchived(ids: number[], archived: boolean): Promise<void> {
+  return call<void>("set_candidates_archived", { ids, archived });
 }
 
 export function deleteCandidate(id: number): Promise<void> {

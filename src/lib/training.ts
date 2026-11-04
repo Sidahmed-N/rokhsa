@@ -222,6 +222,8 @@ export interface BookableEnrollment {
    * it has to say why.
    */
   finished: boolean;
+  /** The candidate's file is archived: hidden like `finished` until searched. */
+  archived: boolean;
 }
 
 export const listBookableEnrollments = (query: string) =>
@@ -293,7 +295,12 @@ export const nextUp = (enrollmentId: number) => call<NextUp>("next_up", { enroll
 
 /** Today as YYYY-MM-DD, in the computer's own timezone. */
 export function todayIso(): string {
-  const d = new Date();
+  return localDate(new Date());
+}
+
+/** A moment as YYYY-MM-DD in the computer's own timezone: a UTC timestamp
+ * taken at 00:30 in Algeria is still the day before in UTC. */
+export function localDate(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
