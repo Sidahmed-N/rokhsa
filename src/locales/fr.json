@@ -228,7 +228,7 @@
     "newTitle": "Nouvelle inscription",
     "none": "Ce candidat n’a pas encore d’inscription.",
     "agreedPrice": "Prix convenu (DA)",
-    "priceHint": "Ce prix est figé pour ce candidat. Modifier le tarif plus tard ne le changera pas.",
+    "priceHint": "Le prix convenu avec ce candidat. Il peut être corrigé plus tard avec « Modifier ».",
     "enrolledOn": "Inscrit le",
     "totalDue": "Total dû",
     "paid": "Versé",
@@ -253,7 +253,16 @@
       "priceRequired": "Indiquez le prix convenu (0 si l’inscription est gratuite)."
     },
     "includesExamFees": "dont examens :",
-    "heading": "Inscription"
+    "heading": "Inscription",
+    "editTitle": "Modifier l'inscription",
+    "discountAmount": "Remise (DA)",
+    "discountReason": "Motif de la remise",
+    "enrolledOnLabel": "Date d'inscription",
+    "withdrawnLabel": "Le candidat a abandonné",
+    "withdrawnHint": "L'inscription sort des créances : on ne lui réclame plus rien. Ses versements restent comptés.",
+    "editNote": "Chaque modification est gardée dans l'historique.",
+    "overpaid": "Trop-perçu",
+    "overpaidHint": "Versé en plus du total dû. À rendre ou à garder pour plus tard."
   },
   "lessons": {
     "add": "Ajouter des heures",
@@ -316,7 +325,9 @@
       "cannotReverseReversal": "Une annulation ne peut pas être annulée.",
       "alreadyReversed": "Ce versement a déjà été annulé."
     },
-    "settleFull": "Tout régler"
+    "settleFull": "Tout régler",
+    "takeAnyway": "Encaisser quand même",
+    "overWarning": "Ce montant est plus élevé que le reste à payer. Vérifiez qu'il n'y a pas un zéro de trop, puis cliquez sur « Encaisser quand même »."
   },
   "receipt": {
     "title": "REÇU DE VERSEMENT",

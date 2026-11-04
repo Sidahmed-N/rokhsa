@@ -238,6 +238,18 @@ export const getEnrollment = (id: number) =>
 export const createEnrollment = (candidateId: number, input: EnrollmentInput) =>
   call<Enrollment>("create_enrollment", { candidateId, input });
 
+/** What the owner can correct on an enrolment. Rust validates and logs it. */
+export interface EnrollmentRevision {
+  enrolledOn: string;
+  agreedPriceCentimes: Centimes;
+  discountCentimes: Centimes;
+  discountReason: string;
+  withdrawn: boolean;
+}
+
+export const reviseEnrollment = (id: number, revision: EnrollmentRevision) =>
+  call<Enrollment>("revise_enrollment", { id, revision });
+
 export const deleteEnrollment = (id: number) => call<void>("delete_enrollment", { id });
 
 export const listLessons = (enrollmentId: number) =>

@@ -47,8 +47,8 @@ These are not style preferences. Breaking them causes data loss, legal problems,
   `type Centimes = number` in TS. **Never** use `f32`/`f64`/JS floats for money.
 - Every mutation that touches money writes an **audit log row** (who, when, before, after).
   **Known, accepted gap (owner's decision, 2026-10-31, `05-OPEN-QUESTIONS` Q22):** today only
-  payments and candidates write one. Enrolment price/discount changes, expenses and exam fees
-  do not, and are parked for the Pro version, built with staff accounts — "who changed this"
+  payments, candidates and enrolment corrections (`enrollments::revise`) write one. Expenses
+  and exam fees do not, and are parked for the Pro version, built with staff accounts — "who changed this"
   only matters once there is more than one person. Do not quietly treat the gap as the rule:
   new money writes should still log, and the Pro work closes the gap.
 - Money rows are **append-only**. A wrong payment is corrected with a reversing entry,
@@ -69,6 +69,13 @@ These are not style preferences. Breaking them causes data loss, legal problems,
   are some. A ",00" on the candidate's file beside "35 000 DA" on Accueil read as two sums.
 - **Anything that cannot be taken back asks first**: reversing a payment (the reversal row is
   permanent) and deleting an expense. A payment already reversed shows no reverse button.
+- **Paying more than is owed is allowed but asked twice** ("Encaisser quand même"): an extra
+  zero once took 350 000 DA for 35 000 without a word. The file then says **Trop-perçu**,
+  never a negative "reste à payer".
+- **An enrolment is corrected with "Modifier"** (`enrollments::revise`): price, discount, start
+  date, and "abandoned". It touches only those columns — `update` sends the whole row and would
+  overwrite the hour targets. Abandoned (`status = 'withdrawn'`) leaves Créances; its payments
+  stay in Caisse.
 - **Hours "used" are taught hours only** (`status = 'done'`). Any query that counts minutes
   toward the allowance must filter on it, as `lessons::minutes_by_kind` does — receivables
   once counted booked and missed sessions and charged extra hours the file said were not owed.

@@ -257,6 +257,100 @@ pub async fn update(
     get(pool, id).await
 }
 
+/// What the owner can correct on an enrolment after it is made.
+///
+/// Narrower than `update` on purpose: the screen shows a price, a discount,
+/// the date and whether the candidate dropped out, and only those change.
+/// Sending the whole row from the screen would overwrite the hour targets and
+/// the extra-hour price with whatever the form happened to hold.
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct EnrollmentRevision {
+    pub enrolled_on: String,
+    pub agreed_price_centimes: Centimes,
+    pub discount_centimes: Centimes,
+    pub discount_reason: String,
+    /// The candidate stopped coming. The enrolment leaves Créances; its
+    /// payments stay in the books.
+    pub withdrawn: bool,
+}
+
+/// Correct an enrolment: a mistyped price, a discount given later, the real
+/// start date of a candidate brought over from paper, or a dropout.
+///
+/// Money, so it writes an audit row (before and after) in the same
+/// transaction as the change. Nothing is refused for being unusual: a price
+/// below what was already paid is allowed, and the file then shows the
+/// difference as owed back to the candidate.
+pub async fn revise(
+    pool: &SqlitePool,
+    id: i64,
+    revision: &EnrollmentRevision,
+) -> Result<Enrollment, AppError> {
+    let before = get(pool, id).await?;
+
+    if revision.agreed_price_centimes < 0 {
+        return Err(AppError::field("enrollments.error.priceNegative", "agreedPrice"));
+    }
+    if revision.discount_centimes < 0 {
+        return Err(AppError::field("enrollments.error.discountNegative", "discount"));
+    }
+    if revision.discount_centimes > revision.agreed_price_centimes {
+        return Err(AppError::field("enrollments.error.discountTooLarge", "discount"));
+    }
+    let enrolled_on = revision.enrolled_on.trim();
+    if chrono::NaiveDate::parse_from_str(enrolled_on, "%Y-%m-%d").is_err() {
+        return Err(AppError::field("enrollments.error.dateInvalid", "enrolledOn"));
+    }
+
+    // Dropping out is a status of its own; coming back returns to training,
+    // whatever the enrolment said before it was marked.
+    let status = if revision.withdrawn {
+        "withdrawn".to_string()
+    } else if before.status == "withdrawn" {
+        "forming".to_string()
+    } else {
+        before.status.clone()
+    };
+
+    let now = Utc::now().to_rfc3339();
+    let mut tx = pool.begin().await?;
+    sqlx::query(
+        "UPDATE enrollments SET
+            enrolled_on = ?1, agreed_price_centimes = ?2, discount_centimes = ?3,
+            discount_reason = ?4, status = ?5, updated_at = ?6
+         WHERE id = ?7 AND deleted_at IS NULL",
+    )
+    .bind(enrolled_on)
+    .bind(revision.agreed_price_centimes)
+    .bind(revision.discount_centimes)
+    .bind(revision.discount_reason.trim())
+    .bind(&status)
+    .bind(&now)
+    .bind(id)
+    .execute(&mut *tx)
+    .await?;
+
+    let after_sql = format!("SELECT {COLUMNS} FROM enrollments WHERE id = ?1");
+    let after = sqlx::query_as::<_, Enrollment>(&after_sql)
+        .bind(id)
+        .fetch_one(&mut *tx)
+        .await?;
+    sqlx::query(
+        "INSERT INTO audit_log (at, entity_type, entity_id, action, before_json, after_json)
+         VALUES (?1, 'enrollment', ?2, 'revise', ?3, ?4)",
+    )
+    .bind(&now)
+    .bind(id.to_string())
+    .bind(serde_json::to_string(&before).ok())
+    .bind(serde_json::to_string(&after).ok())
+    .execute(&mut *tx)
+    .await?;
+    tx.commit().await?;
+
+    Ok(after)
+}
+
 /// Soft delete an enrolment.
 ///
 /// Refused once a payment exists against it, for the same reason as a
@@ -1386,5 +1480,93 @@ mod bookable_tests {
         // One bad id in a batch: the whole batch is refused, nobody archived.
         assert!(candidates::set_archived(&pool, &[who, 9_999], true).await.is_err());
         assert!(candidates::get(&pool, who).await.unwrap().archived_at.is_none());
+    }
+
+    fn revision(price: i64, discount: i64, withdrawn: bool) -> EnrollmentRevision {
+        EnrollmentRevision {
+            enrolled_on: "2026-09-15".into(),
+            agreed_price_centimes: price * 100,
+            discount_centimes: discount * 100,
+            discount_reason: "Frère inscrit".into(),
+            withdrawn,
+        }
+    }
+
+    #[tokio::test]
+    async fn a_mistyped_price_is_corrected_and_logged() {
+        let pool = test_pool().await;
+        let enrollment = enrol(&pool, "BENALI").await; // 35 000 DA
+
+        let after = revise(&pool, enrollment, &revision(32_000, 2_000, false)).await.unwrap();
+        assert_eq!(after.agreed_price_centimes, 32_000_00);
+        assert_eq!(after.discount_centimes, 2_000_00);
+        assert_eq!(after.enrolled_on, "2026-09-15");
+        assert_eq!(after.status, "forming");
+        assert_eq!(summary(&pool, enrollment).await.unwrap().balance_centimes, 30_000_00);
+
+        let logged: (String, String) = sqlx::query_as(
+            "SELECT before_json, after_json FROM audit_log
+             WHERE entity_type = 'enrollment' AND action = 'revise' AND entity_id = ?1",
+        )
+        .bind(enrollment.to_string())
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert!(logged.0.contains("3500000"), "before keeps the old price");
+        assert!(logged.1.contains("3200000"), "after has the new one");
+    }
+
+    #[tokio::test]
+    async fn a_dropout_leaves_creances_and_comes_back() {
+        let pool = test_pool().await;
+        let enrollment = enrol(&pool, "BENALI").await;
+        crate::db::payments::create(
+            &pool,
+            enrollment,
+            &crate::db::payments::PaymentInput {
+                amount_centimes: 10_000_00,
+                paid_on: "2026-10-18".into(),
+                method_code: "cash".into(),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+        let owed = || async { crate::db::reports::receivables(&pool).await.unwrap().total_owed_centimes };
+        let cash = || async {
+            crate::db::reports::cash_flow(&pool, "2026-10-01", "2026-10-31").await.unwrap().in_centimes
+        };
+        assert_eq!(owed().await, 25_000_00);
+
+        let gone = revise(&pool, enrollment, &revision(35_000, 0, true)).await.unwrap();
+        assert_eq!(gone.status, "withdrawn");
+        assert_eq!(owed().await, 0, "nobody chases a candidate who left");
+        assert_eq!(cash().await, 10_000_00, "what he paid is still in the books");
+
+        let back = revise(&pool, enrollment, &revision(35_000, 0, false)).await.unwrap();
+        assert_eq!(back.status, "forming");
+        assert_eq!(owed().await, 25_000_00);
+    }
+
+    #[tokio::test]
+    async fn an_impossible_revision_changes_nothing() {
+        let pool = test_pool().await;
+        let enrollment = enrol(&pool, "BENALI").await;
+
+        assert!(revise(&pool, enrollment, &revision(30_000, 31_000, false)).await.is_err());
+        assert!(revise(&pool, enrollment, &revision(-1, 0, false)).await.is_err());
+        let mut bad_date = revision(30_000, 0, false);
+        bad_date.enrolled_on = "15/09/2026".into();
+        assert!(revise(&pool, enrollment, &bad_date).await.is_err());
+
+        let unchanged = get(&pool, enrollment).await.unwrap();
+        assert_eq!(unchanged.agreed_price_centimes, 35_000_00);
+        let logged: (i64,) = sqlx::query_as(
+            "SELECT COUNT(*) FROM audit_log WHERE entity_type = 'enrollment'",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(logged.0, 0);
     }
 }

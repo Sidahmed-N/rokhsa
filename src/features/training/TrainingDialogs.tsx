@@ -17,7 +17,9 @@ import {
   createPayment,
   listPaymentMethods,
   nextUp,
+  reviseEnrollment,
   scheduleGroup,
+  type Enrollment,
   type Payment,
   type PaymentMethod,
 } from "@/lib/training";
@@ -126,6 +128,128 @@ export function NewEnrollmentDialog({
 }
 
 /* -------------------------------- hours -------------------------------- */
+
+/**
+ * Correct an enrolment after the fact: a mistyped price, a discount agreed
+ * later, the real start date of a candidate brought over from paper, or a
+ * candidate who stopped coming.
+ *
+ * Without it a typo in the price could never be fixed, and a dropout who
+ * owed money sat in Créances forever.
+ */
+export function EditEnrollmentDialog({
+  enrollment,
+  onDone,
+  onClose,
+}: {
+  enrollment: Enrollment;
+  onDone: () => void;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  const errorText = useErrorText();
+
+  const [price, setPrice] = useState(
+    formatDZD(enrollment.agreedPriceCentimes, { withSuffix: false }),
+  );
+  const [discount, setDiscount] = useState(
+    enrollment.discountCentimes > 0
+      ? formatDZD(enrollment.discountCentimes, { withSuffix: false })
+      : "",
+  );
+  const [reason, setReason] = useState(enrollment.discountReason);
+  const [enrolledOn, setEnrolledOn] = useState(enrollment.enrolledOn);
+  const [withdrawn, setWithdrawn] = useState(enrollment.status === "withdrawn");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function save() {
+    // Same rule as when enrolling: an amount is never guessed.
+    if (price.trim() === "") {
+      setError(t("enrollments.error.priceRequired"));
+      return;
+    }
+    const agreed = parseDZD(price);
+    const off = discount.trim() === "" ? 0 : parseDZD(discount);
+    if (agreed === null || agreed < 0 || off === null || off < 0) {
+      setError(t("common.amountInvalid"));
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      await reviseEnrollment(enrollment.id, {
+        enrolledOn,
+        agreedPriceCentimes: agreed,
+        discountCentimes: off,
+        discountReason: off > 0 ? reason : "",
+        withdrawn,
+      });
+      onDone();
+    } catch (e: unknown) {
+      setError(errorText(e));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Modal
+      title={t("enrollments.editTitle")}
+      onClose={onClose}
+      onSubmit={() => void save()}
+      submitting={saving}
+      error={error}
+    >
+      <div className="grid gap-3">
+        <TextField
+          label={t("enrollments.agreedPrice")}
+          value={price}
+          onChange={setPrice}
+          dir="ltr"
+          placeholder="35000"
+        />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <TextField
+            label={t("enrollments.discountAmount")}
+            value={discount}
+            onChange={setDiscount}
+            dir="ltr"
+            placeholder="0"
+          />
+          <TextField
+            label={t("enrollments.discountReason")}
+            value={reason}
+            onChange={setReason}
+          />
+        </div>
+        <div className="grid gap-1">
+          <span className="text-sm font-medium text-ink">{t("enrollments.enrolledOnLabel")}</span>
+          <DateField
+            value={enrolledOn}
+            onChange={setEnrolledOn}
+            aria-label={t("enrollments.enrolledOnLabel")}
+          />
+        </div>
+        <label className="mt-1 flex cursor-pointer items-start gap-2 rounded-md border border-line px-3 py-2.5">
+          <input
+            type="checkbox"
+            checked={withdrawn}
+            onChange={(e) => setWithdrawn(e.target.checked)}
+            className="mt-0.5 size-4 accent-[oklch(0.52_0.16_258)]"
+          />
+          <span>
+            <span className="block text-sm font-medium text-ink">
+              {t("enrollments.withdrawnLabel")}
+            </span>
+            <span className="block text-xs text-muted">{t("enrollments.withdrawnHint")}</span>
+          </span>
+        </label>
+        <p className="text-xs text-muted">{t("enrollments.editNote")}</p>
+      </div>
+    </Modal>
+  );
+}
 
 export function AddLessonDialog({
   enrollmentId,
@@ -425,6 +549,9 @@ export function TakePaymentDialog({
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // More than is owed is allowed (an advance, a fee paid early), but asked
+  // twice: one extra zero turned 35 000 into 350 000 without a word.
+  const [overConfirmed, setOverConfirmed] = useState(false);
 
   useEffect(() => {
     listPaymentMethods()
@@ -446,6 +573,10 @@ export function TakePaymentDialog({
     }
     if (parsed === null || parsed <= 0) {
       setError(t("payments.error.amountPositive"));
+      return;
+    }
+    if (parsed > balanceCentimes && !overConfirmed) {
+      setOverConfirmed(true);
       return;
     }
     setSaving(true);
@@ -473,7 +604,7 @@ export function TakePaymentDialog({
       onSubmit={() => void save()}
       submitting={saving}
       error={error}
-      submitLabel={t("payments.take")}
+      submitLabel={overConfirmed ? t("payments.takeAnyway") : t("payments.take")}
     >
       <div className="grid gap-3">
         <div className="flex flex-wrap items-center gap-2 rounded-md border border-line bg-brand-soft px-3 py-2 text-sm">
@@ -497,11 +628,19 @@ export function TakePaymentDialog({
         <TextField
           label={t("payments.amount")}
           value={amount}
-          onChange={setAmount}
+          onChange={(next) => {
+            setAmount(next);
+            setOverConfirmed(false);
+          }}
           dir="ltr"
           placeholder="12000"
           hint={t("payments.amountHint")}
         />
+        {overConfirmed && (
+          <p className="rounded-md border border-warn/30 bg-warn-soft px-3 py-2 text-sm text-warn">
+            {t("payments.overWarning")}
+          </p>
+        )}
         <TextField
           label={t("payments.date")}
           value={paidOn}

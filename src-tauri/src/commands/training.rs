@@ -52,6 +52,18 @@ pub async fn update_enrollment(
     Ok(enrollments::update(&state.pool, id, &input).await?)
 }
 
+/// Correct the price, discount, date or dropout of an enrolment. See
+/// `enrollments::revise`.
+#[tauri::command]
+pub async fn revise_enrollment(
+    state: State<'_, AppState>,
+    id: i64,
+    revision: enrollments::EnrollmentRevision,
+) -> CommandResult<enrollments::Enrollment> {
+    state.require_unlocked()?;
+    Ok(enrollments::revise(&state.pool, id, &revision).await?)
+}
+
 #[tauri::command]
 pub async fn delete_enrollment(state: State<'_, AppState>, id: i64) -> CommandResult<()> {
     state.require_unlocked()?;

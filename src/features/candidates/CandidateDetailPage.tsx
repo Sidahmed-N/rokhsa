@@ -11,6 +11,7 @@ import {
   ChevronLeft,
   CreditCard,
   IdCard,
+  Pencil,
   Phone,
   Plus,
   Trash2,
@@ -41,6 +42,7 @@ import {
   reopenLesson,
   reversePayment,
   todayIso,
+  type Enrollment,
   type EnrollmentSummary,
   type Lesson,
   type Payment,
@@ -53,6 +55,7 @@ import {
 } from "@/lib/exams";
 import {
   AddLessonDialog,
+  EditEnrollmentDialog,
   NewEnrollmentDialog,
   ScheduleSessionDialog,
   TakePaymentDialog,
@@ -120,6 +123,7 @@ export default function CandidateDetailPage() {
   /** The kind of a missed session being made up, so the dialog opens on it. */
   const [makeUpKind, setMakeUpKind] = useState<string | null>(null);
   const [payingFor, setPayingFor] = useState<EnrollmentSummary | null>(null);
+  const [editing, setEditing] = useState<Enrollment | null>(null);
 
   const errorText = useCallback(
     (raw: unknown): string =>
@@ -319,12 +323,19 @@ export default function CandidateDetailPage() {
                       <h2 className="text-base font-semibold tracking-tight text-ink">
                         {t("enrollments.heading")}
                       </h2>
-                      <Badge tone="brand">
+                      <Badge tone={summary.enrollment.status === "withdrawn" ? "warn" : "brand"}>
                         {t(`enrollments.status_${summary.enrollment.status}`)}
                       </Badge>
                       <span className="ms-auto text-xs text-muted">
                         {t("enrollments.enrolledOn")} <Num>{summary.enrollment.enrolledOn}</Num>
                       </span>
+                      <Button
+                        size="sm"
+                        icon={<Pencil className="size-3.5" aria-hidden="true" />}
+                        onClick={() => setEditing(summary.enrollment)}
+                      >
+                        {t("common.edit")}
+                      </Button>
                     </header>
 
                     {/* Money — the reason an owner opens this screen. The
@@ -367,13 +378,31 @@ export default function CandidateDetailPage() {
                         <Money centimes={summary.paidCentimes} />
                       </Figure>
 
-                      <Figure
-                        label={t("enrollments.balance")}
-                        strong
-                        tone={owes ? "owed" : "ok"}
-                      >
-                        <Money centimes={summary.balanceCentimes} />
-                      </Figure>
+                      {/* Paid more than the price (an advance, or a price
+                          corrected downwards): said in words, not as a
+                          green "-5 000 DA" that reads like a typo. */}
+                      {summary.balanceCentimes < 0 ? (
+                        <Figure
+                          label={t("enrollments.overpaid")}
+                          strong
+                          extra={
+                            <p className="mt-1 text-xs text-muted">
+                              {t("enrollments.overpaidHint")}
+                            </p>
+                          }
+                        >
+                          <Money centimes={-summary.balanceCentimes} />
+                        </Figure>
+                      ) : (
+                        <Figure
+                          label={t("enrollments.balance")}
+                          strong
+                          // Not red once he has dropped out: nobody is chasing it.
+                          tone={summary.enrollment.status === "withdrawn" ? undefined : owes ? "owed" : "ok"}
+                        >
+                          <Money centimes={summary.balanceCentimes} />
+                        </Figure>
+                      )}
                     </div>
 
                     {/* The actions. The hour bars that used to head this
@@ -716,6 +745,17 @@ export default function CandidateDetailPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {editing && (
+        <EditEnrollmentDialog
+          enrollment={editing}
+          onClose={() => setEditing(null)}
+          onDone={() => {
+            setEditing(null);
+            void refresh();
+          }}
+        />
       )}
 
       {payingFor && (

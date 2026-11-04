@@ -142,6 +142,7 @@ pub fn run() {
             commands::training::get_enrollment,
             commands::training::create_enrollment,
             commands::training::update_enrollment,
+            commands::training::revise_enrollment,
             commands::training::delete_enrollment,
             commands::training::list_lessons,
             commands::training::create_lesson,
