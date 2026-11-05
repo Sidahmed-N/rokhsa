@@ -117,29 +117,7 @@ export type BoardColumn =
   | "finished"
   | "withdrawn";
 
-/** What a drag records. `kind` is the exam it is about. */
-export type BoardMove = {
-  action: "present" | "pass" | "resultPassed" | "resultFailed" | "undoPass";
-  kind: string;
-};
-
 export const getExamBoard = () => call<BoardCard[]>("get_exam_board");
-
-/** What dropping a card on `to` would record — nothing is written. */
-export const planBoardMove = (enrollmentId: number, to: BoardColumn) =>
-  call<BoardMove>("plan_board_move", { enrollmentId, to });
-
-/** Record it. Rust plans the move again inside the write. */
-export const moveOnBoard = (enrollmentId: number, to: BoardColumn, date: string) =>
-  call<BoardMove>("move_on_board", { enrollmentId, to, date });
-
-/**
- * Take back a presentation made by mistake on the board — instead of the
- * failure that dragging the card back would record. Refused for one from a
- * real sitting, which is removed on the Examens screen.
- */
-export const withdrawBoardPresentation = (enrollmentId: number) =>
-  call<void>("withdraw_board_presentation", { enrollmentId });
 
 export const listExamSessions = () => call<ExamSession[]>("list_exam_sessions");
 
@@ -155,8 +133,9 @@ export interface NextExam {
   fees: SessionFees;
 }
 
-export const nextExamSession = (today: string) =>
-  call<NextExam | null>("next_exam_session", { today });
+/** `now` is the PC's local "HH:MM": a sitting today drops out once its time passes. */
+export const nextExamSession = (today: string, now: string) =>
+  call<NextExam | null>("next_exam_session", { today, now });
 
 export const examSessionFees = (sessionId: number) =>
   call<SessionFees>("exam_session_fees", { sessionId });

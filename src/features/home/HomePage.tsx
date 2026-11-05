@@ -33,7 +33,9 @@ import {
   completeLesson,
   listDay,
   listOverdue,
+  localTime,
   setLessonNotHeld,
+  todayIso,
   type DayEntry,
 } from "@/lib/training";
 
@@ -175,20 +177,18 @@ export default function HomePage() {
     if (!isDesktop()) return;
     const range = thisMonth();
     try {
-      const [r, f, page, day, late, exam] = await Promise.all([
+      const [r, f, page, day, late] = await Promise.all([
         getReceivables(),
         getCashFlow(range.from, range.to),
         listCandidates("", false, 1, 0),
         listDay(today$),
         listOverdue(today$),
-        nextExamSession(today$),
       ]);
       setReceivables(r);
       setFlow(f);
       setCandidateCount(page.total);
       setToday(day);
       setOverdue(late);
-      setNext(exam);
       setError(null);
     } catch (raw: unknown) {
       setError(isAppError(raw) ? t(raw.code, { defaultValue: raw.message }) : String(raw));
@@ -198,6 +198,33 @@ export default function HomePage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  /**
+   * The next exam, asked with the time as well as the date: a sitting today
+   * gives way to the next one once its time has passed (Rust decides, see
+   * exams::next_session). The app stays open all day, so it is asked again
+   * every minute and whenever the window comes back, not only at load.
+   */
+  const loadNext = useCallback(async () => {
+    if (!isDesktop()) return;
+    try {
+      setNext(await nextExamSession(todayIso(), localTime(new Date())));
+    } catch (raw: unknown) {
+      setError(isAppError(raw) ? t(raw.code, { defaultValue: raw.message }) : String(raw));
+    }
+  }, [t]);
+
+  useEffect(() => {
+    void loadNext();
+    const timer = window.setInterval(() => void loadNext(), 60_000);
+    const onFocus = () => void loadNext();
+    window.addEventListener("focus", onFocus);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", onFocus);
+    };
+    // today$ too: a new day must not wait for the next minute.
+  }, [loadNext, today$]);
 
   async function run(action: () => Promise<unknown>) {
     try {

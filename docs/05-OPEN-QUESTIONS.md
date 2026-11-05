@@ -708,3 +708,16 @@ row has **Encaisser** (the fee, prefilled) or **✓ Payé**, and the sitting say
 **Examens** exactly, without guessing from amounts or dates. Payments taken from
 the file stay training money; the dialog there reminds that an unpaid exam fee is
 taken from the sitting, so it is not taken twice.
+
+---
+
+## Q25. Dragging on the progress board — **ANSWERED 2026-11-05** 🟢
+
+**Found by the owner:** dragging a card from Code to Créneau put "Code admis" on the
+candidate's file, but nothing appeared on the Examens page. A drop recorded the result
+directly, with no sitting, no date or place, and no exam fee, so the two screens disagreed and
+the fee was never charged.
+
+**Owner's decision:** remove the dragging, keep the board as a view. Exam results are recorded
+only in a sitting on the Examens page; the board updates itself from them, a card opens the
+candidate's file, and "Archiver" on the Terminé column stays.

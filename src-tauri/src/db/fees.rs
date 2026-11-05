@@ -606,13 +606,13 @@ mod tests {
     #[tokio::test]
     async fn the_next_sitting_is_the_soonest_from_today() {
         let pool = test_pool().await;
-        assert!(exams::next_session(&pool, "2026-11-04").await.unwrap().is_none());
+        assert!(exams::next_session(&pool, "2026-11-04", "07:00").await.unwrap().is_none());
 
         sitting(&pool, "theory", "2026-10-20").await; // past: not next
         let soon = sitting(&pool, "maneuvers", "2026-11-12").await;
         sitting(&pool, "road", "2026-12-01").await;
 
-        let next = exams::next_session(&pool, "2026-11-04").await.unwrap().unwrap();
+        let next = exams::next_session(&pool, "2026-11-04", "07:00").await.unwrap().unwrap();
         assert_eq!(next.session.id, soon);
         assert_eq!(next.candidates, 0);
     }
@@ -622,7 +622,7 @@ mod tests {
         let pool = test_pool().await;
         let today = sitting(&pool, "theory", "2026-11-04").await;
         sitting(&pool, "theory", "2026-11-20").await;
-        let next = exams::next_session(&pool, "2026-11-04").await.unwrap().unwrap();
+        let next = exams::next_session(&pool, "2026-11-04", "07:00").await.unwrap().unwrap();
         assert_eq!(next.session.id, today);
     }
 
@@ -638,7 +638,7 @@ mod tests {
         exams::add_to_session(&pool, session, c, 0).await.unwrap();
         pay(&pool, a, 3_000, paid.fee_charge_id).await.unwrap();
 
-        let next = exams::next_session(&pool, "2026-11-04").await.unwrap().unwrap();
+        let next = exams::next_session(&pool, "2026-11-04", "07:00").await.unwrap().unwrap();
         assert_eq!(next.candidates, 3);
         assert_eq!(
             next.fees,
@@ -651,6 +651,58 @@ mod tests {
         let pool = test_pool().await;
         let gone = sitting(&pool, "theory", "2026-11-10").await;
         exams::delete_session(&pool, gone).await.unwrap();
-        assert!(exams::next_session(&pool, "2026-11-04").await.unwrap().is_none());
+        assert!(exams::next_session(&pool, "2026-11-04", "07:00").await.unwrap().is_none());
+    }
+
+    async fn sitting_at(pool: &SqlitePool, kind: &str, day: &str, time: &str) -> i64 {
+        exams::create_session(
+            pool,
+            &exams::ExamSessionInput {
+                kind: kind.into(),
+                held_on: day.into(),
+                held_at: time.into(),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap()
+        .id
+    }
+
+    async fn next_id(pool: &SqlitePool, now: &str) -> Option<i64> {
+        exams::next_session(pool, "2026-11-04", now)
+            .await
+            .unwrap()
+            .map(|n| n.session.id)
+    }
+
+    #[tokio::test]
+    async fn todays_sitting_gives_way_once_its_time_has_passed() {
+        let pool = test_pool().await;
+        let this_morning = sitting_at(&pool, "theory", "2026-11-04", "08:30").await;
+        let thursday = sitting_at(&pool, "maneuvers", "2026-11-06", "09:00").await;
+
+        assert_eq!(next_id(&pool, "07:45").await, Some(this_morning));
+        assert_eq!(next_id(&pool, "08:29").await, Some(this_morning));
+        // From the exam's own time on, it is no longer to come.
+        assert_eq!(next_id(&pool, "08:30").await, Some(thursday));
+        assert_eq!(next_id(&pool, "15:00").await, Some(thursday));
+    }
+
+    #[tokio::test]
+    async fn a_sitting_with_no_time_stays_all_day() {
+        let pool = test_pool().await;
+        let today = sitting_at(&pool, "theory", "2026-11-04", "").await;
+        sitting_at(&pool, "road", "2026-11-09", "08:00").await;
+        assert_eq!(next_id(&pool, "23:59").await, Some(today));
+    }
+
+    #[tokio::test]
+    async fn two_sittings_today_the_later_one_comes_next() {
+        let pool = test_pool().await;
+        sitting_at(&pool, "theory", "2026-11-04", "08:00").await;
+        let afternoon = sitting_at(&pool, "maneuvers", "2026-11-04", "14:00").await;
+        assert_eq!(next_id(&pool, "10:00").await, Some(afternoon));
+        assert_eq!(next_id(&pool, "14:30").await, None);
     }
 }

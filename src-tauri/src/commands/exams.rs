@@ -7,7 +7,7 @@ use tauri::State;
 
 use crate::commands::AppState;
 use crate::db::{exams, fees};
-use crate::domain::exams::{BoardColumn, BoardMove, ExamProgress};
+use crate::domain::exams::ExamProgress;
 use crate::error::CommandResult;
 
 #[tauri::command]
@@ -42,13 +42,15 @@ pub async fn list_exam_entries(
     Ok(exams::entries_for_session(&state.pool, session_id).await?)
 }
 
-/// The next sitting from `today` on, for the box on Accueil.
+/// The next sitting still to come, for the box on Accueil. `now` is the
+/// PC's local time, "HH:MM": a sitting today drops out once its time passes.
 #[tauri::command]
 pub async fn next_exam_session(
     state: State<'_, AppState>,
     today: String,
+    now: String,
 ) -> CommandResult<Option<exams::NextExam>> {
-    Ok(exams::next_session(&state.pool, &today).await?)
+    Ok(exams::next_session(&state.pool, &today, &now).await?)
 }
 
 /// Who has paid the exam fee in a sitting, for the line above its list.
@@ -129,37 +131,4 @@ pub async fn list_exam_fee_charges(
     enrollment_id: i64,
 ) -> CommandResult<Vec<fees::ExamFeeCharge>> {
     Ok(fees::list_for_enrollment(&state.pool, enrollment_id).await?)
-}
-
-/// What dropping a card on a column would record, before recording it.
-#[tauri::command]
-pub async fn plan_board_move(
-    state: State<'_, AppState>,
-    enrollment_id: i64,
-    to: BoardColumn,
-) -> CommandResult<BoardMove> {
-    Ok(exams::plan_board_move(&state.pool, enrollment_id, to).await?)
-}
-
-/// Record a drag on the progress board. Re-planned inside the write.
-#[tauri::command]
-pub async fn move_on_board(
-    state: State<'_, AppState>,
-    enrollment_id: i64,
-    to: BoardColumn,
-    date: String,
-) -> CommandResult<BoardMove> {
-    state.require_unlocked()?;
-    Ok(exams::apply_board_move(&state.pool, enrollment_id, to, &date).await?)
-}
-
-/// Take back a presentation made by mistake on the board.
-#[tauri::command]
-pub async fn withdraw_board_presentation(
-    state: State<'_, AppState>,
-    enrollment_id: i64,
-) -> CommandResult<()> {
-    state.require_unlocked()?;
-    exams::withdraw_board_presentation(&state.pool, enrollment_id).await?;
-    Ok(())
 }

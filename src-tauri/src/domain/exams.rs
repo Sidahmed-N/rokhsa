@@ -112,11 +112,11 @@ pub fn progress(attempts: &[Attempt]) -> ExamProgress {
 
 /// A column of the progress board.
 ///
-/// Decided here rather than in the view because a drag between two columns
-/// RECORDS something, and what it records depends on which column the card
-/// is in. Two definitions of "which column" would be two answers to "what
-/// did that drag just write".
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, serde::Deserialize)]
+/// Decided here rather than in the view so the board, the session picker and
+/// the candidate list agree on who is where. The board only shows it: exam
+/// results are recorded on the Examens screen (the drag that recorded them
+/// was removed, see ProgressBoard.tsx).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum BoardColumn {
     Theory,
@@ -160,108 +160,6 @@ pub fn column(p: &ExamProgress, enrollment_status: &str) -> BoardColumn {
     BoardColumn::stage(due)
 }
 
-/// What a drag between two columns records.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase", tag = "action", content = "kind")]
-pub enum BoardMove {
-    /// Presented for this exam; the result is not back yet.
-    Present(String),
-    /// Passed this exam — recorded directly, without a sitting.
-    Pass(String),
-    /// The result of the exam he was waiting on came back: passed.
-    ResultPassed(String),
-    /// The result came back: failed (ajourné). Counts as an attempt.
-    ResultFailed(String),
-    /// The pass recorded for this exam was a mistake.
-    UndoPass(String),
-}
-
-/// The stage after this one: code → créneau → circulation → finished.
-fn after(kind: &str) -> BoardColumn {
-    match kind {
-        "theory" => BoardColumn::Maneuvers,
-        "maneuvers" => BoardColumn::Road,
-        _ => BoardColumn::Finished,
-    }
-}
-
-/// The exam passed to reach this column, if it is a stage column.
-fn passed_to_reach(column: BoardColumn) -> Option<&'static str> {
-    match column {
-        BoardColumn::Maneuvers => Some("theory"),
-        BoardColumn::Road => Some("maneuvers"),
-        BoardColumn::Finished => Some("road"),
-        _ => None,
-    }
-}
-
-/// Work out what dropping a card on `to` means, or why it means nothing.
-///
-/// Only one step at a time. Dropping Code on Terminé would have to invent two
-/// exams the school never recorded, and a card that slips two columns by
-/// accident should not quietly do that. The error is a translation code.
-///
-/// This decides what a GESTURE means; it does not enforce the exam order.
-/// The Examens screen still records anything in any order (see the module
-/// note and `an_out_of_order_pass_is_recorded_not_refused`).
-pub fn plan_move(
-    p: &ExamProgress,
-    enrollment_status: &str,
-    to: BoardColumn,
-) -> Result<BoardMove, &'static str> {
-    let from = column(p, enrollment_status);
-    if from == to {
-        return Err("board.move.same");
-    }
-    if from == BoardColumn::Withdrawn || to == BoardColumn::Withdrawn {
-        return Err("board.move.withdrawn");
-    }
-
-    match (from, p.next_due.as_deref()) {
-        // Everything passed: the only step is back, undoing the circulation.
-        (BoardColumn::Finished, _) => match to {
-            BoardColumn::Road => Ok(BoardMove::UndoPass("road".into())),
-            _ => Err("board.move.oneStep"),
-        },
-
-        (BoardColumn::Awaiting, Some(due)) => {
-            if to == BoardColumn::stage(due) {
-                Ok(BoardMove::ResultFailed(due.into()))
-            } else if to == after(due) {
-                Ok(BoardMove::ResultPassed(due.into()))
-            } else {
-                Err("board.move.oneStep")
-            }
-        }
-
-        (_, Some(due)) => {
-            if to == BoardColumn::Awaiting {
-                Ok(BoardMove::Present(due.into()))
-            } else if to == after(due) {
-                Ok(BoardMove::Pass(due.into()))
-            } else {
-                match (passed_to_reach(from), before(from)) {
-                    (Some(kind), Some(back)) if back == to => Ok(BoardMove::UndoPass(kind.into())),
-                    _ => Err("board.move.oneStep"),
-                }
-            }
-        }
-
-        // Not reachable — a column other than Finished always has a due exam.
-        (_, None) => Err("board.move.oneStep"),
-    }
-}
-
-/// The stage column one step back from this one.
-fn before(column: BoardColumn) -> Option<BoardColumn> {
-    match column {
-        BoardColumn::Maneuvers => Some(BoardColumn::Theory),
-        BoardColumn::Road => Some(BoardColumn::Maneuvers),
-        BoardColumn::Finished => Some(BoardColumn::Road),
-        _ => None,
-    }
-}
-
 #[cfg(test)]
 mod board_tests {
     use super::*;
@@ -272,10 +170,6 @@ mod board_tests {
             .map(|(kind, outcome)| Attempt { kind, outcome })
             .collect();
         progress(&attempts)
-    }
-
-    fn plan(results: &[(&str, &str)], to: BoardColumn) -> Result<BoardMove, &'static str> {
-        plan_move(&at(results), "active", to)
     }
 
     #[test]
@@ -295,95 +189,6 @@ mod board_tests {
             BoardColumn::Finished
         );
         assert_eq!(column(&at(&[("theory", "passed")]), "withdrawn"), BoardColumn::Withdrawn);
-    }
-
-    #[test]
-    fn one_step_forward_is_a_pass() {
-        assert_eq!(plan(&[], BoardColumn::Maneuvers), Ok(BoardMove::Pass("theory".into())));
-        assert_eq!(
-            plan(&[("theory", "passed")], BoardColumn::Road),
-            Ok(BoardMove::Pass("maneuvers".into()))
-        );
-        assert_eq!(
-            plan(&[("theory", "passed"), ("maneuvers", "passed")], BoardColumn::Finished),
-            Ok(BoardMove::Pass("road".into()))
-        );
-    }
-
-    #[test]
-    fn into_awaiting_presents_him_for_the_exam_he_is_due() {
-        assert_eq!(plan(&[], BoardColumn::Awaiting), Ok(BoardMove::Present("theory".into())));
-        assert_eq!(
-            plan(&[("theory", "passed")], BoardColumn::Awaiting),
-            Ok(BoardMove::Present("maneuvers".into()))
-        );
-    }
-
-    /// Out of "en attente": forward is the pass, back to his own column is
-    /// the failure — which is what makes the retake badge appear.
-    #[test]
-    fn out_of_awaiting_records_the_result() {
-        let waiting = [("theory", "passed"), ("maneuvers", "presented")];
-        assert_eq!(
-            plan(&waiting, BoardColumn::Road),
-            Ok(BoardMove::ResultPassed("maneuvers".into()))
-        );
-        assert_eq!(
-            plan(&waiting, BoardColumn::Maneuvers),
-            Ok(BoardMove::ResultFailed("maneuvers".into()))
-        );
-        // Waiting on the circulation, the step forward is "finished".
-        let last = [("theory", "passed"), ("maneuvers", "passed"), ("road", "presented")];
-        assert_eq!(
-            plan(&last, BoardColumn::Finished),
-            Ok(BoardMove::ResultPassed("road".into()))
-        );
-    }
-
-    #[test]
-    fn one_step_back_undoes_the_pass_that_got_him_there() {
-        assert_eq!(
-            plan(&[("theory", "passed")], BoardColumn::Theory),
-            Ok(BoardMove::UndoPass("theory".into()))
-        );
-        let done = [("theory", "passed"), ("maneuvers", "passed"), ("road", "passed")];
-        assert_eq!(plan(&done, BoardColumn::Road), Ok(BoardMove::UndoPass("road".into())));
-    }
-
-    /// A card that slips two columns must not invent exams nobody recorded.
-    #[test]
-    fn skipping_a_column_is_refused() {
-        assert_eq!(plan(&[], BoardColumn::Road), Err("board.move.oneStep"));
-        assert_eq!(plan(&[], BoardColumn::Finished), Err("board.move.oneStep"));
-        let done = [("theory", "passed"), ("maneuvers", "passed"), ("road", "passed")];
-        assert_eq!(plan(&done, BoardColumn::Theory), Err("board.move.oneStep"));
-        assert_eq!(plan(&done, BoardColumn::Awaiting), Err("board.move.oneStep"));
-        // Waiting on the code: dropping on circulation is two steps.
-        assert_eq!(plan(&[("theory", "presented")], BoardColumn::Road), Err("board.move.oneStep"));
-    }
-
-    #[test]
-    fn a_withdrawn_enrolment_is_not_moved_by_dragging() {
-        assert_eq!(
-            plan_move(&at(&[]), "withdrawn", BoardColumn::Maneuvers),
-            Err("board.move.withdrawn")
-        );
-        assert_eq!(plan(&[], BoardColumn::Withdrawn), Err("board.move.withdrawn"));
-    }
-
-    #[test]
-    fn dropping_where_it_already_is_does_nothing() {
-        assert_eq!(plan(&[], BoardColumn::Theory), Err("board.move.same"));
-    }
-
-    /// Code is not passed but circulation is (history entered out of order).
-    /// He sits in Code, and the step forward is still the code.
-    #[test]
-    fn an_out_of_order_history_moves_from_where_the_card_shows() {
-        assert_eq!(
-            plan(&[("road", "passed")], BoardColumn::Maneuvers),
-            Ok(BoardMove::Pass("theory".into()))
-        );
     }
 }
 

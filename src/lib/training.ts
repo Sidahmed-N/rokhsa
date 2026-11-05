@@ -337,6 +337,13 @@ export function localDate(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
+/** A moment as "HH:MM" in the computer's own timezone, the way sittings
+ * store their time, so the two compare as text. */
+export function localTime(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 /** Shift an ISO date by whole months, keeping the day where the month has it. */
 export function shiftMonth(iso: string, months: number): string {
   const [y, m, d] = iso.split("-").map(Number);

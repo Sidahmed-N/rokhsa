@@ -480,29 +480,10 @@
     "col_withdrawn": "Abandons",
     "columnEmpty": "Personne",
     "retake": "{{n}}e tentative",
-    "dragHint": "Glissez une carte dans la colonne voisine pour enregistrer un résultat.",
-    "move": {
-      "same": "La carte est déjà dans cette colonne.",
-      "oneStep": "Une étape à la fois : déposez la carte dans la colonne voisine.",
-      "withdrawn": "Un abandon ne se déplace pas sur le tableau. Modifiez l’inscription depuis la fiche du candidat.",
-      "nothingToWithdraw": "Aucune présentation en attente à annuler.",
-      "fromSitting": "Cette présentation vient d’une session d’examen : retirez le candidat depuis la page Examens."
-    },
-    "confirm": {
-      "present": "Présenté à l’examen : {{exam}}",
-      "pass": "Réussite à l’examen : {{exam}}",
-      "resultPassed": "Résultat : admis à l’examen {{exam}}",
-      "resultFailed": "Résultat : ajourné à l’examen {{exam}}",
-      "undoPass": "Annuler la réussite : {{exam}}",
-      "failedHint": "Cela compte comme une tentative de plus.",
-      "undoHint": "Si ce résultat vient d’une session d’examen, il repasse « en attente » et les frais restent dus.",
-      "date": "Date de l’examen",
-      "submit": "Confirmer",
-      "withdraw": "Placé ici par erreur ? Annuler la présentation"
-    },
     "archiveFinished": "Archiver",
     "archiveTitle": "Archiver les candidats terminés ?",
-    "archiveBody": "Ils quittent la liste et le tableau. Leurs versements restent comptés, et vous pouvez les restaurer depuis Candidats → Archivés."
+    "archiveBody": "Ils quittent la liste et le tableau. Leurs versements restent comptés, et vous pouvez les restaurer depuis Candidats → Archivés.",
+    "viewHint": "Le tableau montre où en est chaque candidat. Il se met à jour tout seul : les résultats se notent dans Examens. Cliquez une carte pour ouvrir sa fiche."
   },
   "fees": {
     "amount": "Frais d’examen (DA)",
@@ -548,7 +529,7 @@
         "searchTitle": "Recherche",
         "search": "Retrouvez un candidat par son nom, son téléphone ou son NIN.",
         "viewsTitle": "Liste ou tableau",
-        "views": "Le tableau montre où en est chacun. Glissez une carte pour noter un résultat d’examen."
+        "views": "Le tableau montre où en est chacun : code, créneau, circulation. Les résultats se notent dans Examens."
       },
       "exams": {
         "new": "Créez une session d’examen : l’épreuve, la date et le lieu.",

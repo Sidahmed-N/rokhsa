@@ -569,15 +569,16 @@ drive a debug build over `--remote-debugging-port`, pass the same switches in it
 ### Drag and drop needs `dragDropEnabled: false`
 Tauri's window takes OS drag-and-drop for itself by default (to receive dropped files), and
 on Windows that silently breaks HTML5 drag-and-drop inside the page: the drag starts, the card
-fades, and no `dragover` or `drop` ever arrives. The progress board depends on it, so
-`tauri.conf.json` sets `"dragDropEnabled": false`. Nothing in the app accepts dropped files; if
-something ever does, it must be done another way than turning this back on.
+fades, and no `dragover` or `drop` ever arrives. `tauri.conf.json` sets
+`"dragDropEnabled": false`, so any HTML5 drag added later works. Nothing in the app accepts
+dropped files; if something ever does, it must be done another way than turning this back on.
 
-**A board drag records an exam event.** The column is derived from exam results, so dropping a
-card writes the result that puts it there (pass, presentation, outcome, or a pass undone). What
-each drop means is `domain::exams::plan_move`; it is re-planned inside the write. One column at
-a time. Undoing a pass that came from a real sitting puts it back to "presented" — it never
-removes the entry or its fee.
+**The progress board is read only (owner's decision, 2026-11-05).** Its cards used to be
+dragged, and a drop recorded the exam result itself (a pass, a presentation) with no sitting, no
+place and no exam fee: the file said "Créneau" while Examens showed nothing, and the fee was
+never asked for. **Exam results are recorded in ONE place, a sitting on the Examens screen.**
+The board only shows where everyone is (`domain::exams::column`), and a card opens the file.
+Do not add a second way to record an exam; results already typed on the board stay as they are.
 
 ### A debug build loads from the dev server
 `devUrl` points at `http://localhost:5173`, so a debug binary launched **without** Vite running
