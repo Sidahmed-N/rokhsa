@@ -93,26 +93,33 @@ async fn with_shown_status(
     pool: &SqlitePool,
     mut rows: Vec<Candidate>,
 ) -> Result<Vec<Candidate>, AppError> {
+    use crate::domain::candidate::{shown_status, EnrolmentFacts};
+
     let finished = crate::db::exams::finished_enrollment_ids(pool).await?;
-    let finished_candidates: std::collections::HashSet<i64> = if finished.is_empty() {
-        Default::default()
-    } else {
-        let pairs: Vec<(i64, i64)> =
-            sqlx::query_as("SELECT id, candidate_id FROM enrollments WHERE deleted_at IS NULL")
-                .fetch_all(pool)
-                .await?;
-        pairs
-            .into_iter()
-            .filter(|(enrollment, _)| finished.contains(enrollment))
-            .map(|(_, candidate)| candidate)
-            .collect()
-    };
+    let enrolments: Vec<(i64, i64, String)> = sqlx::query_as(
+        "SELECT id, candidate_id, status FROM enrollments WHERE deleted_at IS NULL",
+    )
+    .fetch_all(pool)
+    .await?;
+
+    // Start "withdrawn" true and let any enrolment still running clear it, so
+    // it holds only when every live enrolment is abandoned.
+    let mut by: std::collections::HashMap<i64, EnrolmentFacts> = std::collections::HashMap::new();
+    for (enrollment, candidate, status) in enrolments {
+        let f = by.entry(candidate).or_insert(EnrolmentFacts {
+            enrolled: true,
+            withdrawn: true,
+            finished: false,
+        });
+        if status != "withdrawn" {
+            f.withdrawn = false;
+        }
+        if finished.contains(&enrollment) {
+            f.finished = true;
+        }
+    }
     for row in &mut rows {
-        row.shown_status = crate::domain::candidate::shown_status(
-            &row.status,
-            finished_candidates.contains(&row.id),
-        )
-        .to_string();
+        row.shown_status = shown_status(by.get(&row.id).copied().unwrap_or_default()).to_string();
     }
     Ok(rows)
 }
@@ -791,11 +798,10 @@ mod tests {
 
     /// Enrol a candidate and put him through the three exams, passing each.
     /// Returns (candidate, the circulation entry) so a test can undo the last.
-    async fn through_all_three(pool: &SqlitePool, status: &str) -> (i64, i64) {
+    /// Returns (candidate, enrolment, the circulation entry).
+    async fn through_all_three(pool: &SqlitePool) -> (i64, i64, i64) {
         use crate::db::{enrollments, exams};
-        let c = create(pool, &CandidateInput { status: status.into(), ..input("BENALI", "Yacine") })
-            .await
-            .unwrap();
+        let c = create(pool, &input("BENALI", "Yacine")).await.unwrap();
         let e = enrollments::create(
             pool,
             c.id,
@@ -815,7 +821,25 @@ mod tests {
             exams::set_outcome(pool, entry.id, "passed", "").await.unwrap();
             last = entry.id;
         }
-        (c.id, last)
+        (c.id, e.id, last)
+    }
+
+    async fn abandon(pool: &SqlitePool, enrollment: i64) {
+        use crate::db::enrollments;
+        let e = enrollments::get(pool, enrollment).await.unwrap();
+        enrollments::revise(
+            pool,
+            enrollment,
+            &enrollments::EnrollmentRevision {
+                enrolled_on: e.enrolled_on,
+                agreed_price_centimes: e.agreed_price_centimes,
+                discount_centimes: e.discount_centimes,
+                discount_reason: e.discount_reason,
+                withdrawn: true,
+            },
+        )
+        .await
+        .unwrap();
     }
 
     async fn shown(pool: &SqlitePool, id: i64) -> String {
@@ -831,9 +855,9 @@ mod tests {
     #[tokio::test]
     async fn the_list_says_completed_once_all_three_are_passed() {
         let pool = test_pool().await;
-        let (id, road) = through_all_three(&pool, "active").await;
+        let (id, _, road) = through_all_three(&pool).await;
         assert_eq!(shown(&pool, id).await, "completed");
-        // Nothing was written: the form still holds what the school chose.
+        // Nothing was written on the candidate.
         assert_eq!(get(&pool, id).await.unwrap().status, "active");
 
         // A pass undone puts it back.
@@ -842,16 +866,26 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn abandon_set_by_the_school_still_shows() {
+    async fn abandoning_the_enrolment_shows_on_the_list() {
         let pool = test_pool().await;
-        let (id, _) = through_all_three(&pool, "withdrawn").await;
+        let (id, enrollment, _) = through_all_three(&pool).await;
+        abandon(&pool, enrollment).await;
         assert_eq!(shown(&pool, id).await, "withdrawn");
     }
 
     #[tokio::test]
-    async fn someone_still_training_shows_what_was_chosen() {
+    async fn an_enrolled_candidate_is_in_training() {
+        use crate::db::enrollments;
         let pool = test_pool().await;
         let c = create(&pool, &input("HAMDI", "Sara")).await.unwrap();
+        assert_eq!(shown(&pool, c.id).await, "prospect", "no enrolment yet");
+        enrollments::create(
+            &pool,
+            c.id,
+            &enrollments::EnrollmentInput { category_code: "B".into(), ..Default::default() },
+        )
+        .await
+        .unwrap();
         assert_eq!(shown(&pool, c.id).await, "active");
     }
 }

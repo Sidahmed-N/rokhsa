@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import i18next, { currentLanguage } from "@/i18n";
+import { formatDay } from "@/lib/dates";
 import { formatDZD, formatDinars, type Centimes } from "@/lib/money";
 import { formatDuration } from "@/lib/training";
 
@@ -37,6 +38,20 @@ export function Num({
       {children}
     </span>
   );
+}
+
+/**
+ * A stored day ("2026-11-05"), shown as the school reads it ("05/11/2026")
+ * and isolated like any number. Every displayed date goes through this.
+ */
+export function DateText({
+  value,
+  className,
+}: {
+  value: string;
+  className?: string | undefined;
+}) {
+  return <Num className={className}>{formatDay(value)}</Num>;
 }
 
 /**

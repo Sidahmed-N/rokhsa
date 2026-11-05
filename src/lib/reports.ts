@@ -22,6 +22,8 @@ export interface ReceivableRow {
   totalDueCentimes: Centimes;
   paidCentimes: Centimes;
   balanceCentimes: Centimes;
+  /** The balance said by where it comes from, as on the candidate's file. */
+  owed: { training: Centimes; exams: Centimes };
   lastPaymentOn: string | null;
   daysSincePayment: number | null;
 }

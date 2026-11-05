@@ -19,6 +19,7 @@ export default function Modal({
   onClose,
   onSubmit,
   submitLabel,
+  cancelLabel,
   submitting = false,
   error,
   wide = false,
@@ -28,6 +29,8 @@ export default function Modal({
   onClose: () => void;
   onSubmit: () => void;
   submitLabel?: string | undefined;
+  /** When the action itself says "annuler", the way out must not say it too. */
+  cancelLabel?: string | undefined;
   submitting?: boolean | undefined;
   error?: string | null | undefined;
   wide?: boolean | undefined;
@@ -78,9 +81,9 @@ export default function Modal({
 
           <footer className="flex gap-2 border-t border-line bg-sunken/60 px-5 py-3">
             <Button type="submit" variant="primary" disabled={submitting}>
-              {submitting ? t("common.loading") : (submitLabel ?? t("common.save"))}
+              {submitting ? t("common.saving") : (submitLabel ?? t("common.save"))}
             </Button>
-            <Button onClick={onClose}>{t("common.cancel")}</Button>
+            <Button onClick={onClose}>{cancelLabel ?? t("common.cancel")}</Button>
           </footer>
         </form>
       </div>

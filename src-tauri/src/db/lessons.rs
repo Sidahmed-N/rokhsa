@@ -228,7 +228,9 @@ const DAY_JOINS: &str = "FROM lessons l
 /// Everything booked or recorded for one day, soonest first.
 ///
 /// Planned sessions sort above settled ones, because the day screen is a
-/// to-do list: what still needs doing belongs at the top.
+/// to-do list: what still needs doing belongs at the top. The screens keep
+/// this order while the owner marks rows (`keepOrder` in src/lib/order.ts):
+/// re-sorting after each click moved the rows under the pointer.
 pub async fn list_for_day(pool: &SqlitePool, date: &str) -> Result<Vec<DayEntry>, AppError> {
     let sql = format!(
         "SELECT {DAY_COLUMNS} {DAY_JOINS}

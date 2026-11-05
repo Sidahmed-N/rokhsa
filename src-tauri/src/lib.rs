@@ -126,6 +126,7 @@ pub fn run() {
             commands::training::list_payment_methods,
             commands::exams::list_exam_sessions,
             commands::exams::create_exam_session,
+            commands::exams::update_exam_session,
             commands::exams::delete_exam_session,
             commands::exams::list_exam_entries,
             commands::exams::exam_session_fees,

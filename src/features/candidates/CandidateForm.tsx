@@ -5,7 +5,6 @@ import FreeText from "@/components/FreeText";
 import { Num } from "@/components/Num";
 import { newEnrollmentInput } from "@/features/training/TrainingDialogs";
 import {
-  CANDIDATE_STATUSES,
   findCandidateDuplicates,
   isAppError,
   updateCandidate,
@@ -284,25 +283,15 @@ export default function CandidateForm({ initial, editingId, onSaved, onCancel }:
                 error={fieldError("phoneAlt")}
                 dir="ltr"
               />
+              {/* No "Statut" box. It said "Abandon" in a second place that
+                  never agreed with the enrolment's "Le candidat a abandonné"
+                  (Créances kept chasing him). The list now reads the status
+                  from the facts: see domain::candidate::shown_status. */}
               <Field
                 label={t("candidates.commune")}
                 value={form.commune}
                 onChange={(v) => set("commune", v)}
               />
-              <label className="block">
-                <span className="mb-1 block text-xs text-muted">{t("candidates.status")}</span>
-                <select
-                  value={form.status}
-                  onChange={(e) => set("status", e.target.value)}
-                  className="w-full rounded-md border border-line bg-surface px-3 py-2 text-sm outline-none focus:border-brand"
-                >
-                  {CANDIDATE_STATUSES.map((status) => (
-                    <option key={status} value={status}>
-                      {t(`candidates.status_${status}`)}
-                    </option>
-                  ))}
-                </select>
-              </label>
             </div>
           </fieldset>
 

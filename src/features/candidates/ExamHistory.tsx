@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { Check, Clock, GraduationCap, Minus, X } from "lucide-react";
 
 import FreeText from "@/components/FreeText";
-import { Num } from "@/components/Num";
+import { DateText, Num } from "@/components/Num";
 import { Paged } from "@/components/ui/Pager";
 import { Badge, type Tone } from "@/components/ui/Surface";
 import { EXAM_KINDS, type ExamProgress, type ExamResult, type Standing } from "@/lib/exams";
@@ -110,7 +110,7 @@ export default function ExamHistory({
               {/* Only worth saying once it took more than one go. */}
               {attempts > 1 && (
                 <span className="text-xs opacity-70">
-                  <Num>{attempts}</Num>×
+                  <Num>{`${attempts}×`}</Num>
                 </span>
               )}
             </div>
@@ -130,7 +130,7 @@ export default function ExamHistory({
             {pageResults.map((row) => (
               <tr key={row.id} className="border-t border-line">
                 <td className="py-2">
-                  <Num className="font-medium text-ink">{row.satOn}</Num>
+                  <DateText className="font-medium text-ink" value={row.satOn} />
                 </td>
                 <td className="py-2 text-ink-soft">{t(`lessons.kind_${row.kind}`)}</td>
                 <td className="py-2">

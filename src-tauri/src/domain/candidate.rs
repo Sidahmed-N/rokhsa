@@ -104,19 +104,34 @@ impl CandidateInput {
 /// Statuses a candidate may hold. Mirrors the CHECK constraint in 0001.
 pub const STATUSES: [&str; 5] = ["prospect", "active", "inactive", "completed", "withdrawn"];
 
-/// The status the candidate list shows.
+/// What the candidate's enrolments say, for the status the list shows.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct EnrolmentFacts {
+    /// At least one live enrolment.
+    pub enrolled: bool,
+    /// Every live enrolment is marked "Le candidat a abandonné".
+    pub withdrawn: bool,
+    /// All three exams passed on one of them (the board's own rule).
+    pub finished: bool,
+}
+
+/// The status the candidate list shows, read from the facts, never typed.
 ///
-/// `stored` is what the school picked in the form; `finished` is true once all
-/// three exams are passed, worked out from the results exactly as the board
-/// does. A candidate who has passed everything shows "completed" without anyone
-/// having to remember to change the form, and goes back to what was stored if
-/// a pass is undone, because nothing is written. Only the two statuses the
-/// school sets for a reason of its own win over it: "inactive" and "withdrawn".
-pub fn shown_status(stored: &str, finished: bool) -> &str {
-    if finished && stored != "inactive" && stored != "withdrawn" {
+/// The candidate form used to have its own "Statut" box beside the
+/// enrolment's "Le candidat a abandonné", and the two never agreed: "Abandon"
+/// in the form left him in Créances and in the board's pipeline. The owner
+/// kept one place (2026-11-05): abandoning is said on the enrolment, finishing
+/// is the three passes, and everything else is "in training". The stored
+/// `candidates.status` column is no longer read or written by any screen.
+pub fn shown_status(facts: EnrolmentFacts) -> &'static str {
+    if !facts.enrolled {
+        "prospect"
+    } else if facts.withdrawn {
+        "withdrawn"
+    } else if facts.finished {
         "completed"
     } else {
-        stored
+        "active"
     }
 }
 
@@ -181,24 +196,29 @@ pub fn validate(input: &CandidateInput) -> Result<(), AppError> {
 mod tests {
     use super::*;
 
+    fn facts(enrolled: bool, withdrawn: bool, finished: bool) -> EnrolmentFacts {
+        EnrolmentFacts { enrolled, withdrawn, finished }
+    }
+
+    #[test]
+    fn in_training_until_something_says_otherwise() {
+        assert_eq!(shown_status(facts(true, false, false)), "active");
+    }
+
     #[test]
     fn passing_everything_shows_completed() {
-        assert_eq!(shown_status("active", true), "completed");
-        assert_eq!(shown_status("prospect", true), "completed");
-        assert_eq!(shown_status("completed", true), "completed");
+        assert_eq!(shown_status(facts(true, false, true)), "completed");
     }
 
     #[test]
-    fn the_schools_own_reasons_win() {
-        assert_eq!(shown_status("inactive", true), "inactive");
-        assert_eq!(shown_status("withdrawn", true), "withdrawn");
+    fn abandoning_is_said_on_the_enrolment_and_wins() {
+        assert_eq!(shown_status(facts(true, true, false)), "withdrawn");
+        assert_eq!(shown_status(facts(true, true, true)), "withdrawn");
     }
 
     #[test]
-    fn not_finished_shows_what_was_stored() {
-        for s in STATUSES {
-            assert_eq!(shown_status(s, false), s);
-        }
+    fn no_enrolment_is_a_prospect() {
+        assert_eq!(shown_status(facts(false, false, false)), "prospect");
     }
 
     fn valid() -> CandidateInput {

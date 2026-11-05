@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 
 import FreeText from "@/components/FreeText";
-import { Money, Num } from "@/components/Num";
+import { DateText, Money, Num } from "@/components/Num";
 import Button from "@/components/ui/Button";
 import { Badge, Card, ErrorNote, Hero, PageHeader } from "@/components/ui/Surface";
 import RuntimeBadge from "@/features/home/RuntimeBadge";
@@ -28,6 +28,7 @@ import {
   type CashFlow,
   type Receivables,
 } from "@/lib/reports";
+import { keepOrder } from "@/lib/order";
 import { isDesktop } from "@/lib/tauri";
 import {
   completeLesson,
@@ -187,7 +188,8 @@ export default function HomePage() {
       setReceivables(r);
       setFlow(f);
       setCandidateCount(page.total);
-      setToday(day);
+      // Rows marked a moment ago stay where they were: see keepOrder.
+      setToday((previous) => keepOrder(previous, day));
       setOverdue(late);
       setError(null);
     } catch (raw: unknown) {
@@ -382,7 +384,7 @@ export default function HomePage() {
                 >
                   {t(`lessons.kind_${next.session.kind}`)}
                 </span>
-                <Num className="text-sm font-semibold text-ink">{next.session.heldOn}</Num>
+                <DateText className="text-sm font-semibold text-ink" value={next.session.heldOn} />
                 {next.session.heldAt && (
                   <Num className="text-xs text-muted">{next.session.heldAt}</Num>
                 )}
@@ -456,7 +458,7 @@ export default function HomePage() {
                 >
                   {/* The date, because unlike every other panel these rows
                       come from different days. */}
-                  <Num className="text-xs font-medium text-warn">{row.day}</Num>
+                  <DateText className="text-xs font-medium text-warn" value={row.day} />
                   <span
                     className={[
                       "rounded px-1.5 py-0.5 text-xs font-semibold",

@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { Wallet } from "lucide-react";
 
-import { Money, Num } from "@/components/Num";
+import { DateText, Money, Num } from "@/components/Num";
 import Button from "@/components/ui/Button";
 import { Pager, usePaged } from "@/components/ui/Pager";
 import { Card, EmptyState, ErrorNote, PageHeader } from "@/components/ui/Surface";
@@ -163,7 +163,7 @@ export default function ReceivablesPage() {
                   </td>
                   <td>
                     {row.lastPaymentOn ? (
-                      <Num>{row.lastPaymentOn}</Num>
+                      <DateText value={row.lastPaymentOn} />
                     ) : (
                       <span className="text-muted">{t("receivables.never")}</span>
                     )}
@@ -198,7 +198,8 @@ export default function ReceivablesPage() {
       {payingFor && (
         <TakePaymentDialog
           enrollmentId={payingFor.enrollmentId}
-          balanceCentimes={payingFor.balanceCentimes}
+          balanceCentimes={payingFor.owed.training}
+          examFeesOwedCentimes={payingFor.owed.exams}
           onClose={() => setPayingFor(null)}
           onDone={() => {
             setPayingFor(null);

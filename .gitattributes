@@ -1,0 +1,6 @@
+# The migrations are embedded in the app and checked byte for byte against
+# what each school's database already applied (sqlx stores a SHA-384 of each
+# file). core.autocrlf is on for this PC, so without this a checkout could
+# rewrite them with CRLF line endings and every school's app would refuse to
+# open after the next update. Always LF, whatever the machine's settings.
+src-tauri/migrations/*.sql text eol=lf

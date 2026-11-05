@@ -83,7 +83,12 @@ These are not style preferences. Breaking them causes data loss, legal problems,
   is the ONLY thing that makes a fee paid — never infer it from amounts or dates. The file
   splits "Reste à payer" into Formation / Examens with `domain::money::split_owed`, whose
   parts always add up to the balance. A fee whose entry is removed keeps its payment, which
-  still counts in what the candidate paid.
+  still counts in what the candidate paid. **An ordinary payment (the file, Créances) is measured
+  against `owed.training`, never the whole balance**: "Tout régler" once filled in the unpaid fee
+  as training money, and the sitting asked for it a second time.
+- **A sitting is corrected with "Modifier"** (`exams::update_session`: date, time, place — never
+  the exam). Deleting and recreating it released every fee, so paid fees showed as due again. The
+  date moves with every entry; it cannot move once a result is noted.
 - **An enrolment is corrected with "Modifier"** (`enrollments::revise`): price, discount, start
   date, and "abandoned". It touches only those columns — `update` sends the whole row and would
   overwrite the hour targets. Abandoned (`status = 'withdrawn'`) leaves Créances; its payments
@@ -220,10 +225,11 @@ These are not style preferences. Breaking them causes data loss, legal problems,
   a file from the list, the board and the session picker (typing the name still finds it) and
   changes nothing else: Créances and Caisse still count it. Any new list of "current"
   candidates must filter on `archived_at IS NULL`; any money query must not.
-- **"Terminé" on the candidate list is read, not stored.** Once all three exams are passed
-  (`exams::finished_enrollment_ids`, the board's own rule) the list shows "completed", via
-  `domain::candidate::shown_status`; a pass undone puts it back. The status in the form is never
-  overwritten, and "inactive" / "withdrawn" set by the school still win.
+- **The candidate list's status is read from the facts, never typed** (`domain::candidate::
+  shown_status`): "Abandon" when the enrolment is ticked "Le candidat a abandonné", "Terminé" once
+  all three exams are passed (`exams::finished_enrollment_ids`, the board's own rule), otherwise
+  "En formation". The form's own "Statut" box was removed (owner, 2026-11-05): it said "Abandon" in
+  a second place that never reached Créances. `candidates.status` is no longer read or written.
 - Every write path must be safe to interrupt: wrap multi-row operations in a transaction.
   The user *will* lose power mid-save.
 - **Never open the database with ad-hoc connection options — always `db::connect`.**

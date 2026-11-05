@@ -22,7 +22,7 @@ import {
 import FreeText from "@/components/FreeText";
 import { Paged } from "@/components/ui/Pager";
 import ExamHistory from "@/features/candidates/ExamHistory";
-import { Duration, Money, Num } from "@/components/Num";
+import { DateText, Duration, Money, Num } from "@/components/Num";
 import Button, { IconButton } from "@/components/ui/Button";
 import { Badge, Card, EmptyState, ErrorNote, type Tone } from "@/components/ui/Surface";
 import {
@@ -241,7 +241,7 @@ export default function CandidateDetailPage() {
                   <p className="text-sm font-medium text-ink">
                     {t("candidates.archivedBanner")}
                     <span className="ms-2 font-normal text-muted">
-                      <Num>{localDate(new Date(candidate.archivedAt))}</Num>
+                      <DateText value={localDate(new Date(candidate.archivedAt))} />
                     </span>
                   </p>
                   <p className="mt-0.5 text-xs text-muted">{t("candidates.archivedHint")}</p>
@@ -333,7 +333,7 @@ export default function CandidateDetailPage() {
                         {t(`enrollments.status_${summary.enrollment.status}`)}
                       </Badge>
                       <span className="ms-auto text-xs text-muted">
-                        {t("enrollments.enrolledOn")} <Num>{summary.enrollment.enrolledOn}</Num>
+                        {t("enrollments.enrolledOn")} <DateText value={summary.enrollment.enrolledOn} />
                       </span>
                       <Button
                         size="sm"
@@ -524,11 +524,14 @@ export default function CandidateDetailPage() {
                                   ].join(" ")}
                                 >
                                   <td className="py-2">
-                                    <Num className="font-medium text-ink">
-                                      {upcoming
-                                        ? (lesson.scheduledOn ?? lesson.occurredOn)
-                                        : lesson.occurredOn}
-                                    </Num>
+                                    <DateText
+                                      className="font-medium text-ink"
+                                      value={
+                                        upcoming
+                                          ? (lesson.scheduledOn ?? lesson.occurredOn)
+                                          : lesson.occurredOn
+                                      }
+                                    />
                                     {upcoming && lesson.scheduledTime && (
                                       <span className="ms-1.5 text-muted">
                                         <Num>{lesson.scheduledTime}</Num>
@@ -684,7 +687,7 @@ export default function CandidateDetailPage() {
                               return (
                                 <tr key={payment.id} className="group border-t border-line">
                                   <td className="py-2 text-ink-soft">
-                                    <Num>{payment.paidOn}</Num>
+                                    <DateText value={payment.paidOn} />
                                   </td>
                                   <td className="py-2 text-ink-soft">
                                     {t(`methods.${payment.methodCode}`, {
@@ -789,7 +792,7 @@ export default function CandidateDetailPage() {
               {t("payments.reverseTitle")}
             </h2>
             <p className="mt-2 text-sm text-ink-soft">
-              <Num>{reversing.paidOn}</Num> · <Money centimes={reversing.amountCentimes} />
+              <DateText value={reversing.paidOn} /> · <Money centimes={reversing.amountCentimes} />
             </p>
             <p className="mt-2 text-xs text-muted">{t("payments.reverseBody")}</p>
             <div className="mt-5 flex gap-2">
@@ -821,7 +824,7 @@ export default function CandidateDetailPage() {
       {payingFor && (
         <TakePaymentDialog
           enrollmentId={payingFor.enrollment.id}
-          balanceCentimes={payingFor.balanceCentimes}
+          balanceCentimes={payingFor.owed.training}
           examFeesOwedCentimes={payingFor.owed.exams}
           onClose={() => setPayingFor(null)}
           onDone={onPaymentTaken}

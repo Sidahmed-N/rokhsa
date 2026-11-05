@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import {
   Check,
   GraduationCap,
+  Pencil,
   Plus,
   Trash2,
   UserMinus,
@@ -15,7 +16,7 @@ import {
 import FreeText from "@/components/FreeText";
 import Modal from "@/components/Modal";
 import { Pager, usePaged } from "@/components/ui/Pager";
-import { Money, Num } from "@/components/Num";
+import { DateText, Money, Num } from "@/components/Num";
 import { SelectField, TextField } from "@/components/FormField";
 import Button, { IconButton } from "@/components/ui/Button";
 import { Badge, Card, EmptyState, ErrorNote, PageHeader, type Tone } from "@/components/ui/Surface";
@@ -28,6 +29,7 @@ import {
   deleteExamSession,
   examSessionFees,
   listExamEntries,
+  updateExamSession,
   listExamSessions,
   removeExamResult,
   setExamOutcome,
@@ -80,6 +82,7 @@ export default function ExamsPage() {
   const [entries, setEntries] = useState<ExamEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [editingSitting, setEditingSitting] = useState(false);
   const [adding, setAdding] = useState(false);
   // Both destructive actions here are confirmed first. They sat one click
   // away, the remove button right beside "Absent", and a slip erased a
@@ -217,7 +220,7 @@ export default function ExamsPage() {
                         >
                           {t(`lessons.kind_${s.kind}`)}
                         </span>
-                        <Num className="text-sm font-semibold text-ink">{s.heldOn}</Num>
+                        <DateText className="text-sm font-semibold text-ink" value={s.heldOn} />
                         {s.heldAt && <Num className="text-xs text-muted">{s.heldAt}</Num>}
                       </span>
                       {s.place && (
@@ -241,7 +244,7 @@ export default function ExamsPage() {
                 <h2 className="text-sm font-semibold text-ink">
                   {t(`lessons.kind_${sitting.kind}`)}
                   <span className="text-faint"> · </span>
-                  <Num>{sitting.heldOn}</Num>
+                  <DateText value={sitting.heldOn} />
                 </h2>
                 <span className="text-xs text-muted">
                   {notYet
@@ -273,6 +276,16 @@ export default function ExamsPage() {
                     onClick={() => setAdding(true)}
                   >
                     {t("exams.addCandidate")}
+                  </Button>
+                  {/* A typo, or an exam the wilaya moved: corrected here
+                      rather than by deleting the sitting, which released
+                      every fee and asked for paid ones again. */}
+                  <Button
+                    size="sm"
+                    icon={<Pencil className="size-3.5" aria-hidden="true" />}
+                    onClick={() => setEditingSitting(true)}
+                  >
+                    {t("common.edit")}
                   </Button>
                   <IconButton
                     aria-label={t("common.delete")}
@@ -426,6 +439,17 @@ export default function ExamsPage() {
         </Modal>
       )}
 
+      {editingSitting && sitting && (
+        <NewSessionDialog
+          editing={sitting}
+          onClose={() => setEditingSitting(false)}
+          onDone={() => {
+            setEditingSitting(false);
+            void run(async () => {});
+          }}
+        />
+      )}
+
       {creating && (
         <NewSessionDialog
           onClose={() => setCreating(false)}
@@ -466,18 +490,21 @@ export default function ExamsPage() {
 
 /** Creating the batch: one exam, one date, one place. */
 function NewSessionDialog({
+  editing,
   onClose,
   onDone,
 }: {
+  /** Set to correct this sitting instead of creating one. */
+  editing?: ExamSession | undefined;
   onClose: () => void;
-  onDone: (created: ExamSession) => void;
+  onDone: (saved: ExamSession) => void;
 }) {
   const { t } = useTranslation();
 
-  const [kind, setKind] = useState<string>("theory");
-  const [heldOn, setHeldOn] = useState(todayIso());
-  const [heldAt, setHeldAt] = useState("08:00");
-  const [place, setPlace] = useState("");
+  const [kind, setKind] = useState<string>(editing?.kind ?? "theory");
+  const [heldOn, setHeldOn] = useState(editing?.heldOn ?? todayIso());
+  const [heldAt, setHeldAt] = useState(editing ? editing.heldAt : "08:00");
+  const [place, setPlace] = useState(editing?.place ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -485,7 +512,11 @@ function NewSessionDialog({
     setSaving(true);
     setError(null);
     try {
-      onDone(await createExamSession({ kind, heldOn, heldAt, place, notes: "" }));
+      onDone(
+        editing
+          ? await updateExamSession(editing.id, { heldOn, heldAt, place })
+          : await createExamSession({ kind, heldOn, heldAt, place, notes: "" }),
+      );
     } catch (e: unknown) {
       setError(isAppError(e) ? t(e.code, { defaultValue: e.message }) : String(e));
       setSaving(false);
@@ -494,7 +525,7 @@ function NewSessionDialog({
 
   return (
     <Modal
-      title={t("exams.newSession")}
+      title={editing ? t("exams.editSession") : t("exams.newSession")}
       onClose={onClose}
       onSubmit={() => void save()}
       submitting={saving}
@@ -502,13 +533,22 @@ function NewSessionDialog({
       submitLabel={t("common.save")}
     >
       <div className="grid gap-3">
-        <SelectField label={t("exams.whichExam")} value={kind} onChange={setKind}>
-          {EXAM_KINDS.map((k) => (
-            <option key={k} value={k}>
-              {t(`lessons.kind_${k}`)}
-            </option>
-          ))}
-        </SelectField>
+        {/* The exam cannot change once created: every result in the sitting
+            is recorded against it. Shown, not offered. */}
+        {editing ? (
+          <p className="text-sm text-ink-soft">
+            {t("exams.whichExam")} :{" "}
+            <span className="font-semibold text-ink">{t(`lessons.kind_${kind}`)}</span>
+          </p>
+        ) : (
+          <SelectField label={t("exams.whichExam")} value={kind} onChange={setKind}>
+            {EXAM_KINDS.map((k) => (
+              <option key={k} value={k}>
+                {t(`lessons.kind_${k}`)}
+              </option>
+            ))}
+          </SelectField>
+        )}
         <div className="grid gap-3 sm:grid-cols-2">
           <TextField
             label={t("exams.heldOn")}

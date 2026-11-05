@@ -186,6 +186,89 @@ pub async fn create_session(
     get_session(pool, row.0).await
 }
 
+/// What can be corrected on a sitting: when and where. Not the exam itself,
+/// which every result in it is recorded against.
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct ExamSessionChange {
+    pub held_on: String,
+    pub held_at: String,
+    pub place: String,
+}
+
+/// Correct a sitting's date, time or place: a typo, or an exam the wilaya
+/// moved. Before this the only way was to delete it and create it again,
+/// which released every candidate's fee, so fees already paid showed as due
+/// and were asked for twice.
+///
+/// The date moves with every entry (their `sat_on`, and the fee's
+/// `charged_on`), in one transaction. It cannot move once a result has been
+/// noted: a pass would then sit on a day the exam did not happen. Time and
+/// place can always be corrected.
+pub async fn update_session(
+    pool: &SqlitePool,
+    id: i64,
+    change: &ExamSessionChange,
+) -> Result<ExamSession, AppError> {
+    let current = get_session(pool, id).await?;
+    let on = parse_planned(&change.held_on)
+        .map_err(|p| date_error(p, "heldOn"))?
+        .format("%Y-%m-%d")
+        .to_string();
+    let at = parse_optional_time(&change.held_at)
+        .map_err(|p| date_error(p, "heldAt"))?
+        .unwrap_or_default();
+
+    let now = Utc::now().to_rfc3339();
+    let mut tx = pool.begin().await?;
+
+    if on != current.held_on {
+        let settled: (i64,) = sqlx::query_as(
+            "SELECT COUNT(*) FROM exam_results
+             WHERE session_id = ?1 AND deleted_at IS NULL AND outcome <> 'presented'",
+        )
+        .bind(id)
+        .fetch_one(&mut *tx)
+        .await?;
+        if settled.0 > 0 {
+            return Err(AppError::field("exams.error.dateHasResults", "heldOn"));
+        }
+        sqlx::query(
+            "UPDATE exam_fee_charges SET charged_on = ?1
+             WHERE deleted_at IS NULL AND result_id IN
+                   (SELECT id FROM exam_results WHERE session_id = ?2 AND deleted_at IS NULL)",
+        )
+        .bind(&on)
+        .bind(id)
+        .execute(&mut *tx)
+        .await?;
+        sqlx::query(
+            "UPDATE exam_results SET sat_on = ?1, updated_at = ?2
+             WHERE session_id = ?3 AND deleted_at IS NULL",
+        )
+        .bind(&on)
+        .bind(&now)
+        .bind(id)
+        .execute(&mut *tx)
+        .await?;
+    }
+
+    sqlx::query(
+        "UPDATE exam_sessions SET held_on = ?1, held_at = ?2, place = ?3, updated_at = ?4
+         WHERE id = ?5 AND deleted_at IS NULL",
+    )
+    .bind(&on)
+    .bind(&at)
+    .bind(change.place.trim())
+    .bind(&now)
+    .bind(id)
+    .execute(&mut *tx)
+    .await?;
+
+    tx.commit().await?;
+    get_session(pool, id).await
+}
+
 pub async fn get_session(pool: &SqlitePool, id: i64) -> Result<ExamSession, AppError> {
     sqlx::query_as::<_, ExamSession>(
         "SELECT id, kind, held_on, held_at, place, notes, created_at, updated_at

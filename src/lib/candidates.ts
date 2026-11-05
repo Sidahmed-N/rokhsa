@@ -63,14 +63,6 @@ export interface CandidateInput {
   notes: string;
 }
 
-export const CANDIDATE_STATUSES = [
-  "prospect",
-  "active",
-  "inactive",
-  "completed",
-  "withdrawn",
-] as const;
-
 export function emptyCandidateInput(): CandidateInput {
   return {
     nin: "",

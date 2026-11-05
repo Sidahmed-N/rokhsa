@@ -147,6 +147,27 @@ pub async fn unpaid_for_enrollment(
         .sum())
 }
 
+/// `unpaid_for_enrollment` for every enrolment at once, for Créances.
+pub async fn unpaid_by_enrollment(
+    pool: &SqlitePool,
+) -> Result<std::collections::HashMap<i64, Centimes>, AppError> {
+    let rows: Vec<(i64, i64, i64)> = sqlx::query_as(
+        "SELECT f.enrollment_id, f.amount_centimes,
+                COALESCE((SELECT SUM(p.amount_centimes) FROM payments p
+                          WHERE p.exam_fee_charge_id = f.id), 0)
+         FROM exam_fee_charges f
+         WHERE f.deleted_at IS NULL",
+    )
+    .fetch_all(pool)
+    .await?;
+
+    let mut by = std::collections::HashMap::new();
+    for (enrollment_id, fee, paid) in rows {
+        *by.entry(enrollment_id).or_insert(0) += crate::domain::money::fee_still_due(fee, paid);
+    }
+    Ok(by)
+}
+
 /// The individual charges, for the breakdown on a candidate's file.
 pub async fn list_for_enrollment(
     pool: &SqlitePool,
@@ -704,5 +725,67 @@ mod tests {
         let afternoon = sitting_at(&pool, "maneuvers", "2026-11-04", "14:00").await;
         assert_eq!(next_id(&pool, "10:00").await, Some(afternoon));
         assert_eq!(next_id(&pool, "14:30").await, None);
+    }
+
+    #[tokio::test]
+    async fn creances_splits_the_debt_like_the_file() {
+        let pool = test_pool().await;
+        let (enrollment, _, entry) = on_exam_day(&pool).await;
+
+        let row_owed = |r: &crate::db::reports::Receivables| {
+            r.rows.iter().find(|r| r.enrollment_id == enrollment).unwrap().owed
+        };
+        let r = crate::db::reports::receivables(&pool).await.unwrap();
+        let s = enrollments::summary(&pool, enrollment).await.unwrap();
+        assert_eq!(row_owed(&r), s.owed);
+        assert_eq!(s.owed, OwedSplit { training: 10_000 * DA, exams: 3_000 * DA });
+
+        pay(&pool, enrollment, 3_000, entry.fee_charge_id).await.unwrap();
+        let r = crate::db::reports::receivables(&pool).await.unwrap();
+        assert_eq!(row_owed(&r), OwedSplit { training: 10_000 * DA, exams: 0 });
+    }
+
+    /* ------------------------ correcting a sitting ------------------------ */
+
+    fn change(on: &str, at: &str, place: &str) -> exams::ExamSessionChange {
+        exams::ExamSessionChange { held_on: on.into(), held_at: at.into(), place: place.into() }
+    }
+
+    #[tokio::test]
+    async fn a_moved_sitting_keeps_its_candidates_and_their_paid_fees() {
+        let pool = test_pool().await;
+        let (enrollment, session, entry) = on_exam_day(&pool).await;
+        pay(&pool, enrollment, 3_000, entry.fee_charge_id).await.unwrap();
+
+        let moved = exams::update_session(&pool, session, &change("2026-08-17", "09:30", "Blida"))
+            .await
+            .unwrap();
+        assert_eq!((moved.held_on.as_str(), moved.held_at.as_str()), ("2026-08-17", "09:30"));
+
+        // Same entry, same fee, still paid: nothing to ask for twice.
+        let after = entry_now(&pool, session).await;
+        assert_eq!(after.id, entry.id);
+        assert_eq!(after.sat_on, "2026-08-17");
+        assert_eq!(after.fee_due_centimes, 0);
+        let s = enrollments::summary(&pool, enrollment).await.unwrap();
+        assert_eq!(s.owed, OwedSplit { training: 10_000 * DA, exams: 0 });
+    }
+
+    #[tokio::test]
+    async fn the_date_stays_once_a_result_is_noted_but_time_and_place_can_change() {
+        let pool = test_pool().await;
+        let (_, session, entry) = on_exam_day(&pool).await;
+        exams::set_outcome(&pool, entry.id, "passed", "").await.unwrap();
+
+        let error = exams::update_session(&pool, session, &change("2026-08-17", "08:00", ""))
+            .await
+            .unwrap_err();
+        assert!(matches!(error, AppError::Validation("exams.error.dateHasResults", _)));
+
+        let fixed = exams::update_session(&pool, session, &change("2026-08-10", "10:00", "Centre"))
+            .await
+            .unwrap();
+        assert_eq!((fixed.held_at.as_str(), fixed.place.as_str()), ("10:00", "Centre"));
+        assert_eq!(entry_now(&pool, session).await.outcome, "passed");
     }
 }

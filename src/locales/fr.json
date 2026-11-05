@@ -53,7 +53,7 @@
   "receivables": {
     "title": "Créances — qui vous doit de l'argent",
     "totalOwed": "Total dû à l'école",
-    "owingCount": "Inscriptions concernées",
+    "owingCount": "Candidats qui doivent",
     "onlyStale": "Uniquement sans versement depuis {{days}} jours",
     "noStale": "Aucun retard de paiement.",
     "nobodyOwes": "Personne ne vous doit d'argent.",
@@ -71,10 +71,10 @@
     "in": "Encaissé",
     "out": "Dépensé",
     "net": "Différence",
-    "payments": "versements",
-    "payments_one": "versement",
-    "expenses": "dépenses",
-    "expenses_one": "dépense",
+    "payments": "{{count}} versements",
+    "payments_one": "{{count}} versement",
+    "expenses": "{{count}} dépenses",
+    "expenses_one": "{{count}} dépense",
     "byMethod": "Encaissements par mode de paiement",
     "byCategory": "Dépenses par catégorie",
     "noPayments": "Aucun encaissement sur la période.",
@@ -95,7 +95,7 @@
       "amountPositive": "Le montant doit être supérieur à zéro.",
       "categoryRequired": "Choisissez une catégorie.",
       "dateRequired": "Indiquez la date.",
-      "dateInvalid": "Date invalide. Utilisez le format AAAA-MM-JJ.",
+      "dateInvalid": "Date invalide. Vérifiez le jour, le mois et l’année.",
       "dateFuture": "Cette dépense est datée dans le futur. Vérifiez la date.",
       "dateTooOld": "Cette date est trop ancienne. Vérifiez l'année."
     }
@@ -120,21 +120,22 @@
     "none": "Aucun",
     "previous": "Précédent",
     "next": "Suivant",
-    "amountInvalid": "Montant non reconnu. Écrivez par exemple 35000 ou 35.000."
+    "amountInvalid": "Montant non reconnu. Écrivez par exemple 35000 ou 35.000.",
+    "saving": "Enregistrement…"
   },
   "clock": {
     "title": "L'horloge de cet ordinateur est fausse.",
-    "body": "Des enregistrements portent une date postérieure à aujourd'hui. Corrigez la date et l'heure de Windows avant de saisir des versements, sinon les reçus porteront une mauvaise date.",
+    "body": "Des enregistrements portent une date postérieure à aujourd'hui. Corrigez la date et l'heure de Windows, sinon les versements et les séances seront enregistrés à une mauvaise date.",
     "days": "j d'écart"
   },
   "error": {
-    "notFound": "Introuvable.",
+    "notFound": "Introuvable : il a peut-être été supprimé. Rechargez la page.",
     "database": "Erreur de base de données. Vos données sont intactes ; réessayez.",
-    "internal": "Une erreur inattendue s'est produite."
+    "internal": "Une erreur inattendue s'est produite. Réessayez ; si cela continue, redémarrez l’application."
   },
   "home": {
     "title": "Tableau de bord",
-    "subtitle": "Candidats, heures, et argent entrant et sortant.",
+    "subtitle": "La journée, le prochain examen et l’argent.",
     "inThisMonth": "Encaissé ce mois-ci",
     "outThisMonth": "Dépensé ce mois-ci",
     "candidates": "Candidats",
@@ -144,7 +145,7 @@
     "version": "version",
     "todayTitle": "Aujourd'hui",
     "overdueTitle": "Séances non pointées",
-    "overdueHint": "Leur jour est passé et personne n’a dit ce qui s’est passé.",
+    "overdueHint": "Leur date est passée : marquez-les Fait ou Absent.",
     "moreRows_one": "Voir {{count}} autre",
     "moreRows": "Voir les {{count}} autres",
     "examTitle": "Prochain examen",
@@ -197,7 +198,7 @@
     "status_withdrawn": "Abandon",
     "error": {
       "hasPayments": "Impossible de supprimer : des versements ont été encaissés pour ce candidat. Archivez-le plutôt : il quitte la liste et ses versements restent comptés.",
-      "nameRequired": "Indiquez au moins un nom, en latin ou en arabe.",
+      "nameRequired": "Indiquez le nom du candidat.",
       "ninLength": "Le NIN doit comporter 18 chiffres.",
       "ninDuplicate": "Ce NIN est déjà enregistré pour un autre candidat.",
       "birthDateInvalid": "Date invalide. Utilisez le format AAAA-MM-JJ.",
@@ -257,7 +258,8 @@
       "discountTooLarge": "La remise dépasse le prix convenu.",
       "statusInvalid": "Statut invalide.",
       "alreadyEnrolled": "Ce candidat est déjà inscrit à cette catégorie.",
-      "priceRequired": "Indiquez le prix convenu (0 si l’inscription est gratuite)."
+      "priceRequired": "Indiquez le prix convenu (0 si l’inscription est gratuite).",
+      "dateInvalid": "Date d’inscription invalide. Choisissez une date."
     },
     "includesExamFees": "dont examens :",
     "heading": "Inscription",
@@ -292,7 +294,7 @@
       "minutesPositive": "La durée doit être supérieure à zéro.",
       "minutesTooLong": "Durée trop longue pour une seule séance.",
       "dateRequired": "Indiquez la date.",
-      "dateInvalid": "Date invalide. Utilisez le format AAAA-MM-JJ.",
+      "dateInvalid": "Date invalide. Vérifiez le jour, le mois et l’année.",
       "dateFuture": "Cette séance est datée dans le futur. Vérifiez la date.",
       "dateTooOld": "Cette date est trop ancienne. Vérifiez l'année.",
       "notPlanned": "Cette séance n'est pas une séance prévue.",
@@ -333,13 +335,13 @@
     "error": {
       "amountPositive": "Le montant doit être supérieur à zéro.",
       "dateRequired": "Indiquez la date du versement.",
-      "dateInvalid": "Date invalide. Utilisez le format AAAA-MM-JJ.",
+      "dateInvalid": "Date invalide. Vérifiez le jour, le mois et l’année.",
       "dateFuture": "Cette date est dans le futur. Vérifiez l'année.",
       "dateTooOld": "Cette date est trop ancienne. Vérifiez l'année.",
       "methodRequired": "Choisissez un mode de paiement.",
       "cannotReverseReversal": "Une annulation ne peut pas être annulée.",
       "alreadyReversed": "Ce versement a déjà été annulé.",
-      "feeNotFound": "Ces frais d’examen n’existent plus : il a peut-être été retiré de la session. Rechargez la page."
+      "feeNotFound": "Ces frais d’examen n’existent plus : le candidat a peut-être été retiré de la session. Rechargez la page."
     },
     "settleFull": "Tout régler",
     "takeAnyway": "Encaisser quand même",
@@ -349,7 +351,8 @@
     "overFeeWarning": "Ce montant est plus élevé que les frais. Vérifiez qu’il n’y a pas un zéro de trop, puis cliquez sur « Encaisser quand même ».",
     "forExam": "Examen",
     "examFeeElsewhere": "Il doit aussi des frais d’examen :",
-    "examFeeElsewhereHow": "encaissez-les depuis la session, page Examens."
+    "examFeeElsewhereHow": "encaissez-les depuis la session, page Examens.",
+    "trainingDue": "Reste à payer pour la formation"
   },
   "receipt": {
     "title": "REÇU DE VERSEMENT",
@@ -399,8 +402,8 @@
     "todayBadge": "Aujourd'hui",
     "dayEmpty": "Rien de prévu",
     "dayCount": "{{count}} séance(s)",
-    "previousDay": "Veille",
-    "nextDay": "Lendemain",
+    "previousDay": "Jour précédent",
+    "nextDay": "Jour suivant",
     "backToToday": "Aujourd'hui",
     "summary": "{{planned}} séance(s) encore à faire sur {{total}}.",
     "empty": "Rien de prévu ce jour-là.",
@@ -418,7 +421,7 @@
     "time": "Heure",
     "timeOptional": "Facultatif — laissez vide si le candidat passe quand il peut.",
     "planNote": "À travailler",
-    "planNoteHint": "Repris de la dernière séance. L'instructeur le verra dans « Aujourd'hui ».",
+    "planNoteHint": "Repris de la dernière séance. Le moniteur le verra dans « Aujourd'hui ».",
     "emptyHint": "Programmez une séance depuis la fiche d'un candidat.",
     "allKinds": "Toutes",
     "tabMonth": "Mois",
@@ -428,7 +431,11 @@
     "rebook": "Reprogrammer",
     "reopen": "Rétablir",
     "previousMonth": "Mois précédent",
-    "nextMonth": "Mois suivant"
+    "nextMonth": "Mois suivant",
+    "cancelGroupTitle": "Annuler la séance pour les {{count}} candidats ?",
+    "cancelGroupBody": "La séance est annulée pour tout le groupe :",
+    "cancelGroupHint": "Si un seul candidat ne vient pas, marquez-le « Absent » le jour de la séance.",
+    "cancelGroupSubmit": "Annuler pour tout le groupe"
   },
   "exams": {
     "title": "Examens",
@@ -451,7 +458,7 @@
     "outcome_failed": "Ajourné",
     "outcome_absent": "Absent",
     "nextDue": "Prochain :",
-    "noneForCandidate": "Aucun examen passé pour l'instant.",
+    "noneForCandidate": "Aucun examen pour l'instant.",
     "standing_notSat": "À passer",
     "standing_awaiting": "En attente",
     "standing_failed": "Ajourné",
@@ -464,7 +471,8 @@
     "error": {
       "notYet": "Cet examen n’a pas encore eu lieu : son résultat se note à partir de sa date.",
       "outcomeInvalid": "Résultat inconnu.",
-      "alreadyInSession": "Ce candidat est déjà dans cette session."
+      "alreadyInSession": "Ce candidat est déjà dans cette session.",
+      "dateHasResults": "Des résultats sont déjà notés pour cette session : la date ne peut plus changer. L’heure et le lieu peuvent être corrigés."
     },
     "resultsLater": "Les résultats se notent à partir du jour de l’examen.",
     "feesPaidCount": "Frais : {{paid}} sur {{total}} ont payé",
@@ -472,7 +480,8 @@
     "feesAllPaid": "Frais : tous ont payé",
     "feePaid": "Payé",
     "collectFee": "Encaisser",
-    "confirmRemovePaid": "Il a déjà payé ses frais pour cette session. Ce versement n’est pas perdu : il reste compté dans ce qu’il a versé."
+    "confirmRemovePaid": "Il a déjà payé ses frais pour cette session. Ce versement n’est pas perdu : il reste compté dans ce qu’il a versé.",
+    "editSession": "Modifier la session"
   },
   "board": {
     "col_awaiting": "En attente",
@@ -514,13 +523,13 @@
       "home": {
         "owed": "Ce que tous vos candidats doivent encore à l’école.",
         "today": "Les séances prévues aujourd’hui.",
-        "overdue": "Des séances passées jamais pointées. Marquez-les Fait ou Absent pour que les heures restent justes.",
-        "exam": "La prochaine session d’examen : combien de candidats, et qui n’a pas encore payé ses frais."
+        "overdue": "Des séances passées jamais pointées. Marquez-les Fait ou Absent.",
+        "exam": "La prochaine session d’examen : combien de candidats, et combien ont payé leurs frais."
       },
       "calendar": {
         "viewsTitle": "Jour, semaine, mois",
         "views": "Jour : la liste des séances à pointer. Semaine et mois : la vue d’ensemble, où l’on déplace une séance en la glissant.",
-        "book": "Réservez une séance, pour un candidat ou pour un groupe.",
+        "book": "Programmez une séance, pour un candidat ou pour un groupe.",
         "dayTitle": "Pointer les séances",
         "day": "Après chaque séance : Fait, Absent ou Annulé. Les heures du candidat se comptent toutes seules."
       },
@@ -558,7 +567,7 @@
     "wrongCode": "Code incorrect.",
     "failed": "L’activation n’a pas pu se faire. Réessayez.",
     "readOnly": "Continuer en lecture seule",
-    "readOnlyBanner": "Application non activée sur cet ordinateur : vous pouvez tout consulter et sauvegarder, mais rien ajouter ni modifier.",
+    "readOnlyBanner": "Application non activée sur cet ordinateur : vous pouvez tout consulter et sauvegarder, mais vous ne pouvez rien ajouter ni modifier.",
     "locked": "Application non activée sur cet ordinateur : lecture seule. Demandez le code d’activation à votre fournisseur."
   }
 }

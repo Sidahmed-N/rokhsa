@@ -5,7 +5,7 @@ import FreeText from "@/components/FreeText";
 import { SelectField, TextField } from "@/components/FormField";
 import Modal from "@/components/Modal";
 import { Pager, usePaged } from "@/components/ui/Pager";
-import { Money, Num } from "@/components/Num";
+import { DateText, Money } from "@/components/Num";
 import { currentLanguage } from "@/i18n";
 import { isAppError } from "@/lib/candidates";
 import { parseDZD } from "@/lib/money";
@@ -285,7 +285,6 @@ export default function CashFlowPage() {
           <p className="text-xs uppercase tracking-wide text-muted">{t("cashFlow.in")}</p>
           <Money centimes={flow?.inCentimes ?? 0} className="text-2xl font-bold text-ok" />
           <p className="mt-0.5 text-xs text-muted">
-            <Num>{flow?.paymentCount ?? 0}</Num>{" "}
             {t("cashFlow.payments", { count: flow?.paymentCount ?? 0 })}
           </p>
         </div>
@@ -293,7 +292,6 @@ export default function CashFlowPage() {
           <p className="text-xs uppercase tracking-wide text-muted">{t("cashFlow.out")}</p>
           <Money centimes={flow?.outCentimes ?? 0} className="text-2xl font-bold text-owed" />
           <p className="mt-0.5 text-xs text-muted">
-            <Num>{flow?.expenseCount ?? 0}</Num>{" "}
             {t("cashFlow.expenses", { count: flow?.expenseCount ?? 0 })}
           </p>
         </div>
@@ -354,7 +352,7 @@ export default function CashFlowPage() {
             {expensePage.map((expense) => (
               <tr key={expense.id} className="border-b border-line last:border-b-0">
                 <td className="px-4 py-2">
-                  <Num>{expense.spentOn}</Num>
+                  <DateText value={expense.spentOn} />
                 </td>
                 <td className="px-4 py-2">{categoryName(expense.categoryCode)}</td>
                 <td className="px-4 py-2">
@@ -404,7 +402,7 @@ export default function CashFlowPage() {
           }}
         >
           <p className="text-sm text-ink-soft">
-            <Num>{removing.spentOn}</Num> · {categoryName(removing.categoryCode)} ·{" "}
+            <DateText value={removing.spentOn} /> · {categoryName(removing.categoryCode)} ·{" "}
             <Money centimes={removing.amountCentimes} />
           </p>
         </Modal>

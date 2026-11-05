@@ -14,7 +14,9 @@ use serde::Serialize;
 use sqlx::SqlitePool;
 
 use crate::db::fees;
-use crate::domain::money::{balance, extra_hour_charge, Centimes, Charges, Minutes};
+use crate::domain::money::{
+    balance, extra_hour_charge, split_owed, Centimes, Charges, Minutes, OwedSplit,
+};
 use crate::error::AppError;
 
 /* ---------------------------- receivables ---------------------------- */
@@ -33,6 +35,10 @@ pub struct ReceivableRow {
     pub total_due_centimes: Centimes,
     pub paid_centimes: Centimes,
     pub balance_centimes: Centimes,
+    /// The balance said by where it comes from, as on the candidate's file:
+    /// "Tout régler" from Créances must not take an exam fee as training
+    /// money, or the sitting asks for it a second time.
+    pub owed: OwedSplit,
     pub last_payment_on: Option<String>,
     /// Days since the last payment, or since enrolment if never paid.
     /// This is what turns a list into a chase list.
@@ -106,6 +112,7 @@ pub async fn receivables(pool: &SqlitePool) -> Result<Receivables, AppError> {
     .await?;
     let paid_by: HashMap<i64, Centimes> = paid_rows.into_iter().collect();
     let fees_by = fees::totals_by_enrollment(pool).await?;
+    let unpaid_fees_by = fees::unpaid_by_enrollment(pool).await?;
 
     let today = chrono::Utc::now().date_naive();
     let mut rows = Vec::new();
@@ -150,6 +157,7 @@ pub async fn receivables(pool: &SqlitePool) -> Result<Receivables, AppError> {
             total_due_centimes: charges.total_due(),
             paid_centimes: paid,
             balance_centimes: owed,
+            owed: split_owed(owed, unpaid_fees_by.get(&e.id).copied().unwrap_or(0)),
             last_payment_on: e.last_payment_on,
             days_since_payment,
         });

@@ -13,12 +13,14 @@ import {
 } from "lucide-react";
 
 import FreeText from "@/components/FreeText";
+import Modal from "@/components/Modal";
 import { Duration, Num } from "@/components/Num";
 import Button, { IconButton } from "@/components/ui/Button";
 import DateField from "@/components/ui/DateField";
 import { Badge, Card, EmptyState, ErrorNote, type Tone } from "@/components/ui/Surface";
 import { isAppError } from "@/lib/candidates";
 import { personName } from "@/lib/names";
+import { keepOrder } from "@/lib/order";
 import { isDesktop } from "@/lib/tauri";
 import {
   completeLesson,
@@ -71,6 +73,9 @@ export default function DayView({
   const { t } = useTranslation();
 
   const [rows, setRows] = useState<DayEntry[]>([]);
+  // "Annulée" on one row cancels the whole slot (lessons::set_not_held), so
+  // for a group it is asked first, naming everyone it will cancel.
+  const [cancelling, setCancelling] = useState<DayEntry[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -88,7 +93,9 @@ export default function DayView({
     }
     setLoading(true);
     try {
-      setRows(await listDay(date));
+      const next = await listDay(date);
+      // Rows marked a moment ago stay where they were: see keepOrder.
+      setRows((previous) => keepOrder(previous, next));
       setError(null);
     } catch (raw: unknown) {
       setError(errorText(raw));
@@ -323,7 +330,16 @@ export default function DayView({
                           variant="ghost"
                           size="sm"
                           icon={<X className="size-3.5" aria-hidden="true" />}
-                          onClick={() => void run(() => setLessonNotHeld(row.id, "cancelled"))}
+                          onClick={() => {
+                            const group = rows.filter(
+                              (r) =>
+                                r.sessionId !== null &&
+                                r.sessionId === row.sessionId &&
+                                r.status === "planned",
+                            );
+                            if (group.length > 1) setCancelling(group);
+                            else void run(() => setLessonNotHeld(row.id, "cancelled"));
+                          }}
                         >
                           {t("calendar.markCancelled")}
                         </Button>
@@ -336,6 +352,31 @@ export default function DayView({
           );
         })}
       </div>
+
+      {cancelling && cancelling[0] && (
+        <Modal
+          title={t("calendar.cancelGroupTitle", { count: cancelling.length })}
+          onClose={() => setCancelling(null)}
+          onSubmit={() => {
+            const first = cancelling[0];
+            setCancelling(null);
+            if (first) void run(() => setLessonNotHeld(first.id, "cancelled"));
+          }}
+          submitLabel={t("calendar.cancelGroupSubmit")}
+          cancelLabel={t("payments.reverseKeep")}
+        >
+          <p className="text-sm text-ink-soft">{t("calendar.cancelGroupBody")}</p>
+          {/* One name per line, each in its own script. */}
+          <ul className="mt-3 rounded-md border border-line bg-sunken px-3 py-2 text-sm text-ink">
+            {cancelling.map((r) => (
+              <li key={r.id} className="py-0.5">
+                <FreeText as="span">{personName(r)}</FreeText>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-3 text-xs text-muted">{t("calendar.cancelGroupHint")}</p>
+        </Modal>
+      )}
     </div>
   );
 }

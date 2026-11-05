@@ -199,8 +199,11 @@ export default function BackupSection() {
               <tr key={b.path} className="border-b border-line last:border-b-0">
                 <td className="py-2">
                   <Num>{formatWhen(b.createdAt)}</Num>
-                  <span className="ms-2 text-xs text-muted" dir="ltr">
-                    {b.fileName}
+                  {/* The gap on the outer span, the direction on the inner
+                      one: ms-2 on the element carrying dir="ltr" put the gap
+                      on the wrong side in Arabic (CLAUDE.md). */}
+                  <span className="ms-2 text-xs text-muted">
+                    <span dir="ltr">{b.fileName}</span>
                   </span>
                 </td>
                 <td className="py-2 text-end">

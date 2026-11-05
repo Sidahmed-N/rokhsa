@@ -544,7 +544,12 @@ export function TakePaymentDialog({
   onClose,
 }: {
   enrollmentId: number;
-  /** What he owes overall. Ignored when paying an exam fee. */
+  /**
+   * What this payment is measured against: the TRAINING still owed (Rust's
+   * owed.training), not the whole balance. An exam fee is paid from the
+   * sitting; "Tout régler" used to fill it in here as training money, and
+   * the sitting then asked for it a second time. Ignored when paying a fee.
+   */
   balanceCentimes: number;
   /**
    * Set when the payment is an exam fee, taken from the sitting on exam day:
@@ -640,15 +645,22 @@ export function TakePaymentDialog({
       <div className="grid gap-3">
         <div className="flex flex-wrap items-center gap-2 rounded-md border border-line bg-brand-soft px-3 py-2 text-sm">
           <span>
-            {examFee ? t("payments.examFeeDue") : t("payments.currentBalance")}:{" "}
+            {examFee
+              ? t("payments.examFeeDue")
+              : examFeesOwedCentimes > 0
+                ? t("payments.trainingDue")
+                : t("payments.currentBalance")}
+            :{" "}
             <Money centimes={dueCentimes} className="font-bold" />
           </span>
           {dueCentimes > 0 && (
             <button
               type="button"
-              onClick={() =>
-                setAmount(formatDZD(dueCentimes, { withSuffix: false }))
-              }
+              onClick={() => {
+                setAmount(formatDZD(dueCentimes, { withSuffix: false }));
+                // The amount changed: an earlier "too much" question no longer applies.
+                setOverConfirmed(false);
+              }}
               className="ms-auto rounded-md border border-brand bg-surface px-2 py-1 text-xs font-medium text-brand transition-colors hover:bg-brand hover:text-white"
             >
               {t("payments.settleFull")}

@@ -124,6 +124,13 @@ export const listExamSessions = () => call<ExamSession[]>("list_exam_sessions");
 export const createExamSession = (input: ExamSessionInput) =>
   call<ExamSession>("create_exam_session", { input });
 
+/** Correct when and where; the exam itself cannot change. Rust moves the
+ * entries with the date, and refuses a new date once a result is noted. */
+export const updateExamSession = (
+  id: number,
+  change: { heldOn: string; heldAt: string; place: string },
+) => call<ExamSession>("update_exam_session", { id, change });
+
 export const deleteExamSession = (id: number) => call<void>("delete_exam_session", { id });
 
 /** The next sitting from today on, for the box on Accueil. */

@@ -26,6 +26,17 @@ pub async fn create_exam_session(
     Ok(exams::create_session(&state.pool, &input).await?)
 }
 
+/// Correct a sitting's date, time or place. See `exams::update_session`.
+#[tauri::command]
+pub async fn update_exam_session(
+    state: State<'_, AppState>,
+    id: i64,
+    change: exams::ExamSessionChange,
+) -> CommandResult<exams::ExamSession> {
+    state.require_unlocked()?;
+    Ok(exams::update_session(&state.pool, id, &change).await?)
+}
+
 #[tauri::command]
 pub async fn delete_exam_session(state: State<'_, AppState>, id: i64) -> CommandResult<()> {
     state.require_unlocked()?;
