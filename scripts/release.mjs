@@ -80,10 +80,12 @@ if (!dry) {
   if (exists) fail(`A release ${tag} already exists. Raise the version first.`);
 }
 
-// 2. The same gate as every commit, then the Rust tests.
+// 2. The same gate as every commit, then every Rust test, INCLUDING the
+// power-cut test (tests/crash_consistency.rs): CLAUDE.md keeps it in the
+// release checklist, and "--lib" used to skip it.
 console.log(`\n▶ Checking ${tag}…`);
 run("npm", ["run", "check"]);
-run("cargo", ["test", "--lib"], { cwd: path.join(root, "src-tauri") });
+run("cargo", ["test"], { cwd: path.join(root, "src-tauri") });
 
 // 3. Build and sign the installers.
 // cargo's target dir may be redirected (src-tauri/.cargo/config.toml). Asked
