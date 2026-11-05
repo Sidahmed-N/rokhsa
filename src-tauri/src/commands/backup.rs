@@ -28,6 +28,19 @@ pub async fn backup_status(state: State<'_, AppState>) -> CommandResult<BackupSt
     })
 }
 
+/// What happened to the last restore, until the owner has seen it.
+#[tauri::command]
+pub async fn restore_notice(state: State<'_, AppState>) -> CommandResult<Option<backup::RestoreNotice>> {
+    Ok(backup::restore_notice(&state.data_dir))
+}
+
+/// The owner has read it. Not gated by the lock: a message, not school data.
+#[tauri::command]
+pub async fn dismiss_restore_notice(state: State<'_, AppState>) -> CommandResult<()> {
+    backup::clear_restore_notice(&state.data_dir);
+    Ok(())
+}
+
 /// Backup into the app's own folder.
 #[tauri::command]
 pub async fn backup_now(state: State<'_, AppState>) -> CommandResult<backup::BackupInfo> {

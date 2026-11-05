@@ -300,6 +300,11 @@ Design every screen so it works for a school with **one person, one vehicle**:
   any remaining `-wal` beside the kept copy. On Windows a just-closed SQLite file stays locked
   for a moment — file steps there use `retry`, and if the sidecars cannot be cleared the
   restore is postponed, never half-done.
+- **The owner is told what a restore did** (`restore-notice.json` in the data folder, written by
+  `apply_pending_restore` for "applied", "rejected" and "postponed", shown once on every screen by
+  `RestoreNotice.tsx` until OK). The swap happens before any window exists, so it used to be silent.
+  The `replaced-…` copy is labelled "Vos données avant la restauration", and every row of the
+  backups list has its own Restaurer: the folder is under AppData, which Windows hides.
 - **Never trust the PC clock for rotation.** `prune` never deletes the backup just written
   (a dead clock battery dates it oldest), and a newest backup "in the future" makes one due.
 

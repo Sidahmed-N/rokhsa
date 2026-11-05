@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 
 import ClockWarning from "@/components/ClockWarning";
+import RestoreNotice from "@/components/RestoreNotice";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import Logo from "@/components/Logo";
 import { currentLanguage, setLanguage, type Language } from "@/i18n";
@@ -316,6 +317,7 @@ export default function App() {
           logical corner utilities rather than rounded-l-*. */}
       <div className="flex min-w-0 flex-1 flex-col rounded-ss-2xl rounded-es-2xl border-s border-rail-edge bg-surface shadow-raised">
         <ClockWarning />
+        <RestoreNotice />
         {/* No reading-width cap. This is a dense business app — a week grid
             of seven columns, a table of thirty candidates, a list of debts —
             and almost no prose, so the measure argument that justifies a

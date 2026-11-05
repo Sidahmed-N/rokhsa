@@ -48,6 +48,13 @@
       "newerVersion": "Cette sauvegarde vient d'une version plus récente de l'application. Mettez Rokhsa à jour avant de la restaurer.",
       "writeFailed": "Écriture impossible. La clé USB a-t-elle été retirée, ou le disque est-il plein ? Aucun fichier incomplet n'a été laissé.",
       "destinationUnreachable": "Ce dossier est introuvable. Vérifiez que la clé USB est bien branchée."
+    },
+    "beforeRestore": "Vos données avant la restauration",
+    "restoreThis": "Restaurer",
+    "notice": {
+      "applied": "Restauration effectuée : la sauvegarde ({{candidates}} candidats, {{payments}} versements) est maintenant en place. Vos données d’avant sont gardées dans Sauvegarde.",
+      "rejected": "La restauration n’a pas été faite : le fichier choisi est abîmé. Vos données n’ont pas changé.",
+      "postponed": "La restauration n’a pas pu se faire maintenant : Windows utilisait encore les fichiers. Elle sera faite au prochain démarrage."
     }
   },
   "receivables": {
@@ -121,7 +128,8 @@
     "previous": "Précédent",
     "next": "Suivant",
     "amountInvalid": "Montant non reconnu. Écrivez par exemple 35000 ou 35.000.",
-    "saving": "Enregistrement…"
+    "saving": "Enregistrement…",
+    "ok": "OK"
   },
   "clock": {
     "title": "L'horloge de cet ordinateur est fausse.",

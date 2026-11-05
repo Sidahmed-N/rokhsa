@@ -23,7 +23,7 @@
 use std::path::{Path, PathBuf};
 
 use chrono::{DateTime, Utc};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sqlx::sqlite::SqliteConnectOptions;
 use sqlx::{Connection, SqliteConnection, SqlitePool};
 
@@ -49,6 +49,51 @@ pub struct BackupInfo {
     pub payments: i64,
     /// Highest migration applied to that file.
     pub schema_version: i64,
+    /// The database as it was just before a restore replaced it (the
+    /// `replaced-…` copy): the way back from restoring the wrong file.
+    pub before_restore: bool,
+}
+
+/// What happened to a restore at startup, shown once afterwards.
+///
+/// The swap happens before any window exists, so the owner who clicked
+/// "Restaurer" and restarted used to see nothing at all: the "en attente" card
+/// just vanished, whether the file was swapped in, refused as damaged, or put
+/// off because Windows still held the old one.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct RestoreNotice {
+    /// "applied", "rejected" or "postponed".
+    pub outcome: String,
+    pub at: String,
+    /// What the restored file holds, when applied.
+    pub candidates: i64,
+    pub payments: i64,
+}
+
+const RESTORE_NOTICE: &str = "restore-notice.json";
+
+/// Best effort: a notice that cannot be written costs a message, never the restore.
+fn note_restore(data_dir: &Path, outcome: &str, info: Option<&BackupInfo>) {
+    let notice = RestoreNotice {
+        outcome: outcome.into(),
+        at: Utc::now().to_rfc3339(),
+        candidates: info.map_or(0, |i| i.candidates),
+        payments: info.map_or(0, |i| i.payments),
+    };
+    if let Ok(json) = serde_json::to_string(&notice) {
+        std::fs::write(data_dir.join(RESTORE_NOTICE), json).ok();
+    }
+}
+
+/// The last restore's outcome, until the owner has seen it.
+pub fn restore_notice(data_dir: &Path) -> Option<RestoreNotice> {
+    let text = std::fs::read_to_string(data_dir.join(RESTORE_NOTICE)).ok()?;
+    serde_json::from_str(&text).ok()
+}
+
+pub fn clear_restore_notice(data_dir: &Path) {
+    remove_if_present(&data_dir.join(RESTORE_NOTICE)).ok();
 }
 
 /// Highest migration this binary knows about.
@@ -161,6 +206,9 @@ pub async fn inspect(path: &Path) -> Result<BackupInfo, AppError> {
         candidates: candidates.0,
         payments: payments.0,
         schema_version,
+        before_restore: path
+            .file_name()
+            .is_some_and(|n| n.to_string_lossy().starts_with("replaced-")),
     })
 }
 
@@ -460,7 +508,9 @@ pub async fn apply_pending_restore(
         return Ok(None);
     };
 
-    if let Err(e) = inspect(&staged).await {
+    let checked = inspect(&staged).await;
+    if let Err(e) = checked {
+        note_restore(data_dir, "rejected", None);
         let rejected = data_dir.join(format!(
             "rejected-restore-{}.db",
             Utc::now().format("%Y%m%d-%H%M%S")
@@ -522,6 +572,7 @@ pub async fn apply_pending_restore(
             // The live database has not been touched: postpone, never half-do.
             std::fs::remove_file(&kept_wal).ok();
             eprintln!("[tariqi] restore postponed to the next start, sidecars still in use: {e}");
+            note_restore(data_dir, "postponed", None);
             return Ok(None);
         }
 
@@ -535,6 +586,7 @@ pub async fn apply_pending_restore(
         .or_else(|_| std::fs::copy(&staged, db_path).map(|_| ()))
         .map_err(|e| io_err("putting the restored database in place", e))?;
     std::fs::remove_file(&staged).ok();
+    note_restore(data_dir, "applied", checked.as_ref().ok());
 
     Ok(Some(db_path.to_string_lossy().to_string()))
 }
@@ -1092,10 +1144,43 @@ mod tests {
 
         assert!(apply_pending_restore(&dir, &db_path).await.unwrap().is_none());
         assert!(pending_restore(&dir).is_none(), "not retried at every start");
+        // The owner is told, rather than left to believe the old data is back.
+        assert_eq!(restore_notice(&dir).unwrap().outcome, "rejected");
 
         let live = db::connect(&db_path).await.unwrap();
         assert_eq!(candidates::count(&live, "").await.unwrap(), 1, "live data untouched");
         live.close().await;
+
+        std::fs::remove_dir_all(&dir).ok();
+        std::fs::remove_dir_all(&other).ok();
+    }
+
+    #[tokio::test]
+    async fn a_restore_leaves_a_notice_and_labels_the_copy_it_kept() {
+        let dir = temp_dir("notice");
+        let (db_path, pool) = seeded_db(&dir, &["TODAY"]).await;
+        pool.close().await;
+
+        let other = temp_dir("notice-src");
+        let (_, other_pool) = seeded_db(&other, &["A", "B"]).await;
+        let snapshot = other.join("snapshot.db");
+        write_backup(&other_pool, &snapshot).await.unwrap();
+        other_pool.close().await;
+
+        assert!(restore_notice(&dir).is_none());
+        stage_restore(&dir, &snapshot).await.unwrap();
+        apply_pending_restore(&dir, &db_path).await.unwrap().unwrap();
+
+        let notice = restore_notice(&dir).unwrap();
+        assert_eq!((notice.outcome.as_str(), notice.candidates), ("applied", 2));
+
+        // The copy of the replaced database says what it is.
+        let kept: Vec<_> = list(&dir).await.unwrap().into_iter().filter(|b| b.before_restore).collect();
+        assert_eq!(kept.len(), 1);
+        assert_eq!(kept[0].candidates, 1);
+
+        clear_restore_notice(&dir);
+        assert!(restore_notice(&dir).is_none(), "shown once");
 
         std::fs::remove_dir_all(&dir).ok();
         std::fs::remove_dir_all(&other).ok();

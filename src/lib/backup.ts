@@ -16,6 +16,16 @@ export interface BackupInfo {
   sizeBytes: number;
   candidates: number;
   payments: number;
+  /** The database as it was just before a restore replaced it. */
+  beforeRestore: boolean;
+}
+
+/** What happened to the last restore at startup, until the owner has seen it. */
+export interface RestoreNotice {
+  outcome: "applied" | "rejected" | "postponed";
+  at: string;
+  candidates: number;
+  payments: number;
 }
 
 export interface BackupStatus {
@@ -30,6 +40,8 @@ export const backupTo = (path: string) => call<BackupInfo>("backup_to", { path }
 export const inspectBackup = (path: string) => call<BackupInfo>("inspect_backup", { path });
 export const stageRestore = (path: string) => call<BackupInfo>("stage_restore", { path });
 export const cancelRestore = () => call<void>("cancel_restore");
+export const restoreNotice = () => call<RestoreNotice | null>("restore_notice");
+export const dismissRestoreNotice = () => call<void>("dismiss_restore_notice");
 
 /** "1.4 MB" — display only. */
 export function formatSize(bytes: number): string {

@@ -173,6 +173,8 @@ pub fn run() {
             commands::backup::inspect_backup,
             commands::backup::stage_restore,
             commands::backup::cancel_restore,
+            commands::backup::restore_notice,
+            commands::backup::dismiss_restore_notice,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Tariqi");

@@ -185,12 +185,13 @@ export default function BackupSection() {
               <th className="py-2 text-end font-medium">{t("backup.candidates")}</th>
               <th className="py-2 text-end font-medium">{t("backup.payments")}</th>
               <th className="py-2 text-end font-medium">{t("backup.size")}</th>
+              <th className="py-2" />
             </tr>
           </thead>
           <tbody>
             {(status?.backups.length ?? 0) === 0 && (
               <tr>
-                <td colSpan={4} className="py-4 text-center text-sm text-muted">
+                <td colSpan={5} className="py-4 text-center text-sm text-muted">
                   {t("backup.none")}
                 </td>
               </tr>
@@ -203,7 +204,14 @@ export default function BackupSection() {
                       one: ms-2 on the element carrying dir="ltr" put the gap
                       on the wrong side in Arabic (CLAUDE.md). */}
                   <span className="ms-2 text-xs text-muted">
-                    <span dir="ltr">{b.fileName}</span>
+                    {/* The copy kept by a restore is the way back from
+                        restoring the wrong file: said in words, not as
+                        "replaced-20261105-155405.db". */}
+                    {b.beforeRestore ? (
+                      <span className="font-medium text-warn">{t("backup.beforeRestore")}</span>
+                    ) : (
+                      <span dir="ltr">{b.fileName}</span>
+                    )}
                   </span>
                 </td>
                 <td className="py-2 text-end">
@@ -214,6 +222,24 @@ export default function BackupSection() {
                 </td>
                 <td className="py-2 text-end">
                   <Num>{formatSize(b.sizeBytes)}</Num>
+                </td>
+                {/* Restoring a copy from this list used to mean finding it
+                    in a Windows dialog, in a folder Windows hides. Same
+                    confirmation as the button above. */}
+                <td className="py-2 ps-3 text-end">
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() =>
+                      void run(async () => {
+                        setConfirming(await inspectBackup(b.path));
+                        return null;
+                      })
+                    }
+                    className="rounded-md border border-line px-2 py-1 text-xs font-medium text-ink hover:bg-sunken disabled:opacity-50"
+                  >
+                    {t("backup.restoreThis")}
+                  </button>
                 </td>
               </tr>
             ))}
