@@ -573,7 +573,10 @@ function NewSessionDialog({
   );
 }
 
-/** Adding one candidate to the batch. */
+/**
+ * Adding candidates to the batch: several at once, one fee for all of them.
+ * Someone paying a different amount (a free repassage) is added on his own.
+ */
 function AddToSessionDialog({
   sessionId,
   kind,
@@ -588,9 +591,9 @@ function AddToSessionDialog({
 }) {
   const { t } = useTranslation();
 
-  const [chosen, setChosen] = useState<number | null>(null);
+  const [chosenIds, setChosenIds] = useState<number[]>([]);
   /**
-   * What this candidate is paying for this sitting.
+   * What each chosen candidate is paying for this sitting.
    *
    * Starts empty, and empty means nothing — which is how a school that gives
    * the repassage free says so. Nothing is remembered between candidates and
@@ -603,7 +606,7 @@ function AddToSessionDialog({
   const [pickError, setPickError] = useState<string | undefined>(undefined);
 
   async function save() {
-    if (chosen === null) {
+    if (chosenIds.length === 0) {
       setPickError(t("calendar.pickCandidate"));
       return;
     }
@@ -617,7 +620,7 @@ function AddToSessionDialog({
     setSaving(true);
     setError(null);
     try {
-      await addToExamSession(sessionId, chosen, amount);
+      await addToExamSession(sessionId, chosenIds, amount);
       onDone();
     } catch (e: unknown) {
       setError(isAppError(e) ? t(e.code, { defaultValue: e.message }) : String(e));
@@ -632,17 +635,28 @@ function AddToSessionDialog({
       onSubmit={() => void save()}
       submitting={saving}
       error={error}
-      submitLabel={t("exams.addCandidate")}
+      submitLabel={
+        chosenIds.length > 1 ? t("exams.addMany", { n: chosenIds.length }) : t("exams.addCandidate")
+      }
     >
       <CandidatePicker
-        value={chosen}
+        value={null}
         error={pickError}
         purpose={{ kind, examSessionId: sessionId }}
-        onChange={(id) => {
-          setChosen(id);
+        selected={chosenIds}
+        onChange={() => {}}
+        onToggle={(id) => {
+          setChosenIds((prev) =>
+            prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+          );
           setPickError(undefined);
         }}
       />
+      {chosenIds.length > 1 && (
+        <p className="mt-2 text-xs text-muted">
+          {t("exams.chosenCount", { n: chosenIds.length })}
+        </p>
+      )}
 
       <div className="mt-4">
         <label
@@ -661,7 +675,9 @@ function AddToSessionDialog({
           placeholder="0"
           className="w-36 rounded-md border border-line-strong bg-surface px-2.5 py-1.5 text-sm outline-none transition-colors focus:border-brand focus:ring-2 focus:ring-brand-soft"
         />
-        <p className="mt-1 text-xs text-muted">{t("fees.entryHint")}</p>
+        <p className="mt-1 text-xs text-muted">
+          {chosenIds.length > 1 ? t("fees.sameForAll") : t("fees.entryHint")}
+        </p>
       </div>
     </Modal>
   );

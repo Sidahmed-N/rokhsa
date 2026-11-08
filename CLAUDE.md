@@ -235,6 +235,10 @@ These are not style preferences. Breaking them causes data loss, legal problems,
   who is already in it. Finished, abandoned and archived are left out too. All of them except
   "already in this sitting" are found by typing the name, flagged ("Déjà admis"): the list is
   tidied, the owner is never refused.
+- **Candidates are entered for a sitting as a group, with one fee** (`exams::add_many_to_session`,
+  the ONLY insert path for an entry; `add_to_session` wraps it). All or none, in one transaction.
+  A candidate paying a different amount (a free repassage) is added on his own; one fee box per
+  row was rejected as too crowded.
 - **The candidate list's status is read from the facts, never typed** (`domain::candidate::
   shown_status`): "Abandon" when the enrolment is ticked "Le candidat a abandonné", "Terminé" once
   all three exams are passed (`exams::finished_enrollment_ids`, the board's own rule), otherwise

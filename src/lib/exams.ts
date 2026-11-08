@@ -151,11 +151,12 @@ export const listExamEntries = (sessionId: number) =>
   call<ExamEntry[]>("list_exam_entries", { sessionId });
 
 /** `feeCentimes` is what the owner typed; 0 means he pays nothing this time. */
+/** Several at once, each charged `feeCentimes`: all are added or none. */
 export const addToExamSession = (
   sessionId: number,
-  enrollmentId: number,
+  enrollmentIds: number[],
   feeCentimes: number,
-) => call<ExamEntry>("add_to_exam_session", { sessionId, enrollmentId, feeCentimes });
+) => call<ExamEntry[]>("add_to_exam_session", { sessionId, enrollmentIds, feeCentimes });
 
 export const setExamOutcome = (resultId: number, outcome: string, notes: string) =>
   call<void>("set_exam_outcome", { resultId, outcome, notes });

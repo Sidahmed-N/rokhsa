@@ -456,6 +456,8 @@
     "noneHint": "Créez une session quand la wilaya vous donne une date.",
     "nobodyYet": "Personne dans cette session pour l'instant.",
     "addCandidate": "Ajouter un candidat",
+    "addMany": "Ajouter les {{n}} candidats",
+    "chosenCount": "{{n}} candidats choisis.",
     "removeFromSession": "Retirer de la session",
     "whichExam": "Quel examen",
     "heldOn": "Date",
@@ -510,7 +512,8 @@
     "error": {
       "negative": "Le montant ne peut pas être négatif."
     },
-    "entryHint": "Ajouté à ce qu’il doit à l’école. Laissez vide s’il n’y a rien à payer cette fois."
+    "entryHint": "Ajouté à ce qu’il doit à l’école. Laissez vide s’il n’y a rien à payer cette fois.",
+    "sameForAll": "Le même montant pour chacun, ajouté à ce qu’il doit. Pour un montant différent (repassage gratuit…), ajoutez ce candidat à part."
   },
   "pager": {
     "of": "sur"

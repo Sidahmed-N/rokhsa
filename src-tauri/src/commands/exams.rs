@@ -75,14 +75,15 @@ pub async fn exam_session_fees(
 }
 
 #[tauri::command]
+/// Enter one or several candidates, each charged the same fee, all or none.
 pub async fn add_to_exam_session(
     state: State<'_, AppState>,
     session_id: i64,
-    enrollment_id: i64,
+    enrollment_ids: Vec<i64>,
     fee_centimes: i64,
-) -> CommandResult<exams::ExamEntry> {
+) -> CommandResult<Vec<exams::ExamEntry>> {
     state.require_unlocked()?;
-    Ok(exams::add_to_session(&state.pool, session_id, enrollment_id, fee_centimes).await?)
+    Ok(exams::add_many_to_session(&state.pool, session_id, &enrollment_ids, fee_centimes).await?)
 }
 
 #[tauri::command]

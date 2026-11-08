@@ -45,8 +45,7 @@ export default function CandidatePicker({
    * Multi-select mode: the enrolments chosen so far.
    *
    * Passing this turns the list into tick boxes, for booking one slot for
-   * several candidates. The exam screen picks one person and leaves both of
-   * these out, so it is unaffected.
+   * several candidates, or entering several for one exam sitting.
    */
   selected?: number[];
   onToggle?: (enrollmentId: number, row: BookableEnrollment) => void;

@@ -597,6 +597,34 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn a_group_is_entered_at_once_each_charged_the_same_fee() {
+        let pool = test_pool().await;
+        let a = enrol(&pool, "Benali").await;
+        let b = enrol(&pool, "Kadri").await;
+        let session = sitting(&pool, "theory", "2026-12-01").await;
+
+        let added = exams::add_many_to_session(&pool, session, &[a, b], 2_000 * DA).await.unwrap();
+        assert_eq!(added.len(), 2);
+        assert!(added.iter().all(|e| e.fee_centimes == 2_000 * DA));
+        assert_eq!(total_for_enrollment(&pool, a).await.unwrap(), 2_000 * DA);
+        assert_eq!(total_for_enrollment(&pool, b).await.unwrap(), 2_000 * DA);
+    }
+
+    /// One of the group already in: nobody is added, and nobody is charged.
+    #[tokio::test]
+    async fn a_group_is_entered_whole_or_not_at_all() {
+        let pool = test_pool().await;
+        let a = enrol(&pool, "Benali").await;
+        let b = enrol(&pool, "Kadri").await;
+        let session = sitting(&pool, "theory", "2026-12-01").await;
+        exams::add_to_session(&pool, session, b, 0).await.unwrap();
+
+        assert!(exams::add_many_to_session(&pool, session, &[a, b], 2_000 * DA).await.is_err());
+        assert_eq!(exams::entries_for_session(&pool, session).await.unwrap().len(), 1);
+        assert_eq!(total_for_enrollment(&pool, a).await.unwrap(), 0);
+    }
+
+    #[tokio::test]
     async fn the_file_offers_each_fee_still_owed_and_paying_it_there_settles_it() {
         let pool = test_pool().await;
         let (enrollment, session, entry) = on_exam_day(&pool).await;

@@ -412,52 +412,79 @@ pub async fn add_to_session(
     enrollment_id: i64,
     fee_centimes: i64,
 ) -> Result<ExamEntry, AppError> {
+    add_many_to_session(pool, session_id, &[enrollment_id], fee_centimes)
+        .await?
+        .pop()
+        .ok_or(AppError::NotFound)
+}
+
+/// Enter several candidates at once, each charged the same fee.
+///
+/// The wilaya gives one date for a group, and adding ten people one by one
+/// meant typing the fee ten times. A candidate who pays something different
+/// (a free repassage) is added on his own afterwards.
+///
+/// The ONLY insert path for an entry; `add_to_session` is a wrapper.
+pub async fn add_many_to_session(
+    pool: &SqlitePool,
+    session_id: i64,
+    enrollment_ids: &[i64],
+    fee_centimes: i64,
+) -> Result<Vec<ExamEntry>, AppError> {
+    if enrollment_ids.is_empty() {
+        return Err(AppError::validation("calendar.pickCandidate"));
+    }
     let session = get_session(pool, session_id).await?;
     let now = Utc::now().to_rfc3339();
 
-    // One transaction: entering him for the exam and charging him the fee
-    // are the same act. Half of it surviving a power cut would either give
-    // away an exam or bill for one he was never entered for.
+    // One transaction for the whole group: entering him for the exam and
+    // charging him the fee are the same act, and half a group surviving a
+    // power cut would leave the owner guessing who was entered. Half of one
+    // entry would either give away an exam or bill for one never entered.
     let mut tx = pool.begin().await?;
+    let mut ids = Vec::with_capacity(enrollment_ids.len());
 
-    let row: (i64,) = sqlx::query_as(
-        "INSERT INTO exam_results
-            (enrollment_id, session_id, kind, sat_on, outcome, created_at, updated_at)
-         VALUES (?1, ?2, ?3, ?4, 'presented', ?5, ?5) RETURNING id",
-    )
-    .bind(enrollment_id)
-    .bind(session_id)
-    .bind(&session.kind)
-    .bind(&session.held_on)
-    .bind(&now)
-    .fetch_one(&mut *tx)
-    .await
-    .map_err(|e| match e {
-        // The unique index catches the same candidate added twice.
-        sqlx::Error::Database(ref db) if db.is_unique_violation() => {
-            AppError::validation("exams.error.alreadyInSession")
-        }
-        other => other.into(),
-    })?;
+    for &enrollment_id in enrollment_ids {
+        let row: (i64,) = sqlx::query_as(
+            "INSERT INTO exam_results
+                (enrollment_id, session_id, kind, sat_on, outcome, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, 'presented', ?5, ?5) RETURNING id",
+        )
+        .bind(enrollment_id)
+        .bind(session_id)
+        .bind(&session.kind)
+        .bind(&session.held_on)
+        .bind(&now)
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(|e| match e {
+            // The unique index catches the same candidate added twice.
+            sqlx::Error::Database(ref db) if db.is_unique_violation() => {
+                AppError::validation("exams.error.alreadyInSession")
+            }
+            other => other.into(),
+        })?;
 
-    fees::charge(
-        &mut tx,
-        enrollment_id,
-        row.0,
-        &session.kind,
-        fee_centimes,
-        &session.held_on,
-        &now,
-    )
-    .await?;
+        fees::charge(
+            &mut tx,
+            enrollment_id,
+            row.0,
+            &session.kind,
+            fee_centimes,
+            &session.held_on,
+            &now,
+        )
+        .await?;
+        ids.push(row.0);
+    }
 
     tx.commit().await?;
 
-    entries_for_session(pool, session_id)
+    Ok(entries_for_session(pool, session_id)
         .await?
         .into_iter()
-        .find(|e| e.id == row.0)
-        .ok_or(AppError::NotFound)
+        .filter(|e| ids.contains(&e.id))
+        .collect())
 }
 
 /// Record how it went.
