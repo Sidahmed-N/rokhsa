@@ -358,8 +358,9 @@
     "examFeeDue": "Frais à payer",
     "overFeeWarning": "Ce montant est plus élevé que les frais. Vérifiez qu’il n’y a pas un zéro de trop, puis cliquez sur « Encaisser quand même ».",
     "forExam": "Examen",
-    "examFeeElsewhere": "Il doit aussi des frais d’examen :",
-    "examFeeElsewhereHow": "encaissez-les depuis la session, page Examens.",
+    "forWhat": "Ce versement est pour :",
+    "forTraining": "La formation",
+    "forExamFee": "Frais d’examen — {{kind}}",
     "trainingDue": "Reste à payer pour la formation"
   },
   "receipt": {

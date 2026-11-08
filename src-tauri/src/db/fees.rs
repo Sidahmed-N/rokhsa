@@ -168,6 +168,49 @@ pub async fn unpaid_by_enrollment(
     Ok(by)
 }
 
+/// One fee not yet fully paid, offered when money is taken outside the sitting.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UnpaidFee {
+    pub charge_id: i64,
+    pub kind: String,
+    pub charged_on: String,
+    pub due_centimes: Centimes,
+}
+
+/// This enrolment's fees still owed, oldest first.
+///
+/// The candidate's file and Créances take payments too, and a candidate who
+/// owed only a fee used to be sent to the sitting to pay it: the owner typed
+/// it as training money instead, and the sitting asked for it again.
+pub async fn unpaid_charges(
+    pool: &SqlitePool,
+    enrollment_id: i64,
+) -> Result<Vec<UnpaidFee>, AppError> {
+    let rows: Vec<(i64, String, String, i64, i64)> = sqlx::query_as(
+        "SELECT f.id, f.kind, f.charged_on, f.amount_centimes,
+                COALESCE((SELECT SUM(p.amount_centimes) FROM payments p
+                          WHERE p.exam_fee_charge_id = f.id), 0)
+         FROM exam_fee_charges f
+         WHERE f.enrollment_id = ?1 AND f.deleted_at IS NULL
+         ORDER BY f.charged_on, f.id",
+    )
+    .bind(enrollment_id)
+    .fetch_all(pool)
+    .await?;
+
+    Ok(rows
+        .into_iter()
+        .map(|(charge_id, kind, charged_on, fee, paid)| UnpaidFee {
+            charge_id,
+            kind,
+            charged_on,
+            due_centimes: crate::domain::money::fee_still_due(fee, paid),
+        })
+        .filter(|f| f.due_centimes > 0)
+        .collect())
+}
+
 /// The individual charges, for the breakdown on a candidate's file.
 pub async fn list_for_enrollment(
     pool: &SqlitePool,
@@ -551,6 +594,29 @@ mod tests {
         let entry = entry_now(&pool, session).await;
         assert_eq!(entry.fee_due_centimes, 2_000 * DA);
         assert_eq!(exams::session_fees(&[entry]).paid, 0);
+    }
+
+    #[tokio::test]
+    async fn the_file_offers_each_fee_still_owed_and_paying_it_there_settles_it() {
+        let pool = test_pool().await;
+        let (enrollment, session, entry) = on_exam_day(&pool).await;
+        let other = sitting(&pool, "maneuvers", "2026-09-01").await;
+        exams::add_to_session(&pool, other, enrollment, 2_000 * DA).await.unwrap();
+
+        let owed = unpaid_charges(&pool, enrollment).await.unwrap();
+        assert_eq!(owed.len(), 2);
+        assert_eq!(owed[0].charge_id, entry.fee_charge_id.unwrap());
+        assert_eq!((owed[0].kind.as_str(), owed[0].due_centimes), ("theory", 3_000 * DA));
+        assert_eq!(owed[1].due_centimes, 2_000 * DA);
+
+        // Part of the code fee, then the rest: gone from the list, paid on the sitting.
+        pay(&pool, enrollment, 1_000, entry.fee_charge_id).await.unwrap();
+        assert_eq!(unpaid_charges(&pool, enrollment).await.unwrap()[0].due_centimes, 2_000 * DA);
+        pay(&pool, enrollment, 2_000, entry.fee_charge_id).await.unwrap();
+        let owed = unpaid_charges(&pool, enrollment).await.unwrap();
+        assert_eq!(owed.len(), 1);
+        assert_eq!(owed[0].kind, "maneuvers");
+        assert_eq!(entry_now(&pool, session).await.fee_due_centimes, 0);
     }
 
     #[tokio::test]

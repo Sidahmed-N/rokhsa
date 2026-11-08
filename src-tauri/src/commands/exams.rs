@@ -143,3 +143,12 @@ pub async fn list_exam_fee_charges(
 ) -> CommandResult<Vec<fees::ExamFeeCharge>> {
     Ok(fees::list_for_enrollment(&state.pool, enrollment_id).await?)
 }
+
+/// The fees one candidate still owes, for the payment window on the file and Créances.
+#[tauri::command]
+pub async fn list_unpaid_exam_fees(
+    state: State<'_, AppState>,
+    enrollment_id: i64,
+) -> CommandResult<Vec<fees::UnpaidFee>> {
+    Ok(fees::unpaid_charges(&state.pool, enrollment_id).await?)
+}

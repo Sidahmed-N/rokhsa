@@ -188,3 +188,14 @@ export interface ExamFeeCharge {
 
 export const listExamFeeCharges = (enrollmentId: number) =>
   call<ExamFeeCharge[]>("list_exam_fee_charges", { enrollmentId });
+
+/** A fee not yet fully paid, offered by the payment window on the file and Créances. */
+export interface UnpaidFee {
+  chargeId: number;
+  kind: string;
+  chargedOn: string;
+  dueCentimes: number;
+}
+
+export const listUnpaidExamFees = (enrollmentId: number) =>
+  call<UnpaidFee[]>("list_unpaid_exam_fees", { enrollmentId });

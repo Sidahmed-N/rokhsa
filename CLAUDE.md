@@ -78,7 +78,11 @@ These are not style preferences. Breaking them causes data loss, legal problems,
   transaction. Before, the price was two screens away and a candidate could be saved owing
   nothing. The `create_in` functions in `candidates`, `enrollments` and `payments` exist for
   this; a new multi-row save should reuse them rather than chain three commands from the UI.
-- **An exam fee is paid from the sitting** (Examens, "Encaisser" on the candidate's row): the
+- **An exam fee is paid from the sitting** (Examens, "Encaisser" on the candidate's row), **or from
+  the file and Créances**, whose payment window asks "Ce versement est pour :" (the training, or
+  each fee still owed: `fees::unpaid_charges`) and preselects the fee when no training is owed.
+  It used to send the owner to the sitting, and the owner, trying it out, typed the fee as
+  training money instead. Whichever window takes it, the
   payment carries `exam_fee_charge_id` (migration 0012), and its reversal copies it. That link
   is the ONLY thing that makes a fee paid — never infer it from amounts or dates. The file
   splits "Reste à payer" into Formation / Examens with `domain::money::split_owed`, whose

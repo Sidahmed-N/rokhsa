@@ -138,6 +138,7 @@ pub fn run() {
             commands::exams::get_exam_progress,
             commands::exams::get_exam_board,
             commands::exams::list_exam_fee_charges,
+            commands::exams::list_unpaid_exam_fees,
             commands::training::list_enrollments,
             commands::training::list_bookable_enrollments,
             commands::training::get_enrollment,

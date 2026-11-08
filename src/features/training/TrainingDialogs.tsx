@@ -6,9 +6,10 @@ import { useTranslation } from "react-i18next";
 import { SelectField, TextField } from "@/components/FormField";
 import Modal from "@/components/Modal";
 import DateField from "@/components/ui/DateField";
-import { Money } from "@/components/Num";
+import { DateText, Money } from "@/components/Num";
 import { currentLanguage } from "@/i18n";
 import { isAppError } from "@/lib/candidates";
+import { listUnpaidExamFees, type UnpaidFee } from "@/lib/exams";
 import { formatDZD, parseDZD } from "@/lib/money";
 import {
   LESSON_KINDS,
@@ -557,9 +558,10 @@ export function TakePaymentDialog({
    */
   examFee?: { chargeId: number; dueCentimes: number } | undefined;
   /**
-   * Exam fees he has not paid yet, when this is an ordinary payment. Said in
-   * the dialog because money taken here counts as training: an exam fee taken
-   * here would still show as unpaid on the sitting, and be taken twice.
+   * Exam fees he has not paid yet, when this is an ordinary payment (the file,
+   * Créances). The window then asks what the money is for: a fee taken here
+   * as training money would still show as unpaid on the sitting, and the
+   * owner who chose it is sent nowhere else to take it.
    */
   examFeesOwedCentimes?: number | undefined;
   onDone: (payment: Payment) => void;
@@ -570,14 +572,38 @@ export function TakePaymentDialog({
   const errorText = useErrorText();
 
   const [methods, setMethods] = useState<PaymentMethod[]>([]);
-  // What this payment is measured against: the fee, or the whole balance.
-  const dueCentimes = examFee ? examFee.dueCentimes : balanceCentimes;
+  // The fees offered beside the training, when this is not already a fee.
+  const [unpaidFees, setUnpaidFees] = useState<UnpaidFee[]>([]);
+  // The fee this payment is for, chosen in the window; null is the training.
+  const [chosenFee, setChosenFee] = useState<UnpaidFee | null>(null);
+  const fee = examFee ?? (chosenFee && { chargeId: chosenFee.chargeId, dueCentimes: chosenFee.dueCentimes });
+  // What this payment is measured against: the fee, or the training owed.
+  const dueCentimes = fee ? fee.dueCentimes : balanceCentimes;
   // An exam fee is usually paid whole on the day, so it starts filled in.
   const [amount, setAmount] = useState(
     examFee && examFee.dueCentimes > 0
       ? formatDZD(examFee.dueCentimes, { withSuffix: false })
       : "",
   );
+
+  function choose(next: UnpaidFee | null) {
+    setChosenFee(next);
+    setAmount(next ? formatDZD(next.dueCentimes, { withSuffix: false }) : "");
+    setOverConfirmed(false);
+  }
+
+  useEffect(() => {
+    if (examFee || examFeesOwedCentimes <= 0) return;
+    listUnpaidExamFees(enrollmentId)
+      .then((fees) => {
+        setUnpaidFees(fees);
+        // Nothing left on the training: the money in his hand is for the exam.
+        const first = fees[0];
+        if (balanceCentimes <= 0 && first) choose(first);
+      })
+      .catch((e: unknown) => setError(errorText(e)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [paidOn, setPaidOn] = useState(today());
   const [methodCode, setMethodCode] = useState("cash");
   const [reference, setReference] = useState("");
@@ -623,7 +649,7 @@ export function TakePaymentDialog({
         methodCode,
         reference,
         notes,
-        examFeeChargeId: examFee ? examFee.chargeId : null,
+        examFeeChargeId: fee ? fee.chargeId : null,
       });
       onDone(payment);
     } catch (e: unknown) {
@@ -643,9 +669,50 @@ export function TakePaymentDialog({
       submitLabel={overConfirmed ? t("payments.takeAnyway") : t("payments.take")}
     >
       <div className="grid gap-3">
+        {unpaidFees.length > 0 && (
+          <div>
+            <p className="mb-1.5 text-sm font-medium text-ink">{t("payments.forWhat")}</p>
+            <div className="grid gap-1.5">
+              {[null, ...unpaidFees].map((option) => {
+                const selected = (chosenFee?.chargeId ?? null) === (option?.chargeId ?? null);
+                return (
+                  <button
+                    key={option?.chargeId ?? "training"}
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => choose(option)}
+                    className={[
+                      "flex items-center gap-2 rounded-md border px-3 py-2 text-start text-sm transition-colors",
+                      selected
+                        ? "border-brand bg-brand-soft font-medium text-ink"
+                        : "border-line bg-surface text-ink-soft hover:bg-sunken",
+                    ].join(" ")}
+                  >
+                    <span
+                      className={[
+                        "h-3.5 w-3.5 shrink-0 rounded-full border",
+                        selected ? "border-4 border-brand" : "border-line-strong",
+                      ].join(" ")}
+                    />
+                    <span>
+                      {option
+                        ? t("payments.forExamFee", { kind: t(`lessons.kind_${option.kind}`) })
+                        : t("payments.forTraining")}
+                    </span>
+                    {option && <DateText value={option.chargedOn} className="text-xs text-muted" />}
+                    {/* The gap on a wrapper: Money carries its own dir (CLAUDE.md). */}
+                    <span className="ms-auto">
+                      <Money centimes={option ? option.dueCentimes : Math.max(balanceCentimes, 0)} />
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
         <div className="flex flex-wrap items-center gap-2 rounded-md border border-line bg-brand-soft px-3 py-2 text-sm">
           <span>
-            {examFee
+            {fee
               ? t("payments.examFeeDue")
               : examFeesOwedCentimes > 0
                 ? t("payments.trainingDue")
@@ -668,14 +735,6 @@ export function TakePaymentDialog({
           )}
         </div>
 
-        {!examFee && examFeesOwedCentimes > 0 && (
-          <p className="rounded-md border border-line bg-sunken px-3 py-2 text-xs text-ink-soft">
-            {t("payments.examFeeElsewhere")}{" "}
-            <Money centimes={examFeesOwedCentimes} className="font-medium" />
-            {" · "}
-            {t("payments.examFeeElsewhereHow")}
-          </p>
-        )}
         <TextField
           label={t("payments.amount")}
           value={amount}
@@ -689,7 +748,7 @@ export function TakePaymentDialog({
         />
         {overConfirmed && (
           <p className="rounded-md border border-warn/30 bg-warn-soft px-3 py-2 text-sm text-warn">
-            {examFee ? t("payments.overFeeWarning") : t("payments.overWarning")}
+            {fee ? t("payments.overFeeWarning") : t("payments.overWarning")}
           </p>
         )}
         <TextField

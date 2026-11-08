@@ -358,8 +358,9 @@
     "examFeeDue": "الرسوم المستحقة",
     "overFeeWarning": "هذا المبلغ أكبر من الرسوم. تأكد من عدم وجود صفر زائد، ثم اضغط «تحصيل رغم ذلك».",
     "forExam": "امتحان",
-    "examFeeElsewhere": "عليه أيضا رسوم امتحان:",
-    "examFeeElsewhereHow": "حصّلها من الدورة، في صفحة الامتحانات.",
+    "forWhat": "هذه الدفعة مقابل:",
+    "forTraining": "التكوين",
+    "forExamFee": "رسوم امتحان {{kind}}",
     "trainingDue": "الباقي للتكوين"
   },
   "receipt": {
