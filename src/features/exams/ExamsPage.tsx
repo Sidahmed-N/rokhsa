@@ -477,6 +477,7 @@ export default function ExamsPage() {
       {adding && sitting && (
         <AddToSessionDialog
           sessionId={sitting.id}
+          kind={sitting.kind}
           onClose={() => setAdding(false)}
           onDone={() => {
             setAdding(false);
@@ -575,10 +576,13 @@ function NewSessionDialog({
 /** Adding one candidate to the batch. */
 function AddToSessionDialog({
   sessionId,
+  kind,
   onClose,
   onDone,
 }: {
   sessionId: number;
+  /** The sitting's exam: who already passed it is not offered. */
+  kind: string;
   onClose: () => void;
   onDone: () => void;
 }) {
@@ -633,6 +637,7 @@ function AddToSessionDialog({
       <CandidatePicker
         value={chosen}
         error={pickError}
+        purpose={{ kind, examSessionId: sessionId }}
         onChange={(id) => {
           setChosen(id);
           setPickError(undefined);

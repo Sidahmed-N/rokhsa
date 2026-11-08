@@ -231,10 +231,20 @@ export interface BookableEnrollment {
   finished: boolean;
   /** The candidate's file is archived: hidden like `finished` until searched. */
   archived: boolean;
+  /** Already passed the exam the list is for: hidden like `finished` until searched. */
+  passed: boolean;
 }
 
-export const listBookableEnrollments = (query: string) =>
-  call<BookableEnrollment[]>("list_bookable_enrollments", { query });
+/** What the picker is choosing for, so it leaves out who has no use for it. */
+export interface BookableFor {
+  /** The session type or the sitting's exam: who passed it is hidden. */
+  kind?: string | undefined;
+  /** A sitting: who is already in it is never offered. */
+  examSessionId?: number | undefined;
+}
+
+export const listBookableEnrollments = (query: string, purpose: BookableFor = {}) =>
+  call<BookableEnrollment[]>("list_bookable_enrollments", { query, purpose });
 
 export const listEnrollments = (candidateId: number) =>
   call<EnrollmentSummary[]>("list_enrollments", { candidateId });

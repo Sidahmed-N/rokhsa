@@ -136,8 +136,9 @@ pub async fn complete_lesson(
 pub async fn list_bookable_enrollments(
     state: State<'_, AppState>,
     query: String,
+    purpose: Option<enrollments::BookableFor>,
 ) -> CommandResult<Vec<enrollments::BookableEnrollment>> {
-    Ok(enrollments::bookable(&state.pool, &query).await?)
+    Ok(enrollments::bookable(&state.pool, &query, &purpose.unwrap_or_default()).await?)
 }
 
 /// Move a booked session — what dragging it on the calendar does.

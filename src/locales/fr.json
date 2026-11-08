@@ -437,6 +437,8 @@
     "forCandidate": "Pour quel candidat",
     "pickCandidate": "Choisissez un candidat.",
     "chosenCount": "{{n}} candidats dans cette séance.",
+    "alreadyPassed": "Déjà admis",
+    "nobodyToOffer": "Personne à proposer : ils ont déjà réussi cet examen ou sont déjà inscrits. Tapez un nom pour chercher.",
     "rebook": "Reprogrammer",
     "reopen": "Rétablir",
     "previousMonth": "Mois précédent",

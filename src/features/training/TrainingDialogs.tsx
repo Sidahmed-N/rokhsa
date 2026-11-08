@@ -462,12 +462,31 @@ export function ScheduleSessionDialog({
       submitLabel={t("calendar.book")}
     >
       <div className="grid gap-3">
+        {/* The type first, from the calendar: the list below leaves out who
+            already passed that exam, so it has to be known before choosing. */}
+        <SelectField
+          label={t("lessons.kind")}
+          value={kind}
+          onChange={(next) => {
+            setKind(next);
+            // Chosen for the old type, maybe hidden for the new one: start the
+            // choice again rather than book someone no longer on screen.
+            if (enrollmentId === null) setChosenIds([]);
+          }}
+        >
+          {LESSON_KINDS.map((k) => (
+            <option key={k} value={k}>
+              {t(`lessons.kind_${k}`)}
+            </option>
+          ))}
+        </SelectField>
         {enrollmentId === null && (
           <>
             <CandidatePicker
               value={null}
               error={pickError}
               selected={chosenIds}
+              purpose={{ kind }}
               onChange={() => {}}
               onToggle={(id) => {
                 setChosenIds((prev) =>
@@ -483,13 +502,6 @@ export function ScheduleSessionDialog({
             )}
           </>
         )}
-        <SelectField label={t("lessons.kind")} value={kind} onChange={setKind}>
-          {LESSON_KINDS.map((k) => (
-            <option key={k} value={k}>
-              {t(`lessons.kind_${k}`)}
-            </option>
-          ))}
-        </SelectField>
         <div className="grid gap-3 sm:grid-cols-2">
           {/* A native date input prints in the OS locale, not the page’s, so
               this showed "10/26/2026" inside a French dialog and the owner

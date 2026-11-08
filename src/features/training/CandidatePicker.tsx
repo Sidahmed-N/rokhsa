@@ -6,7 +6,11 @@ import { Badge } from "@/components/ui/Surface";
 import { isAppError } from "@/lib/candidates";
 import { personName } from "@/lib/names";
 import { isDesktop } from "@/lib/tauri";
-import { listBookableEnrollments, type BookableEnrollment } from "@/lib/training";
+import {
+  listBookableEnrollments,
+  type BookableEnrollment,
+  type BookableFor,
+} from "@/lib/training";
 
 /**
  * Choosing whose session this is.
@@ -21,9 +25,10 @@ import { listBookableEnrollments, type BookableEnrollment } from "@/lib/training
  * second implementation in TypeScript would agree with it right up until
  * someone typed an Arabic name with a different alef.
  *
- * Every enrolment is offered, not just the ones in training: a candidate who
- * was ajourné needs more hours before a repassage, and booking that session
- * is exactly what someone is trying to do.
+ * A candidate who was ajourné is offered: he needs more hours before a
+ * repassage, and booking that session is exactly what someone is trying to
+ * do. Who has nothing to do with this list — passed this exam, finished,
+ * abandoned, archived — is left out until his name is typed (see `purpose`).
  */
 export default function CandidatePicker({
   value,
@@ -31,6 +36,7 @@ export default function CandidatePicker({
   error,
   selected,
   onToggle,
+  purpose,
 }: {
   value: number | null;
   onChange: (enrollmentId: number, row: BookableEnrollment) => void;
@@ -44,6 +50,8 @@ export default function CandidatePicker({
    */
   selected?: number[];
   onToggle?: (enrollmentId: number, row: BookableEnrollment) => void;
+  /** The session type or sitting this is for; see `enrollments::bookable`. */
+  purpose?: BookableFor | undefined;
 }) {
   const multi = selected !== undefined;
   const { t } = useTranslation();
@@ -60,15 +68,17 @@ export default function CandidatePicker({
     return () => clearTimeout(timer);
   }, [query]);
 
+  const kind = purpose?.kind;
+  const examSessionId = purpose?.examSessionId;
   const load = useCallback(async () => {
     if (!isDesktop()) return;
     try {
-      setRows(await listBookableEnrollments(debounced));
+      setRows(await listBookableEnrollments(debounced, { kind, examSessionId }));
       setLoadError(null);
     } catch (raw: unknown) {
       setLoadError(isAppError(raw) ? t(raw.code, { defaultValue: raw.message }) : String(raw));
     }
-  }, [debounced, t]);
+  }, [debounced, kind, examSessionId, t]);
 
   useEffect(() => {
     void load();
@@ -103,7 +113,10 @@ export default function CandidatePicker({
 
         {!loadError && rows.length === 0 && (
           <p className="px-3 py-3 text-center text-xs text-muted">
-            {t("candidates.noMatches")}
+            {/* Nothing typed and nobody left: everyone passed this exam or is
+                already in. "No result for this search" sent people looking
+                for a search they had not made. */}
+            {debounced.trim() === "" ? t("calendar.nobodyToOffer") : t("candidates.noMatches")}
           </p>
         )}
 
@@ -144,6 +157,9 @@ export default function CandidatePicker({
                       ordinary choice rather than a deliberate one. */}
                   {row.archived && <Badge tone="neutral">{t("candidates.archivedBadge")}</Badge>}
                   {row.finished && <Badge tone="ok">{t("board.col_finished")}</Badge>}
+                  {row.passed && !row.finished && (
+                    <Badge tone="ok">{t("calendar.alreadyPassed")}</Badge>
+                  )}
 
                   {/* A candidate who is not simply "in training" is worth
                       flagging here — booking for someone who abandoned is

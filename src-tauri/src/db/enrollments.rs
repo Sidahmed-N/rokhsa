@@ -1181,6 +1181,22 @@ pub struct BookableEnrollment {
     /// The candidate's file is archived. Hidden the same way as `finished`:
     /// out of the list the picker opens on, found by typing the name.
     pub archived: bool,
+    /// Already passed the exam this list is for (the session type being
+    /// booked, or the sitting's exam). Hidden the same way as `finished`.
+    #[sqlx(default)]
+    pub passed: bool,
+}
+
+/// What the picker is choosing for, so it can leave out who has no use for it.
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BookableFor {
+    /// 'theory', 'maneuvers' or 'road': who already passed it is hidden.
+    #[serde(default)]
+    pub kind: Option<String>,
+    /// An exam sitting: who is already in it is never offered again.
+    #[serde(default)]
+    pub exam_session_id: Option<i64>,
 }
 
 /// Every live enrolment, for picking one to book a session against.
@@ -1192,6 +1208,7 @@ pub struct BookableEnrollment {
 pub async fn bookable(
     pool: &SqlitePool,
     query: &str,
+    purpose: &BookableFor,
 ) -> Result<Vec<BookableEnrollment>, AppError> {
     let folded = crate::domain::text::fold_query(query);
     let pattern = format!("%{folded}%");
@@ -1217,14 +1234,50 @@ pub async fn bookable(
     // finds them, flagged: hiding is a convenience, and the app does not
     // refuse an action the owner means to take — a refresher before a licence
     // is collected is his business, not ours.
+    //
+    // The same goes for whoever already passed the exam being booked or sat
+    // (a Code session, a Créneau sitting) and for an abandoned enrolment:
+    // a list of fifty names is read by scrolling past the ones that do not
+    // apply. Someone already in this sitting is the one exception that is
+    // never offered, because entering him twice is never what was meant.
     let finished = super::exams::finished_enrollment_ids(pool).await?;
+    let passed: std::collections::HashSet<i64> = match &purpose.kind {
+        Some(kind) => sqlx::query_scalar(
+            "SELECT DISTINCT enrollment_id FROM exam_results
+             WHERE deleted_at IS NULL AND outcome = 'passed' AND kind = ?1",
+        )
+        .bind(kind)
+        .fetch_all(pool)
+        .await?
+        .into_iter()
+        .collect(),
+        None => Default::default(),
+    };
+    let in_session: std::collections::HashSet<i64> = match purpose.exam_session_id {
+        Some(id) => sqlx::query_scalar(
+            "SELECT enrollment_id FROM exam_results
+             WHERE deleted_at IS NULL AND session_id = ?1",
+        )
+        .bind(id)
+        .fetch_all(pool)
+        .await?
+        .into_iter()
+        .collect(),
+        None => Default::default(),
+    };
     let rows: Vec<BookableEnrollment> = rows
         .into_iter()
         .map(|mut row| {
             row.finished = finished.contains(&row.enrollment_id);
+            row.passed = passed.contains(&row.enrollment_id);
             row
         })
-        .filter(|row| !(row.finished || row.archived) || !folded.is_empty())
+        .filter(|row| !in_session.contains(&row.enrollment_id))
+        .filter(|row| {
+            let set_aside =
+                row.finished || row.archived || row.passed || row.status == "withdrawn";
+            !set_aside || !folded.is_empty()
+        })
         .collect();
 
     Ok(rows)
@@ -1292,7 +1345,7 @@ mod bookable_tests {
         let pool = test_pool().await;
         enrol(&pool, "BENALI").await;
 
-        assert_eq!(bookable(&pool, "").await.unwrap().len(), 1);
+        assert_eq!(bookable(&pool, "", &BookableFor::default()).await.unwrap().len(), 1);
     }
 
     /// Passing one exam is not finishing. He still has two to train for.
@@ -1302,7 +1355,7 @@ mod bookable_tests {
         let enrollment = enrol(&pool, "BENALI").await;
         pass(&pool, enrollment, "theory", "2026-09-08").await;
 
-        assert_eq!(bookable(&pool, "").await.unwrap().len(), 1);
+        assert_eq!(bookable(&pool, "", &BookableFor::default()).await.unwrap().len(), 1);
     }
 
     #[tokio::test]
@@ -1312,7 +1365,7 @@ mod bookable_tests {
         pass(&pool, enrollment, "theory", "2026-09-08").await;
         pass(&pool, enrollment, "maneuvers", "2026-10-05").await;
 
-        assert_eq!(bookable(&pool, "").await.unwrap().len(), 1);
+        assert_eq!(bookable(&pool, "", &BookableFor::default()).await.unwrap().len(), 1);
     }
 
     /// All three passed: there is nothing left to book him for.
@@ -1324,7 +1377,7 @@ mod bookable_tests {
         pass(&pool, enrollment, "maneuvers", "2026-10-05").await;
         pass(&pool, enrollment, "road", "2026-10-20").await;
 
-        assert!(bookable(&pool, "").await.unwrap().is_empty());
+        assert!(bookable(&pool, "", &BookableFor::default()).await.unwrap().is_empty());
     }
 
     /// Hiding is a convenience, not a refusal: searching his name finds him,
@@ -1337,7 +1390,7 @@ mod bookable_tests {
         pass(&pool, enrollment, "maneuvers", "2026-10-05").await;
         pass(&pool, enrollment, "road", "2026-10-20").await;
 
-        let found = bookable(&pool, "benali").await.unwrap();
+        let found = bookable(&pool, "benali", &BookableFor::default()).await.unwrap();
         assert_eq!(found.len(), 1);
         assert!(found[0].finished, "the picker has to be able to say so");
     }
@@ -1353,9 +1406,107 @@ mod bookable_tests {
         pass(&pool, done, "maneuvers", "2026-10-05").await;
         pass(&pool, done, "road", "2026-10-20").await;
 
-        let offered = bookable(&pool, "").await.unwrap();
+        let offered = bookable(&pool, "", &BookableFor::default()).await.unwrap();
         assert_eq!(offered.len(), 1);
         assert_eq!(offered[0].last_name, "KADRI");
+    }
+
+    fn for_kind(kind: &str) -> BookableFor {
+        BookableFor { kind: Some(kind.into()), exam_session_id: None }
+    }
+
+    /// Booking a Code session: whoever passed the Code is not offered, and
+    /// still is for the Créneau. Typing his name finds him, flagged.
+    #[tokio::test]
+    async fn who_passed_this_exam_is_left_out_of_its_list() {
+        let pool = test_pool().await;
+        let passed = enrol(&pool, "BENALI").await;
+        enrol(&pool, "KADRI").await;
+        pass(&pool, passed, "theory", "2026-09-08").await;
+
+        let code = bookable(&pool, "", &for_kind("theory")).await.unwrap();
+        assert_eq!(code.len(), 1);
+        assert_eq!(code[0].last_name, "KADRI");
+        assert_eq!(bookable(&pool, "", &for_kind("maneuvers")).await.unwrap().len(), 2);
+
+        let found = bookable(&pool, "benali", &for_kind("theory")).await.unwrap();
+        assert_eq!(found.len(), 1);
+        assert!(found[0].passed, "the picker has to be able to say so");
+    }
+
+    /// Failed, then passed: the pass is what counts.
+    #[tokio::test]
+    async fn a_pass_after_a_failure_still_hides_him() {
+        let pool = test_pool().await;
+        let who = enrol(&pool, "BENALI").await;
+        let first = exams::create_session(
+            &pool,
+            &exams::ExamSessionInput {
+                kind: "theory".into(),
+                held_on: "2026-08-01".into(),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+        let entry = exams::add_to_session(&pool, first.id, who, 0).await.unwrap();
+        exams::set_outcome(&pool, entry.id, "failed", "").await.unwrap();
+        assert_eq!(bookable(&pool, "", &for_kind("theory")).await.unwrap().len(), 1);
+
+        pass(&pool, who, "theory", "2026-09-08").await;
+        assert!(bookable(&pool, "", &for_kind("theory")).await.unwrap().is_empty());
+    }
+
+    /// Adding to a sitting: who is already in it is not offered, even by name.
+    #[tokio::test]
+    async fn who_is_already_in_the_sitting_is_never_offered_again() {
+        let pool = test_pool().await;
+        let inside = enrol(&pool, "BENALI").await;
+        enrol(&pool, "KADRI").await;
+        let sitting = exams::create_session(
+            &pool,
+            &exams::ExamSessionInput {
+                kind: "theory".into(),
+                held_on: "2026-12-01".into(),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+        exams::add_to_session(&pool, sitting.id, inside, 0).await.unwrap();
+
+        let purpose = BookableFor { kind: Some("theory".into()), exam_session_id: Some(sitting.id) };
+        let offered = bookable(&pool, "", &purpose).await.unwrap();
+        assert_eq!(offered.len(), 1);
+        assert_eq!(offered[0].last_name, "KADRI");
+        assert!(bookable(&pool, "benali", &purpose).await.unwrap().is_empty());
+    }
+
+    /// An abandoned enrolment is set aside like a finished one.
+    #[tokio::test]
+    async fn an_abandoned_candidate_is_found_only_by_name() {
+        let pool = test_pool().await;
+        let gone = enrol(&pool, "BENALI").await;
+        enrol(&pool, "KADRI").await;
+        let e = get(&pool, gone).await.unwrap();
+        revise(
+            &pool,
+            gone,
+            &EnrollmentRevision {
+                enrolled_on: e.enrolled_on.clone(),
+                agreed_price_centimes: e.agreed_price_centimes,
+                discount_centimes: e.discount_centimes,
+                discount_reason: String::new(),
+                withdrawn: true,
+            },
+        )
+        .await
+        .unwrap();
+
+        let offered = bookable(&pool, "", &BookableFor::default()).await.unwrap();
+        assert_eq!(offered.len(), 1);
+        assert_eq!(offered[0].last_name, "KADRI");
+        assert_eq!(bookable(&pool, "benali", &BookableFor::default()).await.unwrap().len(), 1);
     }
 
     /// Failing the last one puts him back: he needs hours before a repassage,
@@ -1384,7 +1535,7 @@ mod bookable_tests {
             .unwrap();
         exams::set_outcome(&pool, entry.id, "failed", "").await.unwrap();
 
-        assert_eq!(bookable(&pool, "").await.unwrap().len(), 1);
+        assert_eq!(bookable(&pool, "", &BookableFor::default()).await.unwrap().len(), 1);
     }
 
     /// The candidate of an enrolment, for archiving.
@@ -1417,11 +1568,11 @@ mod bookable_tests {
         assert_eq!(board.len(), 1);
         assert_eq!(board[0].enrollment_id, kept);
 
-        let offered = bookable(&pool, "").await.unwrap();
+        let offered = bookable(&pool, "", &BookableFor::default()).await.unwrap();
         assert_eq!(offered.len(), 1);
         assert_eq!(offered[0].enrollment_id, kept);
         // Typing the name still finds them, flagged, as for somebody finished.
-        let found = bookable(&pool, "kaci").await.unwrap();
+        let found = bookable(&pool, "kaci", &BookableFor::default()).await.unwrap();
         assert_eq!(found.len(), 1);
         assert!(found[0].archived);
     }
@@ -1479,7 +1630,7 @@ mod bookable_tests {
 
         candidates::set_archived(&pool, &[who], false).await.unwrap();
         assert!(candidates::get(&pool, who).await.unwrap().archived_at.is_none());
-        assert_eq!(bookable(&pool, "").await.unwrap().len(), 1);
+        assert_eq!(bookable(&pool, "", &BookableFor::default()).await.unwrap().len(), 1);
         assert_eq!(exams::board(&pool).await.unwrap().len(), 1);
 
         let actions: Vec<(String,)> = sqlx::query_as(

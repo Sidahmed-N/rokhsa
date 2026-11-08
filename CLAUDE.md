@@ -229,6 +229,12 @@ These are not style preferences. Breaking them causes data loss, legal problems,
   a file from the list, the board and the session picker (typing the name still finds it) and
   changes nothing else: Créances and Caisse still count it. Any new list of "current"
   candidates must filter on `archived_at IS NULL`; any money query must not.
+- **The candidate picker offers only who the choice is for** (`enrollments::bookable` with
+  `BookableFor`, owner's request 2026-11-08). Booking a session asks the type FIRST and leaves out
+  whoever passed that exam; adding to a sitting leaves out who passed its exam and never offers
+  who is already in it. Finished, abandoned and archived are left out too. All of them except
+  "already in this sitting" are found by typing the name, flagged ("Déjà admis"): the list is
+  tidied, the owner is never refused.
 - **The candidate list's status is read from the facts, never typed** (`domain::candidate::
   shown_status`): "Abandon" when the enrolment is ticked "Le candidat a abandonné", "Terminé" once
   all three exams are passed (`exams::finished_enrollment_ids`, the board's own rule), otherwise
